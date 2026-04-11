@@ -1,0 +1,76 @@
+# nexus-core publish workflow
+#
+# Primary: bun publish (sibling opencode-nexus와 일관성 + Bun 전환 결정)
+# Fallback: bun publish가 --provenance/--access public/OIDC 미지원이면
+#           "npm publish --provenance --access public" + setup-node auth helper로 전환.
+#           sibling opencode-nexus의 publish-npm.yml이 이 fallback 패턴 참조.
+#
+# Trigger: git tag push (pure semver) 또는 workflow_dispatch manual.
+# Auth Day 1: Granular Access Token via NODE_AUTH_TOKEN env.
+# Auth 전환 후: id-token:write로 OIDC 자동 (NODE_AUTH_TOKEN 라인 제거).
+
+name: Publish npm package
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: false
+        description: "Pack only, skip publish"
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build + validate + publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3"
+
+      - name: Setup Node (auth helper — creates .npmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run validation
+        run: bun run validate
+
+      - name: Version match check (git tag vs package.json)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          PKG_VERSION=$(bun -e "console.log(require('./package.json').version)")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "Version mismatch: package.json=$PKG_VERSION, git tag=$TAG_VERSION"
+            exit 1
+          fi
+          echo "Version match: $PKG_VERSION"
+
+      - name: Pack (dry-run verification)
+        run: bun publish --dry-run
+
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        run: bun publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

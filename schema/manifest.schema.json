@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest.schema.json",
+  "title": "nexus-core manifest.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nexus_core_version", "nexus_core_commit", "schema_contract_version", "agents", "skills", "vocabulary"],
+  "properties": {
+    "nexus_core_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-z0-9.-]+)?$" },
+    "nexus_core_commit": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" },
+    "schema_contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "description", "category", "capabilities", "resume_tier", "model_tier", "body_hash"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "name": { "type": "string" },
+          "alias_ko": { "type": "string" },
+          "description": { "type": "string" },
+          "task": { "type": "string" },
+          "category": { "type": "string" },
+          "capabilities": { "type": "array", "items": { "type": "string" } },
+          "resume_tier": { "type": "string" },
+          "model_tier": { "type": "string" },
+          "body_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "description", "triggers", "body_hash"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "triggers": { "type": "array", "items": { "type": "string" } },
+          "alias_ko": { "type": "string" },
+          "manual_only": { "type": "boolean" },
+          "body_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "vocabulary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilities", "categories", "resume_tiers", "tags"],
+      "properties": {
+        "capabilities": { "type": "array" },
+        "categories": { "type": "array" },
+        "resume_tiers": { "type": "array" },
+        "tags": { "type": "array" }
+      }
+    }
+  }
+}

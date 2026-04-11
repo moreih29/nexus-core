@@ -1,0 +1,4 @@
+name: nx-setup
+description: Interactive project setup wizard for Nexus configuration.
+manual_only: true
+id: nx-setup

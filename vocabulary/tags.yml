@@ -1,0 +1,51 @@
+# Canonical definition of all Nexus tag triggers.
+# Slash command triggers are NOT stored here — each harness resolves them
+# in its own command namespace.
+# variants field is valid for both skill and inline_action types.
+
+tags:
+  # skill tags (3 entries, 4 triggers)
+  - id: plan
+    trigger: "[plan]"
+    type: skill
+    skill: nx-plan
+    description: "Activates nx-plan skill for structured multi-perspective analysis and decision recording"
+    variants: ["auto"]   # [plan:auto] for autonomous mode
+
+  - id: run
+    trigger: "[run]"
+    type: skill
+    skill: nx-run
+    description: "Activates nx-run skill for task execution with subagent composition"
+
+  - id: sync
+    trigger: "[sync]"
+    type: skill
+    skill: nx-sync
+    description: "Activates nx-sync skill for .nexus/context/ knowledge synchronization"
+
+  # inline action tags (4 entries, 5 triggers)
+  - id: d
+    trigger: "[d]"
+    type: inline_action
+    handler: nx_plan_decide
+    description: "Records a decision during an active plan session"
+
+  - id: m
+    trigger: "[m]"
+    type: inline_action
+    handler: memory_store
+    description: "Stores a lesson or reference to .nexus/memory/"
+
+  - id: m-gc
+    trigger: "[m:gc]"
+    type: inline_action
+    handler: memory_gc
+    description: "Garbage-collects .nexus/memory/ by merging or removing stale entries"
+
+  - id: rule
+    trigger: "[rule]"
+    type: inline_action
+    handler: rule_store
+    description: "Stores a project rule to .nexus/rules/. [rule:*] supports tag parameter."
+    variants: ["*"]   # [rule:any-tag] for parameterized variants

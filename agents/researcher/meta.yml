@@ -1,0 +1,12 @@
+name: researcher
+description: Independent investigation — conducts web searches, gathers
+  evidence, and reports findings with citations
+task: Web search, independent investigation
+alias_ko: 리서처
+category: do
+resume_tier: persistent
+model_tier: standard
+capabilities:
+  - no_file_edit
+  - no_task_create
+id: researcher

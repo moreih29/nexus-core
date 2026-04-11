@@ -1,6 +1,6 @@
 # 스키마 진화 정책
 
-> 이 문서는 plan session #1 (2026-04-10)의 결정을 재구성한 것이다. 원본 논의: `.nexus/memory/` 참조.
+> 이 문서는 plan session #1 (2026-04-10)과 plan session #2 (2026-04-11)의 결정을 재구성한 것이다. plan session #1은 철학 확립, plan session #2는 구현 결정. 원본 논의: `.nexus/memory/` 참조.
 
 ---
 
@@ -51,62 +51,46 @@ breaking change가 발생한 경우 아래 순서로 대응한다.
    - 예: `0.1.4` → `1.0.0`
    - minor/patch 변경은 이 절차를 거치지 않는다.
 
-2. **CHANGELOG.md 업데이트**: 해당 버전 엔트리에 "Consumer Action Required" 섹션을 추가한다. 이 섹션은 엔트리 내에서 다른 변경 내용보다 먼저 등장해야 한다. 포맷은 아래 §Consumer Action Required 섹션 포맷을 따른다.
+2. **CHANGELOG.md 업데이트**: Keep a Changelog 포맷을 사용하고, 해당 버전 엔트리에 아래 요소를 포함한다.
+   - "Consumer Action Required" 섹션을 엔트리 내 다른 변경 내용보다 먼저 위치시킨다.
+   - `<!-- nx-car:vX.Y.Z:start -->` / `<!-- nx-car:vX.Y.Z:end -->` versioned HTML 주석 marker로 섹션을 감싼다.
+   - migration 내용이 50줄을 초과하면 `MIGRATIONS/vX_to_vY.md` 별도 파일을 작성하고 CHANGELOG에서 링크한다.
+   - 포맷 상세는 아래 §CHANGELOG Canonical 포맷을 따른다.
 
 3. **소비자 반영**: 각 소비자 레포(opencode-nexus, claude-nexus, nexus-code)의 maintainer가 "Consumer Action Required" 섹션을 읽고 자신의 레포에서 필요한 업데이트를 반영한다. 현재 모든 소비자 레포의 maintainer는 동일 작성자다.
 
+semver 해석 판단(어떤 변경이 major/minor/patch인지)은 `.nexus/rules/semver-policy.md`의 18-case 표를 참조한다.
+
 ---
 
-## Consumer Action Required 섹션 포맷
+## CHANGELOG Canonical 포맷
+
+CHANGELOG.md는 Keep a Changelog 포맷을 기반으로 하되, nexus-core 전용 확장을 적용한다.
 
 ### 규칙
 
-- semver major bump가 포함된 모든 릴리스는 반드시 이 섹션을 포함한다.
-- 이 섹션은 해당 버전 CHANGELOG 엔트리의 맨 앞에 위치한다.
+- semver major bump가 포함된 모든 릴리스는 반드시 "Consumer Action Required" 섹션을 포함한다.
+- "Consumer Action Required" 섹션은 해당 버전 엔트리의 맨 앞에 위치한다.
+- 섹션은 `<!-- nx-car:vX.Y.Z:start -->` / `<!-- nx-car:vX.Y.Z:end -->` versioned HTML 주석 marker로 감싼다. marker 중첩은 금지한다(`.nexus/rules/semver-policy.md` 참조).
 - 영향 대상 목록에는 현재 알려진 모든 소비자를 명시한다: opencode-nexus, claude-nexus, nexus-code.
-- before/after 예시를 반드시 포함한다.
-- "이유" 항목은 생략할 수 없다. 왜 이 breaking change가 필요했는지 기술한다.
-- minor/patch bump에는 이 섹션을 포함하지 않는다.
+- migration 내용이 50줄을 초과하면 `MIGRATIONS/vX_to_vY.md`를 별도 작성하고 CHANGELOG에서 링크한다.
+- minor/patch bump에는 "Consumer Action Required" 섹션을 포함하지 않는다.
 
-### 예시 포맷
-
-아래는 `meta.yml`의 `capabilities` 필드가 배열에서 객체로 변경되는 경우의 예시다.
+### 포맷 예시
 
 ```markdown
-## 1.0.0 — 2026-MM-DD
+## [0.2.0] - 2026-05-15
 
-### Consumer Action Required
+### Added
+- ...
 
-**Breaking change**: `meta.yml`의 `capabilities` 필드 타입이 변경되었습니다.
-
-**영향 대상**
-- opencode-nexus: `scripts/generate-prompts.mjs`에서 `meta.capabilities` 읽기 방식 업데이트 필요
-- claude-nexus: Phase 2 loader 구현 시 새 형식으로 읽어야 함
-- nexus-code: `meta.capabilities` 파싱 코드 업데이트 필요
-
-**Before**
-```yaml
-capabilities:
-  - no_file_edit
-  - no_task_create
-```
-
-**After**
-```yaml
-capabilities:
-  no_file_edit: true
-  no_task_create: true
-```
-
-**마이그레이션 방법**
-배열 순회(`for cap of meta.capabilities`) 코드를 객체 키 순회(`for key of Object.keys(meta.capabilities)`)로 변경한다.
-
-**이유**
-[이 변경이 필요했던 구체적 이유. 예: capability별 활성화 여부를 조건부로 제어하기 위해]
-
-### What Changed
-
-- [그 외 변경 내용 목록]
+### BREAKING CHANGES
+<!-- nx-car:v0.2.0:start -->
+- **removed**: `qa-tester` agent
+- **impact**: consumers referencing qa-tester id
+- **action**: Rename references from qa-tester to tester
+- **migration**: See MIGRATIONS/v0.1_to_v0.2.md
+<!-- nx-car:v0.2.0:end -->
 ```
 
 ---
@@ -115,83 +99,76 @@ capabilities:
 
 ### Phase 정의
 
-**Phase 1 — opencode-nexus 단독 통합**
+**Phase 1 — bootstrap + 짧은 검증 기간**
+
+예상 기간: bootstrap 직후 1-2주 수준(이번 주말 진입 예상).
+
+- claude-nexus가 canonical source다. `scripts/import-from-claude-nexus.ts`가 claude-nexus → nexus-core 단방향 동기화를 담당한다.
+- nexus-core는 임시 snapshot이다.
+- sibling 관계는 소비 방향만 symmetric하다. bootstrap source 방향은 asymmetric하다(bridge §1.5 근거).
 - opencode-nexus만 `@moreih29/nexus-core`를 devDependency로 소비한다.
-- claude-nexus는 변경되지 않는다. claude-nexus의 프롬프트를 수정하면 `scripts/import-from-claude-nexus.mjs`를 수동으로 실행해 nexus-core에 반영한다.
-- nexus-core → opencode-nexus 방향의 단방향 흐름이다.
 
-**Phase 2 — 양방향 하네스 소비**
-- opencode-nexus와 claude-nexus 모두 nexus-core를 소비한다.
-- claude-nexus에 nexus-core loader가 구현된다. claude-nexus는 패키지를 runtime dependency로 소비한다(bridge §8.3).
-- nexus-core가 양방향 single source of truth가 된다. import script는 은퇴하거나 양방향으로 전환된다.
-- Phase 2 진입 시점에 VERSION을 1.0.0으로 bump한다.
+**Phase 2 — 3 consumer read-only 소비**
 
-### Trigger 조건
+- 3 consumer(claude-nexus, opencode-nexus, nexus-code) 모두 nexus-core를 read-only로 소비하기 시작한다.
+- nexus-core가 canonical source로 역전된다. 이후 수정은 nexus-core에서 직접 이루어진다.
+- `scripts/import-from-claude-nexus.ts`는 `scripts/legacy/bootstrap.ts`로 이동한다(Transient Bootstrap 정책, 아래 섹션 참조).
 
-bridge 계획 §11이 Phase 2 전환의 세 가지 신호를 정의한다.
+### Phase 2 진입 Signal
 
-**Signal 1 — Commit velocity reversal**
-```
-commits_14d(opencode-nexus) > commits_14d(claude-nexus) × 1.5
-```
-직전 14일 기준 opencode-nexus의 커밋 수가 claude-nexus 커밋 수의 1.5배를 초과하는 상태가 2주(14일) 연속으로 유지되는 경우.
+**전환 판정 조건**: 3 consumer repo 각각에 nexus-core import 전환 commit이 존재하면 Phase 2 진입으로 판정한다.
 
-**Signal 2 — Author declaration**
-작성자가 다음 중 하나에 "Phase 2 transition"을 명시적으로 선언하는 경우:
-- 어느 레포의 `.nexus/state/plan.json`에 기록된 plan session
-- opencode-nexus 또는 claude-nexus의 `UPSTREAM.md`
-- GitHub 태그 릴리스 노트
-
-**Signal 3 — Sync direction reversal**
-30일 기준으로 "opencode-nexus → nexus-core 기여 빈도"가 "claude-nexus → nexus-core 기여 빈도"를 초과하는 경우.
-
-### Trigger 규칙
-
-```
-Signal 1 AND (Signal 2 OR Signal 3)
-```
-
-세 신호를 모두 충족해야 하는 것이 아니라, Signal 1이 성립하면서 Signal 2 또는 Signal 3 중 하나가 성립하면 전환 조건이 충족된다.
+이 조건은 bridge 계획 §11의 Signal 1/2/3보다 단순하고 명확한 기준이다. Signal 1/2/3는 참고 지표로 유지하되, 실제 판정은 위 commit 존재 여부로 한다.
 
 ### 참고 지표 성격
 
-Primer §5.2가 명시하듯, 이 trigger 조건들은 참고 지표일 뿐 엄격한 게이트가 아니다. 작성자 판단으로 조건 미충족 상태에서도 조기 전환이 가능하다.
+Primer §5.2가 명시하듯, trigger 조건들은 참고 지표일 뿐 엄격한 게이트가 아니다. 작성자 판단으로 조건 미충족 상태에서도 조기 전환이 가능하다.
+
+---
+
+## Transient Bootstrap Import Script 정책
+
+`scripts/import-from-claude-nexus.ts`는 Phase 1 1회용 bootstrap 도구다.
+
+- Phase 2 진입 시 `scripts/legacy/bootstrap.ts`로 이동한다.
+- 스크립트 상단 docstring에 다음을 명시한다: "Transient bootstrap artifact. Preserved for historical reference and emergency re-bootstrap. Not intended for routine use after Phase 2."
+- Phase 2 진입 후 90일 재평가 시점에 완전 삭제 vs 유지를 재결정한다(아래 §90일 재평가 지표 항목 9 참조).
+
+---
+
+## Bun Publish 재평가 Reservation
+
+Issue #7 결정: publish는 Bun primary, fallback은 npm CLI. Bun publish의 OIDC/provenance 지원 여부가 2026-04 기준 불확실하다.
+
+- **재평가 시점**: Phase 2 진입 후 6개월
+- **확인 항목**: bun publish OIDC/provenance 지원 여부, publish 안정성 실사용 사례
+- **fallback path 유지**: npm CLI fallback은 재평가 결과가 확정될 때까지 유지한다.
 
 ---
 
 ## 90일 재평가 윈도우
 
-bridge 계획 §11.3에 따라, Phase 1 완료 후 90일마다 Phase 2 전환 재평가 plan session을 개최한다. 이 세션은 trigger 조건 충족 여부와 무관하게 진행한다.
+Phase 2 진입 후 90일 시점에 재평가 plan session을 개최한다. 아래 9개 지표를 체크리스트로 확인한다.
 
-### 조기 전환 고려 조건
-
-아래 조건 중 하나 이상이 성립하면 90일 재평가 세션에서 조기 전환을 검토한다.
-
-- opencode-nexus가 nexus-core에 기여한 개선이 누적 5개 초과
-- drift ledger(두 하네스 간 prompt 차이 기록)의 증가 추세가 지속됨
-- Signal 1 미충족이더라도 작성자 판단으로 Phase 2가 더 적절하다고 판단되는 경우
-
-### 정책 재평가 항목
-
-90일 재평가 세션에서는 다음을 검토한다.
-
-- Phase 1 동안 발생한 breaking change 횟수와 실제 마이그레이션 비용
-- schema 안정성: major bump 없이 Phase 1이 운영되었는지
-- Phase 2 진입 시 claude-nexus loader 구현의 예상 공수
-
-구체 체크리스트 항목은 아직 미결정이다. Phase 1 운영 중 수집된 경험 데이터를 바탕으로 확정한다 — TBD, `.nexus/memory/open-questions.md` 참조(항목 c).
+1. `manifest.json`이 runtime contract 요구를 발견했는가 (Issue #8 Risk 2)
+2. agent/skill 개수 — 현재 14개 기준, 30+ 도달 시 병렬화 전략 재평가 (Issue #6 Risk 3)
+3. opencode-nexus 추가 drift 발견 여부 (Issue #5 W2)
+4. `body.md` semver 해석 주관성 — `.nexus/rules/semver-policy.md` 업데이트 필요 여부
+5. claude-nexus v0.25.0과 nexus-core 독립 semver 유지의 유효성
+6. bridge §2.1 필드 변경 → import allow list 동기화 누락 여부 (Issue #5 W3 체크리스트)
+7. WebFetch 가용성 실사용 실패 사례 누적 여부 (Issue #8 Risk 3)
+8. Bun publish OIDC/provenance 지원 확정 여부 (Issue #7, 위 §Bun Publish 재평가 Reservation 연동)
+9. `scripts/import-from-claude-nexus.ts` 실제 실행 빈도 — retire vs keep 결정 근거 (위 §Transient Bootstrap Import Script 정책 연동)
 
 ---
 
 ## 미결 항목 (TBD)
 
-다음 항목들은 이번 세션(plan session #1)에서 확정되지 않았다. 향후 `[plan]` 세션에서 재논의한다.
+다음 항목은 plan session #1에서 미결정이었으나, plan session #2(2026-04-11)에서 부분 해소되었다.
 
 ### (c) Phase 1 → Phase 2 전환의 practical 시점 판단 기준
 
-bridge §11의 trigger 조건(Signal 1/2/3)은 정의되어 있으나, 90일 재평가 시점에서 실제로 무엇을 체크리스트로 확인할지는 미정이다. Signal 1이 충족되지 않았을 때 조기 전환을 고려하는 실질적 기준도 Phase 1 운영 전에는 결정할 수 없다.
-
-TBD — `.nexus/memory/open-questions.md` 항목 (c) 참조
+**해소**: 위 §90일 재평가 윈도우의 9개 지표가 체크리스트로 확정되었다. Signal 1이 미충족인 경우의 조기 전환 판단은 작성자 재량에 따른다(§참고 지표 성격 참조).
 
 ### (e) schema_version 필드 도입 여부
 

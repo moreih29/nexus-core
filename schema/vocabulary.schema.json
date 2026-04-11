@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vocabulary.schema.json",
+  "title": "Nexus Vocabulary files",
+  "$defs": {
+    "capabilityEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "harness_mapping"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/id" },
+        "description": { "$ref": "common.schema.json#/$defs/description" },
+        "harness_mapping": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["claude_code", "opencode"],
+          "properties": {
+            "claude_code": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "opencode": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    },
+    "capabilityFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilities"],
+      "properties": {
+        "capabilities": { "type": "array", "items": { "$ref": "#/$defs/capabilityEntry" } }
+      }
+    },
+    "simpleEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/id" },
+        "description": { "$ref": "common.schema.json#/$defs/description" }
+      }
+    },
+    "categoryFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["categories"],
+      "properties": {
+        "categories": { "type": "array", "items": { "$ref": "#/$defs/simpleEntry" } }
+      }
+    },
+    "resumeTierFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resume_tiers"],
+      "properties": {
+        "resume_tiers": { "type": "array", "items": { "$ref": "#/$defs/simpleEntry" } }
+      }
+    },
+    "tagEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "trigger", "type", "description"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/id" },
+        "trigger": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "enum": ["skill", "inline_action"] },
+        "description": { "$ref": "common.schema.json#/$defs/description" },
+        "skill": { "$ref": "common.schema.json#/$defs/id" },
+        "handler": { "type": "string", "minLength": 1 },
+        "variants": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "if": {
+        "properties": { "type": { "const": "skill" } },
+        "required": ["type"]
+      },
+      "then": {
+        "properties": { "skill": {} },
+        "required": ["skill"]
+      },
+      "else": {
+        "properties": { "handler": {} },
+        "required": ["handler"]
+      }
+    },
+    "tagFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tags"],
+      "properties": {
+        "tags": { "type": "array", "items": { "$ref": "#/$defs/tagEntry" } }
+      }
+    }
+  }
+}
