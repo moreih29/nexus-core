@@ -78,8 +78,8 @@ jobs:
       - name: Pack (dry-run verification)
         run: npm pack --dry-run
 
-      - name: Publish to npm
+      - name: Publish to npm (OIDC Trusted Publishing)
         if: ${{ !inputs.dry_run }}
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # No NODE_AUTH_TOKEN — OIDC via id-token:write permission above.
+        # Trusted Publisher registered in npmjs.com for this repo+workflow.

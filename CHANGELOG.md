@@ -21,6 +21,12 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.1.1] - 2026-04-11
+
+### Changed
+
+- CI publish workflow now uses npm **Trusted Publishing (OIDC)** instead of Granular Access Token. `env.NODE_AUTH_TOKEN` removed from `publish-npm.yml`; the `id-token: write` permission enables automatic OIDC credential exchange. No functional behavior change for consumers. See [.nexus/context/evolution.md](./.nexus/context/evolution.md) for the 3-phase auth transition plan (B→A, completed with this release).
+
 ## [0.1.0] - 2026-04-11
 
 ### Added

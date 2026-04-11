@@ -1,6 +1,6 @@
 {
-  "nexus_core_version": "0.1.0",
-  "nexus_core_commit": "643500e",
+  "nexus_core_version": "0.1.1",
+  "nexus_core_commit": "f1c2752",
   "schema_contract_version": "1.0",
   "agents": [
     {
@@ -20,22 +20,6 @@
       "body_hash": "sha256:32e70f5ad8e1a37fb544c398147c39020b19fed8cde8c066fad02cea37481cc2"
     },
     {
-      "name": "postdoc",
-      "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
-      "task": "Research methodology, evidence synthesis",
-      "alias_ko": "포닥",
-      "category": "how",
-      "resume_tier": "persistent",
-      "model_tier": "high",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create",
-        "no_task_update"
-      ],
-      "id": "postdoc",
-      "body_hash": "sha256:62633ddb64097e249959cde60b40e44a99b163d08c1c950afbe04309dbf5d37c"
-    },
-    {
       "name": "reviewer",
       "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
       "task": "Content verification, fact-checking, grammar review",
@@ -51,18 +35,66 @@
       "body_hash": "sha256:76312fd237bb9f76fff243b5f10e9efa8ac726c793f401d30846423c11871feb"
     },
     {
-      "name": "writer",
-      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
-      "task": "Technical writing, documentation, presentations",
-      "alias_ko": "라이터",
+      "name": "researcher",
+      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
+      "task": "Web search, independent investigation",
+      "alias_ko": "리서처",
       "category": "do",
-      "resume_tier": "bounded",
+      "resume_tier": "persistent",
       "model_tier": "standard",
       "capabilities": [
+        "no_file_edit",
         "no_task_create"
       ],
-      "id": "writer",
-      "body_hash": "sha256:ff017d33ffd9d8c8e6e34b7c43a39215b0121cace4e5421ad6d7b7dd9ee7b497"
+      "id": "researcher",
+      "body_hash": "sha256:5ec30a3449047fadfbeabc01778204baa66f3016f48bed3bc95bdff9c9b386bd"
+    },
+    {
+      "name": "tester",
+      "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
+      "task": "Testing, verification, security review",
+      "alias_ko": "테스터",
+      "category": "check",
+      "resume_tier": "ephemeral",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "tester",
+      "body_hash": "sha256:6455a816b3a1c80fd689c19779d9fc5b411948d768cdd240d964b1feea3f51a0"
+    },
+    {
+      "name": "designer",
+      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
+      "task": "UI/UX design, interaction patterns, user experience",
+      "alias_ko": "디자이너",
+      "category": "how",
+      "resume_tier": "persistent",
+      "model_tier": "high",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create",
+        "no_task_update"
+      ],
+      "id": "designer",
+      "body_hash": "sha256:9ccab5e29cca4b57250c41ffaea6656fc655bee2a19fc5e29c08e2e4ab669021"
+    },
+    {
+      "name": "postdoc",
+      "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
+      "task": "Research methodology, evidence synthesis",
+      "alias_ko": "포닥",
+      "category": "how",
+      "resume_tier": "persistent",
+      "model_tier": "high",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create",
+        "no_task_update"
+      ],
+      "id": "postdoc",
+      "body_hash": "sha256:62633ddb64097e249959cde60b40e44a99b163d08c1c950afbe04309dbf5d37c"
     },
     {
       "name": "architect",
@@ -81,50 +113,18 @@
       "body_hash": "sha256:a9424a28d14e04a8c487ab9c1718f9ac929e8a2558abcf848a7c1722ceb8a79d"
     },
     {
-      "name": "tester",
-      "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
-      "task": "Testing, verification, security review",
-      "alias_ko": "테스터",
-      "category": "check",
-      "resume_tier": "ephemeral",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "tester",
-      "body_hash": "sha256:6455a816b3a1c80fd689c19779d9fc5b411948d768cdd240d964b1feea3f51a0"
-    },
-    {
-      "name": "researcher",
-      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
-      "task": "Web search, independent investigation",
-      "alias_ko": "리서처",
+      "name": "writer",
+      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
+      "task": "Technical writing, documentation, presentations",
+      "alias_ko": "라이터",
       "category": "do",
-      "resume_tier": "persistent",
+      "resume_tier": "bounded",
       "model_tier": "standard",
       "capabilities": [
-        "no_file_edit",
         "no_task_create"
       ],
-      "id": "researcher",
-      "body_hash": "sha256:5ec30a3449047fadfbeabc01778204baa66f3016f48bed3bc95bdff9c9b386bd"
-    },
-    {
-      "name": "designer",
-      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
-      "task": "UI/UX design, interaction patterns, user experience",
-      "alias_ko": "디자이너",
-      "category": "how",
-      "resume_tier": "persistent",
-      "model_tier": "high",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create",
-        "no_task_update"
-      ],
-      "id": "designer",
-      "body_hash": "sha256:9ccab5e29cca4b57250c41ffaea6656fc655bee2a19fc5e29c08e2e4ab669021"
+      "id": "writer",
+      "body_hash": "sha256:ff017d33ffd9d8c8e6e34b7c43a39215b0121cace4e5421ad6d7b7dd9ee7b497"
     },
     {
       "name": "engineer",
@@ -161,6 +161,15 @@
       "body_hash": "sha256:04e99cfbc01cf170e1515404aceb6656e7e92feac308eb8a67c6a625eab995d3"
     },
     {
+      "name": "nx-plan",
+      "description": "Structured multi-perspective analysis to decompose issues, align on decisions, and produce an enriched plan before execution. Plan only — does not execute.",
+      "triggers": [
+        "plan"
+      ],
+      "id": "nx-plan",
+      "body_hash": "sha256:461097c9b69db300c0b6afe56fc138eca0c26f019ab5fe3c0d245fddcd848a22"
+    },
+    {
       "name": "nx-init",
       "description": "Project onboarding — scan, mission, essentials, context generation",
       "manual_only": true,
@@ -173,15 +182,6 @@
       "manual_only": true,
       "id": "nx-setup",
       "body_hash": "sha256:bbcb07f8ede7b410c71668c97d47e59843f13aef064c1f337ae7e44ecc257ae4"
-    },
-    {
-      "name": "nx-plan",
-      "description": "Structured multi-perspective analysis to decompose issues, align on decisions, and produce an enriched plan before execution. Plan only — does not execute.",
-      "triggers": [
-        "plan"
-      ],
-      "id": "nx-plan",
-      "body_hash": "sha256:461097c9b69db300c0b6afe56fc138eca0c26f019ab5fe3c0d245fddcd848a22"
     }
   ],
   "vocabulary": {
