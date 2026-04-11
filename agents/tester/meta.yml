@@ -1,0 +1,12 @@
+name: tester
+description: Testing and verification — tests, verifies, validates stability and
+  security of implementations
+task: Testing, verification, security review
+alias_ko: 테스터
+category: check
+resume_tier: ephemeral
+model_tier: standard
+capabilities:
+  - no_file_edit
+  - no_task_create
+id: tester

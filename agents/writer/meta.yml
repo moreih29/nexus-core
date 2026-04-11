@@ -1,0 +1,11 @@
+name: writer
+description: Technical writing — transforms research findings, code, and
+  analysis into clear documents and presentations for the intended audience
+task: Technical writing, documentation, presentations
+alias_ko: 라이터
+category: do
+resume_tier: bounded
+model_tier: standard
+capabilities:
+  - no_task_create
+id: writer

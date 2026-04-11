@@ -1,0 +1,11 @@
+# Agent session resumability tiers. Reflects what kind of surface the agent produces.
+
+resume_tiers:
+  - id: persistent
+    description: "세션 전체를 지속한다. HOW 카테고리 에이전트와 researcher. 맥락 누적이 핵심 자산."
+
+  - id: bounded
+    description: "artifact 단위로 지속한다. engineer, writer. 특정 산출물 완성 후 종료."
+
+  - id: ephemeral
+    description: "항상 새로 시작한다. tester, reviewer. 이전 맥락 없이 독립 검증해야 하기 때문."

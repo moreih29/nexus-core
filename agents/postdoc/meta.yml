@@ -1,0 +1,13 @@
+name: postdoc
+description: Research methodology and synthesis — designs investigation
+  approach, evaluates evidence quality, writes synthesis documents
+task: Research methodology, evidence synthesis
+alias_ko: 포닥
+category: how
+resume_tier: persistent
+model_tier: high
+capabilities:
+  - no_file_edit
+  - no_task_create
+  - no_task_update
+id: postdoc

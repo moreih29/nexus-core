@@ -1,0 +1,11 @@
+# Agent role categories. Determined by reasoning surface vs artifact surface.
+
+categories:
+  - id: how
+    description: "분석·자문. 깊은 맥락 유지가 핵심 자산. architect, designer, postdoc, strategist."
+
+  - id: do
+    description: "실행. 산출물(artifact) 단위로 작업하고 종료. engineer, writer, researcher."
+
+  - id: check
+    description: "검증. 항상 fresh한 관점에서 독립적으로 검사. tester, reviewer."

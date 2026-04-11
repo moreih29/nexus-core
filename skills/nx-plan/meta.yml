@@ -1,0 +1,7 @@
+name: nx-plan
+description: Structured multi-perspective analysis to decompose issues, align on
+  decisions, and produce an enriched plan before execution. Plan only — does not
+  execute.
+triggers:
+  - plan
+id: nx-plan

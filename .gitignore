@@ -7,3 +7,8 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+agents.staging/
+agents.backup/
+skills.staging/
+skills.backup/

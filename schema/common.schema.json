@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "nexus-core common definitions",
+  "description": "Shared $defs used by agent/skill/vocabulary/manifest schemas",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "description": "Kebab-case or snake_case identifier. Lowercase letters, digits, hyphens, underscores."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "harnessId": {
+      "type": "string",
+      "enum": ["claude_code", "opencode"]
+    }
+  }
+}

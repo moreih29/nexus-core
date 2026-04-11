@@ -1,0 +1,11 @@
+name: engineer
+description: Implementation — writes code, debugs issues, follows specifications
+  from Lead and architect
+task: Code implementation, edits, debugging
+alias_ko: 엔지니어
+category: do
+resume_tier: bounded
+model_tier: standard
+capabilities:
+  - no_task_create
+id: engineer

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent.schema.json",
+  "title": "Nexus Agent meta.yml",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "description", "category", "capabilities", "resume_tier", "model_tier"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "name": { "type": "string", "minLength": 1 },
+    "alias_ko": { "type": "string" },
+    "description": { "$ref": "common.schema.json#/$defs/description" },
+    "task": { "type": "string" },
+    "category": { "type": "string", "enum": ["how", "do", "check"] },
+    "capabilities": {
+      "type": "array",
+      "minItems": 0,
+      "items": { "$ref": "common.schema.json#/$defs/id" }
+    },
+    "resume_tier": { "type": "string", "enum": ["persistent", "bounded", "ephemeral"] },
+    "model_tier": { "type": "string", "enum": ["high", "standard"] }
+  }
+}

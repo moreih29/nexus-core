@@ -1,0 +1,32 @@
+# Capabilities restrict an agent's access to harness-provided tools.
+# NOT constraints on nexus-core's own scripts/ or tooling.
+
+capabilities:
+  - id: no_file_edit
+    description: "Agent cannot create or modify files in the user's workspace"
+    harness_mapping:
+      claude_code:
+        - Edit
+        - Write
+        - NotebookEdit
+      opencode:
+        - edit
+        - write
+        - patch
+        - multiedit
+
+  - id: no_task_create
+    description: "Agent cannot create new tasks in the Nexus task pipeline"
+    harness_mapping:
+      claude_code:
+        - mcp__plugin_claude-nexus_nx__nx_task_add
+      opencode:
+        - nx_task_add
+
+  - id: no_task_update
+    description: "Agent cannot update the state of existing Nexus tasks"
+    harness_mapping:
+      claude_code:
+        - mcp__plugin_claude-nexus_nx__nx_task_update
+      opencode:
+        - nx_task_update

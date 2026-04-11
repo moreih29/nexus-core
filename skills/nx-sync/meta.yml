@@ -1,0 +1,6 @@
+name: nx-sync
+description: Context knowledge synchronization — scans project state and updates
+  .nexus/context/ design documents
+triggers:
+  - sync
+id: nx-sync
