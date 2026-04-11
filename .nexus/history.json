@@ -1,0 +1,145 @@
+{
+  "cycles": [
+    {
+      "completed_at": "2026-04-11T00:55:31.472Z",
+      "branch": "_default",
+      "plan": {
+        "id": 1,
+        "topic": "nexus-core 프로젝트 철학 확립 및 Nexus 문서 구조화 (nx-init 대체)",
+        "issues": [
+          {
+            "id": 1,
+            "title": "정보 분류 원칙: 6개 memory 문서를 CLAUDE.md / .nexus/context/ / .nexus/memory/ / .nexus/rules/ 4개 슬롯에 어떤 기준으로 분산할 것인가",
+            "status": "decided",
+            "decision": "Option C (권위 계층형) 채택. 분류 원칙: \"Lead가 얼마나 자주 참조하는가\"와 \"변경 가능성\"을 기준으로 4개 슬롯에 분산.\n\n- CLAUDE.md (매 세션 전제): 프로젝트 한 줄 정체성 + 4개 결정적 제약 + 거절 목록 이름만 + context 포인터\n- .nexus/context/ ([sync]로 지속 관리): 3층위 모델, Authoring layer 경계, 5개 Issue 결정 요지, 스키마 진화 정책, tags.yml 설계 — \"살아있는 설계 문서\"\n- .nexus/memory/nexus-core/ (참조용): 04-OPEN_QUESTIONS, 05-REFERENCES, 원본 문서 — \"역사적 기록과 재논의 예약\"\n- .nexus/rules/ (gate enforce): 거절 목록 6개를 규칙 형태로 변환 — \"위반 시 즉시 멈추는 가드레일\"\n\n핵심 결단: rules 슬롯을 실제로 활용한다. 거절 목록은 단순 문서가 아닌 enforceable 규칙으로 둔다.\n\n기각 옵션:\n- Option A (문서 단위 보존형): Nexus 구조 의미론을 활용 못 함. context가 비고 [sync]할 대상이 없어져 init 대체 목적 불충족.\n- Option B (의미론 분해형): 원본 6개 문서의 plan session #1 맥락이 해체됨. 04-OPEN_QUESTIONS처럼 명확히 memory 성격인 문서도 context로 해체되는 의미 왜곡 발생."
+          },
+          {
+            "id": 2,
+            "title": "CLAUDE.md 본문 구성: 프로젝트 정체성 서술 방식, 핵심 제약 포함 범위, 에이전트 routing 블록 포함 여부, 포인터 vs full-text 비중",
+            "status": "decided",
+            "decision": "Option B (Balanced) 채택 — 단, nx-init 스킬의 Mission + Essentials 포맷을 엄격하게 따른다.\n\n구조:\n- `<!-- PROJECT:START -->` / `<!-- PROJECT:END -->` 마커로 CLAUDE.md에 섹션 삽입 (기존 전역 CLAUDE.md 규칙 건드리지 않음)\n- **Mission 1~2줄**: nexus-core의 정체성 한 문장 (Authoring layer, 3 consumer canonical source)\n- **Essentials 최대 10줄**: 에이전트가 모르면 틀리는 것만. 판단 기준 \"이걸 모르고 작업하면 neutral 원칙을 위반하는가?\"\n\nEssentials 후보(최대 10줄):\n1. Authoring layer — 프롬프트·neutral metadata·vocabulary의 canonical source, 집행 semantics 없음\n2. 3 consumer (claude-nexus, opencode-nexus, nexus-code) read-only 소비. ACP vocabulary 편입 금지\n3. 구독제(Claude Pro/Max) 호환 필수. Agent SDK/ACP 기반 설계 금지\n4. 구체 model 이름 금지. model_tier(high/standard) 추상만 허용\n5. harness-specific tool 이름 금지. capability abstraction으로 표현\n6. runtime 코드 포함 금지. prompt-only 라이브러리 (hook/MCP/TypeScript 제외)\n7. UI hint 필드 금지. neutral 원칙에 반함\n8. Forward-only 완화: breaking change는 semver major + CHANGELOG \"Consumer Action Required\" 섹션 필수\n9. bridge 계획이 canonical source — 상세는 .nexus/context/ 참조\n\n제외:\n- 에이전트 routing 블록 (전역 CLAUDE.md와 중복)\n- 4개 결정적 제약의 상세 근거 (context로 위임)\n- 거절 목록 6개의 상세 (rules/로 위임)\n- 5개 Issue 결정의 배경 서술 (context로 위임)\n\n기각 옵션:\n- Option A (50~80줄 Minimal): 제약의 \"왜\"가 없어 새 LLM이 판단 근거를 잃음. Essentials 10줄로 이미 충분한 간결함 확보 가능\n- Option C (250~400줄 Comprehensive): context 슬롯과 역할 분담이 깨져 Issue #1 결정과 모순. 전역 CLAUDE.md와 중복"
+          },
+          {
+            "id": 3,
+            "title": "`.nexus/context/` 파일 구조 설계: 파일 개수/분할 기준/네이밍 체계 — 통합형(1~2개) vs 분해형(4~6개)",
+            "status": "decided",
+            "decision": "Option C (3분할 테마형) 채택 + 숫자 접두사 없음.\n\n파일 구성:\n- `.nexus/context/ecosystem.md` — 3층위 모델(Authoring/Execution/Supervision), 용어 고정(Supervisor, HOW/DO/CHECK, resume_tier, capability, sibling, bidirectional flip), 3 consumer 관계, Authoring layer 정체성. **변동성 낮음** — 생태계 구조의 근본 프레임.\n- `.nexus/context/boundaries.md` — 5개 Issue 결정 요지, 포함/제외 범위, 거절 근거, vocabulary 구성(capabilities/categories/resume-tiers/tags 4종), tags.yml 스키마 설계. **변동성 중간** — 새 consumer 추가나 거절 목록 확장 시 업데이트.\n- `.nexus/context/evolution.md` — Forward-only 완화 정책, CHANGELOG \"Consumer Action Required\" 포맷, Phase 1→2 전환 트리거, bridge 계획 포인터. **변동성 높음** — 프로젝트 운영 경험에 따라 조정될 영역.\n\n설계 근거:\n1. 3개 파일이 각자 다른 업데이트 주기를 갖는다. 주기가 다른 내용을 한 파일에 묶지 않는 것이 [sync] 관점에서 맞다.\n2. nx-init 권장 상단(1~3개) 제약 내.\n3. 숫자 접두사 제외: context는 순차 읽기보다 \"필요한 주제만 찾아보기\" 성격이므로 접두사가 오히려 순서를 암시해서 오해를 부른다.\n\n기각 옵션:\n- Option A (단일 design.md): 500~700줄 단일 파일이면 [sync]가 전체 diff를 생성해야 해서 비효율. Lead가 한 주제만 필요해도 전체 로드해야 함.\n- Option B (2분할 ecosystem + policy): policy가 \"결정 + 정책 + vocabulary\"를 전부 담아 사실상 A와 같은 부담. 추상/구체 경계가 애매해서 \"tags.yml은 어디?\" 같은 분류 논쟁 발생."
+          },
+          {
+            "id": 4,
+            "title": "`.nexus/memory/nexus-core/` 원본 6개 문서의 장기 처분 정책: 그대로 보존, 요약본으로 교체, context로 완전 이동, 혹은 하이브리드",
+            "status": "decided",
+            "decision": "Option E (하이브리드 분해 + 플랫 구조) 채택.\n\n처분 정책:\n1. 00-ECOSYSTEM_PRIMER, 01-BRIEFING, 02-DECISIONS, 03-IMPLEMENTATION_GUIDE → 삭제. 내용은 CLAUDE.md Essentials + .nexus/context/ecosystem.md + boundaries.md + evolution.md + .nexus/rules/로 분산 흡수.\n2. 04-OPEN_QUESTIONS → .nexus/memory/open-questions.md로 이동 (접두사 제거).\n3. 05-REFERENCES → 삭제. 두 가지 역할이 섞여 있으나 둘 다 불필요:\n   - references/ 서브폴더 인덱스 역할: 파일이 2개뿐이므로 인덱스 불필요. 각 파일이 자체 헤더로 설명.\n   - bridge 계획 §1.4~§11 핵심 섹션 요약 역할: context/boundaries.md와 context/evolution.md에 해석되어 흡수됨. memory에 남으면 중복.\n4. references/bridge-quotes.md → .nexus/memory/bridge-quotes.md로 승격 (서브폴더 제거).\n5. references/agent-sdk-constraint.md → .nexus/memory/agent-sdk-constraint.md로 승격 (서브폴더 제거).\n6. nexus-core/ 서브폴더 자체 삭제. .nexus/memory/ 바로 아래 3개 파일이 플랫하게 존재.\n\n이유:\n- \"nexus-core 프로젝트의 memory 안에 nexus-core 폴더\"는 같은 이름이 두 번 반복되는 경로 중복. .nexus/는 이미 프로젝트 local이므로 프로젝트 이름 접두사가 불필요.\n- 원래 nexus-core/ 서브폴더는 다른 Nexus 플러그인과 nexus-code 관련 문서를 함께 논의하던 맥락에서 만들어진 것. 이 프로젝트로 옮겨진 순간 그 맥락은 소멸.\n- [m] 태그로 새 memo 저장 시 nexus-core/ 서브폴더 중첩은 어색. 플랫 구조가 자연스럽게 확장.\n- [m:gc] 탐색 시 경로 단순화.\n\n보조 조치:\n- 각 .nexus/context/*.md 상단에 provenance 각주 추가: \"plan session #1 (2026-04-10)의 결정을 재구성한 것\"\n- bridge-quotes.md, agent-sdk-constraint.md 상단에 \"이 파일이 무엇인가\" 한 줄 헤더가 없다면 실행 단계에서 추가 (인덱스 없이 독립 해석 가능해야 함)\n\n최종 구조:\n.nexus/memory/\n  open-questions.md\n  bridge-quotes.md\n  agent-sdk-constraint.md\n\n기각 옵션:\n- A (전체 보존): memory 의미론(lessons learned, references)과 부합하지 않는 설계 문서가 context와 이중 관리됨\n- C (Minimal, 전부 삭제): references 파일들이 고아가 되어 역사적 근거 손실\n- D (session-1-log 압축): 메타 요약이 또 하나의 유지 부담. git log + context provenance 각주로 충분\n- B (nexus-core/ 서브폴더 유지): 프로젝트 경로 이중 중복"
+          }
+        ],
+        "research_summary": "프로젝트 루트 /Users/kih/workspaces/areas/nexus-core/는 .nexus/ 폴더만 있는 사전-bootstrap 상태. CLAUDE.md, .nexus/context/, .nexus/rules/ 미생성. .nexus/memory/nexus-core/에는 이전 plan session #1(2026-04-10)의 결과물 6개 md 문서와 references/ 2개 파일(bridge-quotes.md, agent-sdk-constraint.md)이 존재.\n\n6개 문서 내용:\n(00) ECOSYSTEM_PRIMER: Nexus 생태계 공통 헌법 — 4개 프로젝트 공유 canonical 문서. 3층위 모델(Authoring/Execution/Supervision), 용어 고정(Supervisor, HOW/DO/CHECK, resume_tier, capability, sibling, bidirectional flip), 4개 결정적 제약(Claude Pro/Max 구독제 필수, Agent SDK 금지, ProcessSupervisor 보존, ACP 통합 불가), 완화 원칙(Forward-only 유연화).\n(01) BRIEFING: nexus-core 부트스트랩 진입점 — Authoring layer 위치, plan session #1의 3가지 변화(nexus-code consumer 합류, tags.yml 추가, Forward-only 완화), 해야 할 것 5개, 하지 말 것 5개.\n(02) DECISIONS: Issue #1(Authoring layer, 집행 semantics 없음), #2(3 consumer SSOT, ACP 거부), #3(독립 레포 + Forward-only 완화), #4(vocabulary/tags.yml 신규), #5(Supervision은 외부, read-only 데이터만 제공).\n(03) IMPLEMENTATION_GUIDE: bootstrap 단계, 디렉토리 구조, tags.yml 스키마 초안, CHANGELOG Consumer Action Required 포맷, 거절 목록 6개(ACP/runtime/model/harness tool/UI hint/Supervision 로직), 미결 결정 항목 5개.\n(04) OPEN_QUESTIONS: 향후 재논의 필요 5개(UI hint, capability 역매핑, Phase 전환 시점, handler 계약, schema_version).\n(05) REFERENCES: references/ 인덱스(bridge-quotes.md, agent-sdk-constraint.md), bridge 계획 §1.4/§1.5/§2.1~§2.4/§3.1/§7/§8.3/§9.2/§11 요약.\n\n핵심 관찰 3가지:\n1) bridge 계획은 opencode-nexus 레포의 docs/bridge/nexus-core-bootstrap.md에 canonical로 존재 — nexus-core 자체 문서는 \"포인터 + 해석\" 성격을 가질 수밖에 없다.\n2) 6개 문서는 이미 체계적이나, 그대로 context로 옮기면 \"memory/context 구분 원칙(context=design, memory=lesson/reference)\"과 충돌한다.\n3) CLAUDE.md의 존재 이유는 \"Lead가 매 세션 시작 시 전제로 읽는 상위 지침\"이다. 생태계 primer 전문을 담으면 너무 무겁고, 생략하면 정체성을 잃는다. 압축/포인터 전략이 필요.\n\nruntime.json: teams_enabled=true (resume 가능). history.json 비어 있음 (신규 프로젝트). gitignore는 memory/context/rules/history.json만 추적.",
+        "created_at": "2026-04-11T00:21:23.270Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "CLAUDE.md 프로젝트 섹션 작성 (Mission + Essentials)",
+          "context": "nexus-core 루트에 CLAUDE.md를 생성(또는 기존 파일에 추가). PROJECT:START/END 마커 내부에 nx-init 스킬의 Mission + Essentials 포맷으로 프로젝트 섹션 작성. 전역 ~/.claude/CLAUDE.md의 에이전트 routing과 중복되는 블록은 포함하지 않는다.",
+          "approach": "Mission 초안: \"Nexus 생태계의 Authoring layer. claude-nexus, opencode-nexus, nexus-code 3개 하네스가 공유하는 프롬프트·neutral metadata·vocabulary의 canonical source.\" Essentials 후보 9개 중 최대 10줄에 맞춰 선별: (1) Authoring layer 역할·집행 semantics 없음, (2) 3 consumer read-only + ACP 편입 금지, (3) Claude Pro/Max 구독제 호환 필수, Agent SDK/ACP 기반 설계 금지, (4) 구체 model 이름 금지·model_tier만 허용, (5) harness-specific tool 이름 금지·capability abstraction, (6) runtime 코드 포함 금지·prompt-only 라이브러리, (7) UI hint 필드 금지, (8) Forward-only 완화 - breaking change는 semver major + CHANGELOG \"Consumer Action Required\", (9) bridge 계획 canonical - 상세는 .nexus/context/ 참조. Edit 도구로 PROJECT:START/END 마커 내부에 삽입. CLAUDE.md가 없으면 Write로 신규 생성.",
+          "acceptance": "/Users/kih/workspaces/areas/nexus-core/CLAUDE.md 존재. PROJECT:START/END 마커 내부에 Mission 1~2줄과 Essentials (10줄 이내) 포함. 에이전트 routing 블록 없음. 전역 ~/.claude/CLAUDE.md 내용과 중복 없음. Essentials 9개 핵심 제약이 모두 반영됨(합쳐서라도).",
+          "risk": "Essentials 10줄 제한으로 9개 항목을 억지로 넣다가 개별 항목의 해석 근거가 모호해질 수 있음. 필요 시 \"4개 제약\"과 \"neutral 원칙\" 같은 묶음 표현으로 압축하고 상세는 context로 위임.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "lead",
+          "created_at": "2026-04-11T00:40:11.948Z"
+        },
+        {
+          "id": 2,
+          "title": ".nexus/context/ecosystem.md 작성 (3층위/용어/consumer)",
+          "context": "Nexus 생태계 3층위 멘탈 모델, 용어 고정, 3 consumer 관계, Authoring layer 정체성을 담는 설계 문서. 변동성 낮음 — \"이 프로젝트가 무엇인가\"의 고정 프레임. [sync] 대상.",
+          "approach": "원본 00-ECOSYSTEM_PRIMER §1(3층위)/§2(관계)/§3(용어 고정)와 02-DECISIONS Issue #1, #5를 재구성. 섹션: (1) 3층위 모델(Authoring/Execution/Supervision) — Authoring layer가 nexus-core인 이유, (2) 용어 고정 — Supervisor, HOW/DO/CHECK, resume_tier(persistent/bounded/ephemeral), capability abstraction, sibling, bidirectional flip, (3) 3 consumer 관계 — claude-nexus, opencode-nexus(sibling), nexus-code(Supervision layer, read-only consumer), (4) Authoring layer 정체성 — 집행 semantics 없음. 파일 상단 provenance 각주: \"이 문서는 plan session #1 (2026-04-10)의 결정을 재구성한 것이다. 원본 논의: .nexus/memory/ 참조\".",
+          "acceptance": "파일 존재. 3층위 모델 전체 + 용어 6종 정의 + 3 consumer 관계 + Authoring layer 정체성 포함. provenance 각주 존재. 200~250줄 내외(Lead가 필요할 때 부분 참조할 수 있는 분량).",
+          "risk": "원본을 그대로 복사하면 memory 원본 정리(Task 6)와 중복. \"정제/재구성\"이라는 관점을 유지하되 중요 뉘앙스 손실 방지 필요.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-11T00:40:24.229Z"
+        },
+        {
+          "id": 3,
+          "title": ".nexus/context/boundaries.md 작성 (Issue결정/vocabulary/tags)",
+          "context": "nexus-core의 포함/제외 범위, 5개 Issue 결정 요지, 거절 근거, vocabulary 4종 구성(tags.yml 포함)을 담는 설계 문서. 변동성 중간 — 새 consumer 추가나 거절 목록 확장 시 업데이트. [sync] 대상.",
+          "approach": "원본 02-DECISIONS 5개 Issue + 03-IMPLEMENTATION_GUIDE §3(tags.yml 스키마)/§5(거절 목록 근거) + bridge 계획 §2.1(neutral vs runtime-specific 2계층 분리)/§2.2(capability abstraction pattern) 해석 흡수. 섹션: (1) 포함 범위 - agents/body.md, meta.yml, skills, vocabulary, schema, scripts, (2) 제외 범위 - hook, MCP server, tool 구현, TypeScript, runtime I/O, (3) 5개 Issue 결정 요지(Authoring layer/3 consumer SSOT/독립레포+완화/tags.yml 추가/Supervision 외부), (4) 거절 근거 6개 — 각 거절의 '왜' (enforceable 규칙 자체는 rules/에), (5) vocabulary 4종 — capabilities/categories/resume-tiers/tags, (6) tags.yml 스키마 설계. 파일 상단 provenance 각주.",
+          "acceptance": "파일 존재. 5개 Issue 결정 요지 + 포함/제외 범위 + 6개 거절 근거 + vocabulary 4종 + tags.yml 스키마 설계 모두 포함. provenance 각주 존재. 300~400줄 내외.",
+          "risk": "(1) 분량이 많아 재서술 난이도 높음. (2) rules/neutral-principles.md와 \"거절 근거\" 내용이 중복될 수 있음 - boundaries는 \"왜\", rules는 \"enforce\" 역할 분담을 명확히 유지해야 함.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-11T00:40:37.266Z"
+        },
+        {
+          "id": 4,
+          "title": ".nexus/context/evolution.md 작성 (Forward-only/CHANGELOG/Phase)",
+          "context": "Forward-only 완화 정책, CHANGELOG \"Consumer Action Required\" 포맷, Phase 1→2 전환 트리거, bridge 계획 포인터를 담는 설계 문서. 변동성 높음 — 실제 운영 경험에 따라 조정될 영역. [sync] 대상.",
+          "approach": "원본 02-DECISIONS Issue #3(Forward-only 완화) + 03-IMPLEMENTATION_GUIDE §4(CHANGELOG 포맷 예시) + bridge 계획 §2.3(원래 Forward-only 정의)/§2.4(Staged migration)/§11(Phase 2 trigger 조건) 해석 흡수. 섹션: (1) 원래 Forward-only 원칙(bridge 계획)과 이번 세션의 완화 근거, (2) breaking change 대응 절차(semver major + CHANGELOG 섹션), (3) Consumer Action Required 섹션 포맷(before/after 예시), (4) Phase 1→2 전환 — 트리거 조건 Signal 1/2/3과 규칙, (5) 90일 재평가 윈도우. 파일 상단 provenance 각주. 04-OPEN_QUESTIONS (c)Phase 전환 시점, (e)schema_version은 \"미결\"로 명시하고 memory/open-questions.md 포인터 유지.",
+          "acceptance": "파일 존재. Forward-only 완화 + Consumer Action Required 포맷(예시 포함) + Phase 전환 트리거 + 90일 재평가 포함. 미결 항목은 \"TBD, open-questions.md 참조\"로 명시. provenance 각주 존재. 200~300줄 내외.",
+          "risk": "04-OPEN_QUESTIONS의 (c), (e)와 경계가 애매해 미결정 사항이 확정된 것처럼 기술될 위험. 명시적 \"TBD\" 표기로 방지.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-11T00:40:48.785Z"
+        },
+        {
+          "id": 5,
+          "title": ".nexus/rules/neutral-principles.md 작성 (거절 목록 6개 enforceable 규칙화)",
+          "context": "03-IMPLEMENTATION_GUIDE §5의 거절 목록 6개를 gate가 enforce할 수 있는 규칙 형태로 변환. boundaries.md가 \"왜 거절하는가\"(근거)를 담는다면, 이 파일은 \"무엇을 거절하는가\"(enforceable 패턴)를 담는다. [rule] 슬롯.",
+          "approach": "단일 파일 .nexus/rules/neutral-principles.md. 6개 규칙 각각을 동일한 형식으로 서술: [규칙 이름] → [금지 대상(구체 패턴/파일/필드)] → [위반 시 동작] → [예외 없음 또는 예외 조건]. 6개: (1) rule:no-acp — ACP vocabulary/스키마 편입 금지, (2) rule:no-runtime — hook/MCP server/tool 구현/TypeScript 타입/런타임 I/O 포함 금지, (3) rule:no-concrete-model — meta.yml에 구체 model 이름(opus/sonnet/gpt-*) 금지, model_tier만 허용, (4) rule:no-harness-tool — body.md/meta.yml에 harness-specific tool 이름(mcp__plugin_*, Bash, Edit 등) 금지, capability abstraction으로 표현, (5) rule:no-ui-hint — meta.yml에 icon/color/sort_order 등 UI hint 필드 금지, (6) rule:no-supervision-logic — ApprovalBridge, ProcessSupervisor, AgentHost 관련 스키마/정의 포함 금지. 각 규칙에 \"위반 시 Lead는 즉시 작업을 중단하고 사용자 확인을 요청한다\" 명시.",
+          "acceptance": "파일 존재. 6개 규칙 모두 포함. 각 규칙에 [이름/금지 대상/위반 시 동작/예외] 4개 요소 명시. enforceable 패턴이 구체적이어서 gate/Lead가 기계적으로 판단 가능.",
+          "risk": "규칙 파일의 \"enforceable 형식\"이 Nexus 프로젝트 내 관례가 많지 않음. 기존 .nexus/rules/ 예시가 없으므로 스타일 판단 필요.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-11T00:41:02.269Z"
+        },
+        {
+          "id": 6,
+          "title": "memory 플랫 구조 재배치 및 원본 문서 정리",
+          "context": "Issue #4 결정에 따라 .nexus/memory/ 를 플랫 구조로 재배치. 00~03, 05는 context/rules에 흡수되었으므로 삭제. 04는 open-questions.md로 이동. references/ 서브폴더의 2개 파일은 플랫 레벨로 승격. nexus-core/ 서브폴더는 경로 중복이므로 제거.",
+          "approach": "Task 1~5 완료 후 선행 조건 확인 → (1) mv .nexus/memory/nexus-core/04-OPEN_QUESTIONS.md .nexus/memory/open-questions.md, (2) mv .nexus/memory/nexus-core/references/bridge-quotes.md .nexus/memory/bridge-quotes.md, (3) mv .nexus/memory/nexus-core/references/agent-sdk-constraint.md .nexus/memory/agent-sdk-constraint.md, (4) bridge-quotes.md와 agent-sdk-constraint.md 상단에 \"이 파일이 무엇인가\" 한 줄 헤더가 없다면 Edit로 추가(인덱스 없이 독립 해석 가능해야 함), (5) rm .nexus/memory/nexus-core/00-ECOSYSTEM_PRIMER.md 외 00~03, 05, (6) rmdir .nexus/memory/nexus-core/references/, (7) rmdir .nexus/memory/nexus-core/.",
+          "acceptance": ".nexus/memory/ 직하에 open-questions.md, bridge-quotes.md, agent-sdk-constraint.md 3개 파일만 존재. nexus-core/ 서브폴더 부재. references/ 서브폴더 부재. 각 파일이 상단 한 줄 헤더로 독립 해석 가능. 삭제된 원본의 핵심 내용이 모두 context 3개 파일 또는 rules/neutral-principles.md 또는 CLAUDE.md에 흡수되었음을 Task 2~5 산출물로 확인.",
+          "risk": "context/rules 흡수가 불완전한 상태에서 원본 삭제 시 정보 손실. 반드시 Task 2, 3, 4, 5 완료 후 실행. 선행 산출물을 직접 읽어 누락 여부를 체크하는 단계를 작업 초반에 포함.",
+          "status": "completed",
+          "deps": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "plan_issue": 4,
+          "owner": "lead",
+          "created_at": "2026-04-11T00:41:15.738Z"
+        },
+        {
+          "id": 7,
+          "title": "nexus-core 온보딩 산출물 전체 검증",
+          "context": "CLAUDE.md, context 3개 파일, rules/neutral-principles.md, memory 재배치 결과를 fresh한 관점에서 검증. reviewer는 ephemeral이므로 이전 작업 맥락 없이 독립 검증.",
+          "approach": "신규 LLM이 이 프로젝트에 처음 진입했다고 가정. 검증 항목: (1) CLAUDE.md Essentials만 읽고 neutral 원칙의 4개 결정적 제약과 6개 거절 사유의 핵심을 파악할 수 있는가, (2) context 3개 파일이 각각 독립 해석 가능하고 상호 모순이 없는가(특히 boundaries의 \"거절 근거\"와 rules의 \"enforceable 규칙\"이 일관되는가), (3) rules/neutral-principles.md 6개 규칙이 gate enforcement에 충분히 구체적인가(금지 대상 패턴이 명시되었는가), (4) memory 3개 파일이 provenance 외부 의존 없이 독립 해석 가능한가, (5) 원본 6개 문서(00~05)의 핵심 결정 — 생태계 3층위, 용어 고정, 4개 제약, 5개 Issue 결정, 6개 거절 목록, Forward-only 완화, tags.yml 스키마, 미결 질문 5개, references/ 2개 파일 — 이 산출물 어딘가에 빠짐없이 들어갔는가. 각 항목별 pass/fail + 개선 제안 리포트 작성.",
+          "acceptance": "검증 리포트 작성. 5개 검증 항목 전부 명시적으로 체크. 누락 발견 시 해당 원본의 어떤 내용이 어느 산출물에 추가되어야 하는지 구체 제안. 모든 항목 pass 시 \"nexus-core 온보딩 완료\" 선언.",
+          "risk": "누락 발견 시 Task 재작업 루프 발생. reviewer는 resume 불가(ephemeral)이므로 재검증 시 매번 fresh 시작.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "plan_issue": 1,
+          "owner": "reviewer",
+          "created_at": "2026-04-11T00:41:29.116Z"
+        }
+      ]
+    }
+  ]
+}
