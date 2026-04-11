@@ -1,6 +1,6 @@
 {
-  "nexus_core_version": "0.1.1",
-  "nexus_core_commit": "f1c2752",
+  "nexus_core_version": "0.1.2",
+  "nexus_core_commit": "4ffc1e0",
   "schema_contract_version": "1.0",
   "agents": [
     {
@@ -18,6 +18,36 @@
       ],
       "id": "strategist",
       "body_hash": "sha256:32e70f5ad8e1a37fb544c398147c39020b19fed8cde8c066fad02cea37481cc2"
+    },
+    {
+      "name": "writer",
+      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
+      "task": "Technical writing, documentation, presentations",
+      "alias_ko": "라이터",
+      "category": "do",
+      "resume_tier": "bounded",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_task_create"
+      ],
+      "id": "writer",
+      "body_hash": "sha256:ff017d33ffd9d8c8e6e34b7c43a39215b0121cace4e5421ad6d7b7dd9ee7b497"
+    },
+    {
+      "name": "designer",
+      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
+      "task": "UI/UX design, interaction patterns, user experience",
+      "alias_ko": "디자이너",
+      "category": "how",
+      "resume_tier": "persistent",
+      "model_tier": "high",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create",
+        "no_task_update"
+      ],
+      "id": "designer",
+      "body_hash": "sha256:9ccab5e29cca4b57250c41ffaea6656fc655bee2a19fc5e29c08e2e4ab669021"
     },
     {
       "name": "reviewer",
@@ -65,22 +95,6 @@
       "body_hash": "sha256:6455a816b3a1c80fd689c19779d9fc5b411948d768cdd240d964b1feea3f51a0"
     },
     {
-      "name": "designer",
-      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
-      "task": "UI/UX design, interaction patterns, user experience",
-      "alias_ko": "디자이너",
-      "category": "how",
-      "resume_tier": "persistent",
-      "model_tier": "high",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create",
-        "no_task_update"
-      ],
-      "id": "designer",
-      "body_hash": "sha256:9ccab5e29cca4b57250c41ffaea6656fc655bee2a19fc5e29c08e2e4ab669021"
-    },
-    {
       "name": "postdoc",
       "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
       "task": "Research methodology, evidence synthesis",
@@ -97,6 +111,20 @@
       "body_hash": "sha256:62633ddb64097e249959cde60b40e44a99b163d08c1c950afbe04309dbf5d37c"
     },
     {
+      "name": "engineer",
+      "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
+      "task": "Code implementation, edits, debugging",
+      "alias_ko": "엔지니어",
+      "category": "do",
+      "resume_tier": "bounded",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_task_create"
+      ],
+      "id": "engineer",
+      "body_hash": "sha256:79ce728ef86027c3301b26454ae5e1ed2db58cf4ce812521df4f6473661e3cd3"
+    },
+    {
       "name": "architect",
       "description": "Technical design — evaluates How, reviews architecture, advises on implementation approach",
       "task": "Architecture, technical design, code review",
@@ -111,45 +139,15 @@
       ],
       "id": "architect",
       "body_hash": "sha256:a9424a28d14e04a8c487ab9c1718f9ac929e8a2558abcf848a7c1722ceb8a79d"
-    },
-    {
-      "name": "writer",
-      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
-      "task": "Technical writing, documentation, presentations",
-      "alias_ko": "라이터",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "writer",
-      "body_hash": "sha256:ff017d33ffd9d8c8e6e34b7c43a39215b0121cace4e5421ad6d7b7dd9ee7b497"
-    },
-    {
-      "name": "engineer",
-      "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
-      "task": "Code implementation, edits, debugging",
-      "alias_ko": "엔지니어",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "engineer",
-      "body_hash": "sha256:79ce728ef86027c3301b26454ae5e1ed2db58cf4ce812521df4f6473661e3cd3"
     }
   ],
   "skills": [
     {
-      "name": "nx-sync",
-      "description": "Context knowledge synchronization — scans project state and updates .nexus/context/ design documents",
-      "triggers": [
-        "sync"
-      ],
-      "id": "nx-sync",
-      "body_hash": "sha256:dbd3933c0474b2831a857308d9dd6ccd2c072f089327c22ce8d2842894fc3216"
+      "name": "nx-setup",
+      "description": "Interactive project setup wizard for Nexus configuration.",
+      "manual_only": true,
+      "id": "nx-setup",
+      "body_hash": "sha256:bbcb07f8ede7b410c71668c97d47e59843f13aef064c1f337ae7e44ecc257ae4"
     },
     {
       "name": "nx-run",
@@ -170,18 +168,20 @@
       "body_hash": "sha256:461097c9b69db300c0b6afe56fc138eca0c26f019ab5fe3c0d245fddcd848a22"
     },
     {
+      "name": "nx-sync",
+      "description": "Context knowledge synchronization — scans project state and updates .nexus/context/ design documents",
+      "triggers": [
+        "sync"
+      ],
+      "id": "nx-sync",
+      "body_hash": "sha256:dbd3933c0474b2831a857308d9dd6ccd2c072f089327c22ce8d2842894fc3216"
+    },
+    {
       "name": "nx-init",
       "description": "Project onboarding — scan, mission, essentials, context generation",
       "manual_only": true,
       "id": "nx-init",
       "body_hash": "sha256:ab636e7c338b58e2288855c2a99ce079c53bb39f7adf3af3ce5769b5a32f73b1"
-    },
-    {
-      "name": "nx-setup",
-      "description": "Interactive project setup wizard for Nexus configuration.",
-      "manual_only": true,
-      "id": "nx-setup",
-      "body_hash": "sha256:bbcb07f8ede7b410c71668c97d47e59843f13aef064c1f337ae7e44ecc257ae4"
     }
   ],
   "vocabulary": {

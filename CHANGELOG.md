@@ -21,6 +21,13 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.1.2] - 2026-04-11
+
+### Added
+
+- `RELEASING.md` at repository root — harness-neutral release runbook for LLM agents (or humans) performing a release. Written as a plain document rather than a skill so it works across Claude Code, OpenCode, and any future harness. Includes pre-flight checklist, version decision guide (cross-referencing `.nexus/rules/semver-policy.md`), commit/tag/push flow, workflow observation, post-publish verification, hard rules ("DO NOT" list), and a troubleshooting table distilled from the v0.1.0 → v0.1.1 bootstrap failures. Git-repo-only (not in npm `files` whitelist).
+- `README.md` References section entry linking to `RELEASING.md` so discovering the runbook does not require grep.
+
 ## [0.1.1] - 2026-04-11
 
 ### Changed
