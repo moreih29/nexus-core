@@ -1,9 +1,18 @@
 # nexus-core publish workflow
 #
-# Primary: bun publish (sibling opencode-nexus와 일관성 + Bun 전환 결정)
-# Fallback: bun publish가 --provenance/--access public/OIDC 미지원이면
-#           "npm publish --provenance --access public" + setup-node auth helper로 전환.
-#           sibling opencode-nexus의 publish-npm.yml이 이 fallback 패턴 참조.
+# **Fallback applied** (v0.1.0 → v0.1.1):
+# The original plan was `bun publish` as primary (for sibling opencode-nexus
+# consistency + Bun transition). v0.1.0 attempt failed with:
+#
+#     error: missing authentication (run `bunx npm login`)
+#
+# Root cause: bun publish does not read setup-node's NPM_CONFIG_USERCONFIG env
+# var (/home/runner/work/_temp/.npmrc). Falling back to `npm publish` which
+# reads the same .npmrc that setup-node creates — this is the sibling
+# opencode-nexus pattern.
+#
+# Re-evaluation: plan session #2 Issue #7 reserved 6-month re-eval of Bun
+# publish stability. Pinned .nexus/context/evolution.md reservation unchanged.
 #
 # Trigger: git tag push (pure semver) 또는 workflow_dispatch manual.
 # Auth Day 1: Granular Access Token via NODE_AUTH_TOKEN env.
@@ -67,10 +76,10 @@ jobs:
           echo "Version match: $PKG_VERSION"
 
       - name: Pack (dry-run verification)
-        run: bun publish --dry-run
+        run: npm pack --dry-run
 
       - name: Publish to npm
         if: ${{ !inputs.dry_run }}
-        run: bun publish --access public
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
