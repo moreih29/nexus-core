@@ -6,6 +6,8 @@
 - 수정 없이 소비 가능 → patch 또는 minor
 - 소비하려면 consumer 측 변경이 필요 → major
 
+**pre-v1 상태**: 이 프로젝트는 작성자가 명시적으로 v1.0을 선언하기 전까지 pre-v1이다. pre-v1 semver에서는 breaking change가 minor bump(0.x → 0.x+1)이다. v1.0.0은 "production stable" 선언을 의미하므로 작성자 판단 없이 임의로 올리지 말 것.
+
 ---
 
 ## 1. Purpose

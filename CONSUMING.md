@@ -67,6 +67,21 @@ Consumers MUST pass all conformance fixtures (`conformance/tools/*.json` and `co
 
 See [conformance/README.md](./conformance/README.md) for fixture format and test runner guide.
 
+## Setup Skill Contract
+
+Consumers MUST ship a setup skill. nexus-core does not provide one — the concerns require harness-specific implementation and cannot be expressed in harness-neutral terms.
+
+Your setup skill MUST address at least the following concerns:
+
+- **Scope selection** — let the user choose between user-level and project-level configuration so changes land in the right config file.
+- **Status display configuration** — if your harness supports status bars, badges, or similar UI, expose the relevant toggles here.
+- **Recommended plugins/extensions installation** — guide the user through installing any harness-specific extensions or plugins that Nexus depends on or recommends.
+- **Knowledge initialization** — integrate with the `nx-init` skill so that first-time setup triggers codebase onboarding.
+
+Each concern above specifies **what** must be handled. How you handle it — which commands you run, which files you modify, what prompts you show — is your decision as the consumer.
+
+> **Migration note (v0.2.0 consumers)**: `skills/nx-setup/` was previously shipped in nexus-core. As of the next major release it is removed. Consumers must implement their own setup skill. The former `nx-setup/body.md` (last present in v0.2.0) can serve as a reference starting point for Claude Code consumers.
+
 ## CHANGELOG Marker Regex
 
 To extract breaking changes for a specific version, match this pattern on the CHANGELOG file content:

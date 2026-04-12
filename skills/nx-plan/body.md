@@ -28,7 +28,7 @@ Facilitate structured multi-perspective analysis using subagents to decompose is
 ## Trigger
 
 - Explicit tag: `[plan]` — continue existing session if plan.json exists, otherwise start new
-- Additional analysis needed mid-session: spawn HOW subagents independently via Agent tool
+- Additional analysis needed mid-session: spawn HOW subagents independently via the harness's subagent spawn primitive
 - Continuing conversation without a tag → continue existing session
 
 ---
@@ -99,7 +99,7 @@ Understand code, core knowledge, and prior decisions before forming a planning a
 
 - NEVER call `nx_plan_start` before research is complete.
 - `research_summary` parameter in `nx_plan_start` is required — forces research completion before session creation.
-- Researcher subagents are spawned via the Agent tool and return findings to Lead. They do not join the plan session.
+- Researcher subagents are spawned via the harness's subagent spawn primitive and return findings to Lead. They do not join the plan session.
 
 **Existing session (plan.json present):**
 - Check current state with `nx_plan_status`.
@@ -120,7 +120,7 @@ Register the planning session.
 For each issue:
 
 1. **Current State Analysis** — Lead summarizes the current state and problems, drawing on research.
-2. **Subagent Analysis** — for complex issues, spawn HOW subagents (architect, strategist, etc.) in parallel via Agent tool. Each subagent independently analyzes the issue and returns findings.
+2. **Subagent Analysis** — for complex issues, spawn HOW subagents (architect, strategist, etc.) in parallel via the harness's subagent spawn primitive. Each subagent independently analyzes the issue and returns findings.
    - **Domain-Agent mapping** — match issue keywords to recommended HOW subagents:
 
    | Domain keywords | Recommended HOW |

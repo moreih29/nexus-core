@@ -4,11 +4,11 @@ Scans the project and builds Nexus knowledge in the flat .nexus/ structure. On f
 
 ## Constraints
 
-- NEVER modify source code. Slimming down CLAUDE.md beyond the project section is not this skill's responsibility.
+- NEVER modify source code. Slimming down the instruction file beyond the project section is not this skill's responsibility.
 - NEVER infer or guess information that cannot be confirmed from code — do not write it to context/.
 - NEVER store secrets (API keys, credentials, etc.) in knowledge files.
 - NEVER overwrite existing files without `--reset`. On resume, preserve existing files intact.
-- Project section in CLAUDE.md MUST go through user confirmation before writing.
+- Project section in the instruction file MUST go through user confirmation before writing.
 - NEVER reference or create identity/, codebase/, reference/, or core/ paths.
 - Essentials section MUST NOT exceed 10 lines. If more items are needed, move lower-priority ones to .nexus/context/.
 
@@ -116,7 +116,7 @@ Do not include items that are standard defaults for the detected tech stack. Do 
 Present the full draft to the user in this format:
 
 ```
-The following will be added to CLAUDE.md (existing content will not be changed):
+The following will be added to the instruction file (see harness docs: instruction_file) (existing content will not be changed):
 
 <!-- PROJECT:START -->
 ## {project-name}
@@ -133,7 +133,7 @@ Any changes?
 
 Wait for the user to confirm or provide edits. Apply all changes in one pass — do not ask about Mission and Essentials separately.
 
-After confirmation, write the section into CLAUDE.md inside markers using the Edit tool. If CLAUDE.md already contains `<!-- PROJECT:START -->` markers, replace the content between them. If CLAUDE.md does not exist, create it with the markers.
+After confirmation, write the section into the instruction file inside markers using the harness's file-editing primitive. If the instruction file already contains `<!-- PROJECT:START -->` markers, replace the content between them. If the instruction file does not exist, create it with the markers.
 
 ### Step 3: Context Knowledge Auto-Generation
 
@@ -149,9 +149,9 @@ Principles:
 Generation targets (select and name based on what the project actually needs):
 - Development stack (languages, frameworks, runtimes, key dependencies, build/test/deploy workflow)
 - Design and architecture (module relationships, data flow, core entry points, conventions)
-- Implementation specifics (pipeline details, configuration patterns, file structure conventions, tool restrictions — anything too specific for CLAUDE.md but not readable from code alone)
+- Implementation specifics (pipeline details, configuration patterns, file structure conventions, tool restrictions — anything too specific for the instruction file but not readable from code alone)
 
-Use the Write tool to create files at `.nexus/context/{chosen-name}.md`.
+Use the harness's file-creation primitive to create files at `.nexus/context/{chosen-name}.md`.
 
 For large projects, spawn Writer subagents per topic to generate context knowledge in parallel. Lead coordinates and reviews outputs.
 
@@ -173,7 +173,7 @@ prompt_user({
 })
 ```
 
-If "Set up": present a draft based on scan results → user confirms → save via Write tool to `.nexus/rules/{topic}.md`.
+If "Set up": present a draft based on scan results → user confirms → save via the harness's file-creation primitive to `.nexus/rules/{topic}.md`.
 
 If "Skip": inform and proceed to Step 5.
 
@@ -185,7 +185,7 @@ Output a summary of the onboarding results.
 ## Nexus Initialization Complete
 
 ### Generated Files
-- CLAUDE.md: project section — mission and essentials (<!-- PROJECT:START/END -->)
+- instruction file: project section — mission and essentials (<!-- PROJECT:START/END -->)
 - .nexus/context/: {list of generated files}
 - .nexus/rules/: {generated files or "none (skipped)"}
 

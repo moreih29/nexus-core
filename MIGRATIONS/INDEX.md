@@ -31,7 +31,8 @@ This immutability guarantees that consumer LLM agents can reference any historic
 
 | Version Jump | File | Summary |
 |---|---|---|
-| _(no migrations yet — first release is `v0.1.0`)_ | | |
+| v0.1.x → v0.2.0 | [v0_1_to_v0_2.md](./v0_1_to_v0_2.md) | Harness-neutral vocabulary redesign, `harness_mapping` removed, conformance suite added |
+| v0.2.x → v0.3.0 | [v0_2_to_v0_3.md](./v0_2_to_v0_3.md) | `skills/nx-setup/` removed (harness-specific), tool names neutralized, instruction file abstracted |
 
 ## Contributing a Migration
 
