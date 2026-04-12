@@ -61,6 +61,10 @@ breaking change가 발생한 경우 아래 순서로 대응한다.
 
 semver 해석 판단(어떤 변경이 major/minor/patch인지)은 `.nexus/rules/semver-policy.md`의 18-case 표를 참조한다.
 
+### v0.2.0 — 첫 Breaking Change 실전 검증 (2026-04-12)
+
+plan session #3에서 capabilities.yml harness-agnostic 재설계를 결정하고 v0.2.0으로 실행했다. CHANGELOG.md의 nx-car:v0.2.0 marker, MIGRATIONS/v0_1_to_v0_2.md 199줄 migration guide, "Consumer Action Required" 섹션이 처음으로 실전 사용되었다. breaking change 대응 절차의 기계적 요소(marker 파싱, version range 관리)는 설계대로 작동함을 확인했다.
+
 ---
 
 ## CHANGELOG Canonical 포맷
@@ -150,10 +154,10 @@ Issue #7 결정: publish는 Bun primary, fallback은 npm CLI. Bun publish의 OID
 
 Phase 2 진입 후 90일 시점에 재평가 plan session을 개최한다. 아래 9개 지표를 체크리스트로 확인한다.
 
-1. `manifest.json`이 runtime contract 요구를 발견했는가 (Issue #8 Risk 2)
+1. `manifest.json`이 runtime contract 요구를 발견했는가 (Issue #8 Risk 2) — **부분 해소** (v0.2.0): conformance/ directory + docs/nexus-tools-contract.md가 runtime contract를 formal spec으로 승격
 2. agent/skill 개수 — 현재 14개 기준, 30+ 도달 시 병렬화 전략 재평가 (Issue #6 Risk 3)
 3. opencode-nexus 추가 drift 발견 여부 (Issue #5 W2)
-4. `body.md` semver 해석 주관성 — `.nexus/rules/semver-policy.md` 업데이트 필요 여부
+4. `body.md` semver 해석 주관성 — `.nexus/rules/semver-policy.md` 업데이트 필요 여부 — **부분 해소** (v0.2.0): v0.2.0에서 body.md 전수 rewrite가 실행됨. lint G6이 body.md까지 확장되어 향후 harness-tool name drift 기계적 방지
 5. claude-nexus v0.25.0과 nexus-core 독립 semver 유지의 유효성
 6. bridge §2.1 필드 변경 → import allow list 동기화 누락 여부 (Issue #5 W3 체크리스트)
 7. WebFetch 가용성 실사용 실패 사례 누적 여부 (Issue #8 Risk 3)
