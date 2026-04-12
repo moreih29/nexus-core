@@ -9,6 +9,17 @@ This protocol assumes internet access. Claude Code and OpenCode both require int
 
 **Fallback** (if GitHub is unreachable during an upgrade window): `git clone https://github.com/moreih29/nexus-core.git` to a local path and reference local files in the same order below.
 
+## Building a New Consumer
+
+To build a Nexus consumer harness from scratch, read [docs/consumer-implementation-guide.md](./docs/consumer-implementation-guide.md) cover to cover. It defines the 9 components you must implement, their build order, and the behavioral contracts each must satisfy.
+
+Prerequisites:
+- `npm install @moreih29/nexus-core` as a dev dependency (not shipped to end users)
+- Read `manifest.json` for the agent/skill catalog
+- Familiarity with your harness's plugin system (hooks, tool registration)
+
+After initial build, set up the [Upgrade Protocol](#upgrade-protocol) below so future nexus-core version bumps are handled automatically.
+
 ## Upgrade Protocol
 
 When `@moreih29/nexus-core` version changes in your consumer repo's `package.json`, read in this exact order:
