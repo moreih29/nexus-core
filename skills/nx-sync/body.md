@@ -8,7 +8,7 @@ Scans the current project state and synchronizes .nexus/context/ design document
 - NEVER modify source code — this skill updates documentation only
 - NEVER guess information that cannot be confirmed from sources — mark as "needs verification" instead
 - MUST preserve existing content structure — update sections, don't rewrite entire files unnecessarily
-- NEVER use deprecated MCP knowledge tools — use Read and Write native tools only
+- NEVER use deprecated MCP knowledge tools — use the harness's file-reading and file-creation primitives only
 
 ## Guidelines
 
@@ -31,7 +31,7 @@ Collect information from all available sources:
 
 ### Step 2: Read Current Context
 
-Read all files in `.nexus/context/` using the Read tool:
+Read all files in `.nexus/context/` using the harness's file-reading primitive:
 
 - List files: `ls .nexus/context/`
 - Read each file to understand current documented state
@@ -45,13 +45,13 @@ Spawn Writer agent to update affected context documents:
 
 ```
 Agent({ subagent_type: "claude-nexus:writer", name: "writer-sync-context",
-  prompt: "Update .nexus/context/ documents based on the following changes. Read current files with the Read tool, then write updates with the Write tool. Changes: {change_manifest}" })
+  prompt: "Update .nexus/context/ documents based on the following changes. Read current files with the harness's file-reading primitive, then write updates with the harness's file-creation primitive. Changes: {change_manifest}" })
 ```
 
 The Writer agent:
-- Reads each relevant context file with the Read tool
+- Reads each relevant context file with the harness's file-reading primitive
 - Applies targeted updates — changes only the sections that are stale
-- Writes the updated file back with the Write tool
+- Writes the updated file back with the harness's file-creation primitive
 - Does not rewrite files that are already accurate
 
 ### Step 4: Report

@@ -2,4 +2,6 @@ name: nx-init
 description: Project onboarding — scan, mission, essentials, context generation
 summary: "Project onboarding — scan, mission, essentials, context generation"
 manual_only: true
+harness_docs_refs:
+  - instruction_file
 id: nx-init

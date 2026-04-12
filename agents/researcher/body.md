@@ -117,6 +117,6 @@ Record when:
 
 To persist findings, either:
 - Suggest to the user that they use the `[m]` tag to save the finding to memory, or
-- Write directly to `.nexus/memory/{topic}.md` using the Write tool if you have permission
+- Write directly to `.nexus/memory/{topic}.md` using the harness's file-creation primitive if you have permission
 
 Format for memory entries: include the research question, key findings, source URLs, and date searched.
