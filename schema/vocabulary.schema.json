@@ -6,18 +6,23 @@
     "capabilityEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "description", "harness_mapping"],
+      "required": ["id", "description", "intent", "blocks_semantic_classes", "prose_guidance"],
       "properties": {
         "id": { "$ref": "common.schema.json#/$defs/id" },
         "description": { "$ref": "common.schema.json#/$defs/description" },
-        "harness_mapping": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["claude_code", "opencode"],
-          "properties": {
-            "claude_code": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "opencode": { "type": "array", "items": { "type": "string", "minLength": 1 } }
-          }
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "blocks_semantic_classes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+        },
+        "prose_guidance": {
+          "type": "string",
+          "minLength": 40
         }
       }
     },

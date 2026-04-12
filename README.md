@@ -46,6 +46,8 @@ CONSUMING.md는 LLM 에이전트 전용 문서입니다. 사람 독자는 이 RE
 - `skills/{id}/meta.yml` — 스킬 neutral metadata
 - `vocabulary/*.yml` — capabilities, categories, resume-tiers, tags 정의
 - `schema/*.json` — 위 파일들의 JSON Schema (AJV 검증)
+- `conformance/` — cross-harness 호환성 검증을 위한 state 파일 스키마·tool 동작 fixture·시나리오 fixture
+- `docs/` — tool semantic 명세(nexus-tools-contract), state 파일 개요, .nexus/ 디렉터리 구조, behavioral contract
 - `scripts/` — 마이그레이션·검증 스크립트
 
 **포함하지 않는 것**

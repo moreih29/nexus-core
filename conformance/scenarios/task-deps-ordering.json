@@ -1,0 +1,83 @@
+{
+  "test_id": "task_deps_ordering",
+  "description": "Verifies that dependency ordering is enforced by task_list: a task with an incomplete dep is not ready, and becomes ready after the dep is completed",
+  "precondition": {
+    "state_files": {
+      ".nexus/state/tasks.json": null
+    }
+  },
+  "steps": [
+    {
+      "description": "Add task A with no dependencies",
+      "action": {
+        "tool": "task_add",
+        "params": {
+          "title": "Task A — foundation work",
+          "context": "Must complete before Task B can start",
+          "deps": [],
+          "goal": "Validate dependency ordering"
+        }
+      },
+      "assert_return": {
+        "$.task.id": 1,
+        "$.task.status": "pending",
+        "$.task.deps.length": 0
+      }
+    },
+    {
+      "description": "Add task B that depends on task A (id=1)",
+      "action": {
+        "tool": "task_add",
+        "params": {
+          "title": "Task B — requires A",
+          "context": "Can only start after Task A is completed",
+          "deps": [1]
+        }
+      },
+      "assert_return": {
+        "$.task.id": 2,
+        "$.task.status": "pending",
+        "$.task.deps.length": 1,
+        "$.task.deps[0]": 1
+      }
+    },
+    {
+      "description": "List tasks — only task A should be ready because task B's dep is not complete",
+      "action": {
+        "tool": "task_list",
+        "params": {}
+      },
+      "assert_return": {
+        "$.summary.total": 2,
+        "$.summary.ready.length": 1,
+        "$.summary.ready[0]": 1
+      }
+    },
+    {
+      "description": "Mark task A as completed",
+      "action": {
+        "tool": "task_update",
+        "params": {
+          "id": 1,
+          "status": "completed"
+        }
+      },
+      "assert_return": {
+        "$.task.id": 1,
+        "$.task.status": "completed"
+      }
+    },
+    {
+      "description": "List tasks again — task B should now be ready because its dep (A) is completed",
+      "action": {
+        "tool": "task_list",
+        "params": {}
+      },
+      "assert_return": {
+        "$.summary.ready.length": 1,
+        "$.summary.ready[0]": 2,
+        "$.summary.completed": 1
+      }
+    }
+  ]
+}

@@ -621,6 +621,307 @@
           "created_at": "2026-04-11T05:42:56.127Z"
         }
       ]
+    },
+    {
+      "completed_at": "2026-04-12T06:22:58.424Z",
+      "branch": "feat/v0.2.0-harness-agnostic-redesign",
+      "plan": {
+        "id": 1,
+        "topic": "nexus-core v0.2 consumer feedback 대응 — 8 gaps + HARNESS mechanism + release 전략",
+        "issues": [
+          {
+            "id": 1,
+            "title": "Issue #4 수용 여부 — HARNESS:* body-level extension point mechanism (body_hash 변경 / breaking change)",
+            "status": "decided",
+            "decision": "Reject HARNESS:* marker mechanism as proposed. Adopt Alt B: additive `harness_docs_refs: string[]` field in `skills/*/meta.yml`, referencing keys defined in a neutral harness docs vocabulary. Consumer harnesses render harness-specific operational docs as a separate block at skill-assembly time, completely decoupled from body.md (no body_hash impact). Prerequisite cleanup required: widen G6 lint scope in `scripts/lib/lint.ts` to include `agents/**/body.md` and `skills/**/body.md`, add `SendMessage|TeamCreate|AskUserQuestion|teams_enabled|runtime\\.json|CLAUDE_CODE_EXPERIMENTAL` patterns to the Claude Code regex, and clean up the 17+ existing SendMessage/teams_enabled leakage in body.md files (generalize to \"report to Lead\"-style phrasing). Rejected alternatives: (A) Accept-as-proposed rejected because it builds a body-level injection mechanism atop an unenforced rule — Architect found `SendMessage` already leaked 17+ times across nx-run/nx-plan/7 agents, and G6 lint doesn't scan body.md at all; major bump on a single invisible HTML comment is poor precedent; slippery-slope risk (allowlist becomes wishlist). (C) Accept + prerequisite cleanup rejected because Alt B's meta-layer solution achieves 90% of operator UX benefit (1 scroll difference) at additive-minor cost vs. first major bump + body-level marker precedent. (D) Alt A external pointer rejected because it loses the nexus-core signal \"this skill has harness-specific operational detail worth surfacing\". Key generalizability argument: `harness_docs_refs` is isomorphic to existing meta-layer pattern (`capabilities`, `resume_tier`, `model_tier`) — neutral signal, consumer resolution. New keys scale as vocabulary additions (minor bumps) with no body.md churn. 4/5 current skills (all except nx-setup) would naturally consume this pattern.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Blocking finding: proposal's premise factually wrong — SendMessage already appears 17+ times across body.md files (nx-run:64, nx-plan:11, engineer/researcher/writer/tester/strategist/reviewer/postdoc bodies), and G6 lint's LINT_INCLUDE excludes body.md entirely + CLAUDE_CODE_TOOLS regex is missing SendMessage/TeamCreate. Rule:no-harness-tool is structurally unenforced on its most important surface. Recommendation: Reject + Alt B (`harness_docs_refs` meta field) with prerequisite cleanup of lint scope and existing body.md leakage. Arguments: (1) HARNESS:* is category error — capability abstraction has neutral form = semantically complete, HARNESS:* has neutral form = zero info (empty HTML comment); (2) harness_keys.yml doesn't belong in vocabulary/ (inverse of existing vocab semantics); (3) slippery slope — allowlist structurally incentivizes adding more keys over neutral expression; (4) first major bump should be conceptual progress, not one invisible marker; (5) Alt B fits existing meta-layer pattern, additive minor bump. Suggested body cleanup: most 'via SendMessage' phrasings are actually 'report to Lead' with no loss of meaning."
+            }
+          },
+          {
+            "id": 2,
+            "title": "Issue #3 Gap 3 — 공유 consumer library의 prompt-only 정체성 양립 (scripts/consumer-lib.mjs 승격 여부)",
+            "status": "decided",
+            "decision": "Cascade-resolved by Issue #11 (capabilities.yml harness-agnostic redesign). Reject shared consumer library promotion in all forms — Option B+ref adopted. Rationale: Issue #11 eliminates `harness_mapping` from capabilities.yml entirely, which means `deriveDisallowedTools` and `indexCapabilities` (the two functions that created the \"shared library\" pressure) no longer have any data to operate on. Each consumer now owns its own `capability-map.yml` locally and does the mapping at their own build step without any nexus-core-shipped helper. The residual shared surface is trivial: ~4 LoC `verifyBodyHash` (native crypto SHA-256) + ~5 LoC `verifyManifestVersion` (native semver.satisfies). Drift risk at this scale is negligible; no shared library infrastructure is warranted. Actions: (1) Create `.nexus/memory/consumer-lib-reference.md` with pseudocode for the 2 trivial helpers, explicitly marked non-normative and consumer-owned (not shipped). (2) opencode-nexus Issue #3 Gap 3 response: \"Cascade-resolved by Issue #11; structural rationale for shared library dissolved. No `scripts/consumer-lib.mjs` promotion, no separate `@moreih29/nexus-core-consumer-lib` package. Residual ~10 LoC is consumer-inlined.\" (3) Drop all previously-proposed intermediate options (A, C, D, E) as unnecessary. Drop Architect's proposed Phase B deferral trigger — there is no eventual target to defer to. Rejected alternatives: (A) nexus-core lib/ ship — unnecessary because no non-trivial shared surface exists after cascade; (C) separate package — unnecessary for the same reason, creates maintenance burden without benefit; (D) scripts/ selective publish — destabilizes G8 uniformity for zero gain; (E) manifest enhancement with resolved_tools — Issue #11's harness-agnostic redesign is structurally superior (nexus-core doesn't know harness names at all, not merely pre-compute them), so this middle path is strictly dominated.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Prior analysis in Issue #2 recommended Option B-interim + Option C-target, rejecting Options A and D as rule:no-runtime violations. That recommendation becomes moot after Issue #11 cascade: the functions motivating the shared library (deriveDisallowedTools, indexCapabilities) cease to exist because capabilities.yml no longer contains harness_mapping. Residual shared surface shrinks to ~10 LoC of trivial helpers that can be inlined per consumer without drift concern. Earlier concerns about lockstep coupling (거절 2) and identity violation are moot since no library is being shipped."
+            }
+          },
+          {
+            "id": 3,
+            "title": "Issue #3 Gap 1 — no_shell_exec optional capability 재고려 (plan #2 Issue #3 reopen)",
+            "status": "decided",
+            "decision": "Cascade-resolved by Issue #11 (capabilities.yml harness-agnostic redesign, v0.2.0). `no_shell_exec` added to vocabulary/capabilities.yml as a 4th capability entry with semantic-only definition (intent: `shell_execution_denial`, blocks_semantic_classes: `[shell_command_exec, subprocess_spawn, interactive_shell_session]`, prose_guidance describing what \"shell execution\" semantically means without naming any harness tool). Canonical `agents/postdoc/meta.yml` capabilities list remains UNCHANGED — still `[no_file_edit, no_task_create, no_task_update]`. This preserves the plan session #2 Issue #3 HOW-symmetry decision (canonical postdoc stays symmetric with other HOW agents) while making the capability available for consumer-side opt-in via local maps. opencode-nexus can add `no_shell_exec` to postdoc in its local `capability-map.yml` and remove the `catalog.ts:35` workaround; claude-nexus independently chooses whether to adopt it. nexus-core takes no position on which consumer applies what. The earlier rejection's logic (\"canonical postdoc should not carry asymmetric capability\") and the new request (\"capability should be available as opt-in\") are orthogonal under Issue #11's frame — previously these two axes were conflated in one file, now they are structurally separated. Actions: (1) include `no_shell_exec` in v0.2.0 vocabulary as part of Issue #11 rollout (already planned). (2) Issue #3 response to opencode-nexus: \"Cascade-resolved via Issue #11; add `no_shell_exec` to your local map, remove catalog.ts workaround, consistency check will pass.\" (3) Update `.nexus/context/boundaries.md:100` note: the plan session #2 Issue #3 rejection remains valid for canonical postdoc, but the ecosystem interpretation has been refined — capability vocabulary membership is now orthogonal to canonical agent capability lists. Rejected alternatives: (a) re-add `no_shell_exec` to canonical postdoc — would violate HOW-symmetry decision; (b) reject the request entirely — would force opencode-nexus to maintain permanent workaround for a legitimate operational preference.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Already addressed during Issue #11 analysis — flagged that no_shell_exec inclusion in v0.2.0 vocabulary is compatible with plan session #2 Issue #3 rejection IFF canonical postdoc meta.yml remains unchanged. Issue #11 sample YAML included the full no_shell_exec entry. This cascade closure implements that recommendation."
+            }
+          },
+          {
+            "id": 4,
+            "title": "Issue #2 Gap 3 — DO/CHECK 병렬 분해 hint 위치 — 문서-only(C) vs schema field(A/B)",
+            "status": "decided",
+            "decision": "Adopt Option C — add a \"DO/CHECK decomposition principle\" paragraph to `skills/nx-plan/body.md` near Step 7 (Plan Document Generation / owner assignment). No schema change, no meta.yml field additions. Principle text (harness-neutral): \"DO category agents (engineer, writer, researcher) and CHECK category agents (tester, reviewer) operate on artifact-level scope and accumulate less per-task context than HOW category agents. When a task involves multiple independent artifacts (several files, several verification targets, multiple research questions), decompose the task across multiple parallel DO/CHECK subagents rather than bundling them into a single subagent. Single-subagent bundles risk context exhaustion with no wall-clock benefit over parallel decomposition. HOW agents benefit from consolidated context and should generally remain as single sessions. Task granularity is assessed per-task by the plan author, not declared per-agent in meta.yml.\" Rejected alternatives: (A) `artifact_granularity: fine|medium|coarse` meta field — encodes granularity at agent level but real granularity is task-level-variable (same engineer can be given trivial typo fix OR 400 LoC refactor); fixed per-agent value is either too permissive or too restrictive; (B) `parallelizability` block with `max_parallel_suggestion: 4` — verbose version of A with same flaw plus arbitrary runtime numbers nexus-core cannot know. Key reasoning: granularity is a **task-level** property, not an **agent-level** property. Encoding it in meta.yml mispositions the knowledge. The principle belongs in nx-plan body because that's where task decomposition and owner assignment actually happen (Step 7). nx-run body is unchanged — execution consumes already-decomposed tasks. Mechanism (how each harness implements parallel dispatch) remains consumer-owned, consistent with Issue #11's consumer-unaware principle. Bundled into v0.2.0 — the body.md change is an additive principle (minor per semver policy 18-case table), and body_hash changes are already incurred by Issue #11's breaking release so no additional version cost. claude-nexus response: \"Option C adopted; no schema drift for your generator; operational principle documented in the canonical location operators read.\""
+          },
+          {
+            "id": 5,
+            "title": "Issue #2 Gap 2 — skill meta.yml에 harness_display.purpose 필드 추가 여부",
+            "status": "decided",
+            "decision": "Add optional `summary` field to `schema/skill.schema.json` as a flat top-level string (minLength 10, maxLength 120), distinct from `description`. `description` remains the long formal definition; `summary` is a short one-liner suitable for terse UI/catalog rendering. Both fields are independent, not derived from each other. Populate summary values for all 5 existing skills (nx-init, nx-plan, nx-run, nx-setup, nx-sync) in the same v0.2.0 release. `manifest.json` generation in validate.ts updated to include summary in the skills section. Lead may optionally expand/normalize `description` values in parallel (existing nx-run/nx-init descriptions are already short — can be extended to longer formal form), but this is minor editorial work not gating the schema decision. Rejected alternatives: (A) `harness_display.purpose` nested field (claude-nexus original preference) — the `harness_display` namespace conflicts with Issue #11's harness-agnostic principle; the word \"harness\" should not appear in nexus-core schema field names because nexus-core does not know which harnesses exist; additionally, creating a `harness_display` namespace invites UI hint fields (`icon`, `color`, `sort_order`) that rule:no-ui-hint forbids — slippery slope. (B) `description_short` — naming implies derivation from description, creating sync burden; conceptually `summary` and `description` are independent concerns, not long/short variants. Semver: additive optional field → minor bump per semver policy 18-case table, bundled into v0.2.0 alongside Issue #11 and Issue #4. claude-nexus action after v0.2.0: remove `SKILL_PURPOSE_OVERRIDE` hardcoded 5-entry table from generate-from-nexus-core.lib.mjs; read `summary` from manifest.json instead."
+          },
+          {
+            "id": 6,
+            "title": "Issue #2 Gap 1 — tags.yml trigger↔id 일관성 Gate 11 추가",
+            "status": "decided",
+            "decision": "Add Gate 11 to `scripts/lib/validate.ts`: verify tags.yml trigger↔id consistency. Rule: `trigger === \"[\" + id.replace(/-/g, ':') + \"]\"` for all tag entries. Kebab-case `id` maps to colon-delimited `trigger` as the only valid form. Typos like `[m_gc]` or `[mgc]` now fail validation. Variants are not subject to this check — they are already expressed via the `variants` array field, not in the primary trigger. Implementation: new async function `checkTagTriggerConsistency(root)` in lint.ts or validate.ts, called after existing gates. Returns ValidationResult[] with severity='error' for mismatches. All 7 current tag entries already satisfy this rule, so Gate 11 introduction causes zero retroactive failures. Bundled into v0.2.0. Semver: additive validation gate, no consumer-facing schema change — minor (bundled with Issue #11 breaking change). claude-nexus workaround (`transformTags()` bracket-strip) can optionally remain — it's compatible with the guaranteed format. Open question (d) from `.nexus/memory/open-questions.md` (handler name contract) is NOT resolved by this gate — Gate 11 checks trigger↔id, not handler↔tool mapping. Handler contract remains a separate concern addressed by Issue #12's conformance fixtures."
+          },
+          {
+            "id": 7,
+            "title": "Issue #3 Gap 2 — skill.schema.json의 manual_only runtime semantic 명시",
+            "status": "decided",
+            "decision": "Add normative `description` to `manual_only` field in `schema/skill.schema.json`: \"When true, this skill MUST NOT be auto-invoked by the LLM from natural language inference. Only explicit user-initiated triggers (slash command or bracket tag typed by the user) may activate it. Consumer harnesses enforcing auto-invocation detection MUST filter manual_only skills from LLM-facing skill activation lists.\" Additionally include manual_only semantic contract in `docs/behavioral-contracts.md` (created as part of Issue #12). This formalizes the implicit contract that opencode-nexus's informal brief and claude-nexus's hooks both independently assumed. Semver: schema description-only addition (no structural change, existing valid documents stay valid) → patch bump, bundled into v0.2.0. opencode-nexus response: \"manual_only semantic now canonical in schema description + behavioral-contracts.md. Your hooks.ts implementation can reference the upstream spec instead of informal brief §5. claude-nexus will have the same canonical source.\" No code change in nexus-core beyond schema description text and docs addition. Open question (e) from `.nexus/memory/open-questions.md` (schema_version field) is tangentially related — if schema descriptions change, consumers need to know — but this is a patch-level change that doesn't warrant schema_version introduction yet."
+          },
+          {
+            "id": 8,
+            "title": "Issue #3 Gap 4 — 자연어 trigger 패턴의 소유자 경계 선언 (consumer-owned vs hint file)",
+            "status": "decided",
+            "decision": "Option A adopted: declare natural-language trigger patterns as **consumer-owned** in `docs/behavioral-contracts.md` boundary statement. nexus-core vocabulary does NOT include natural-language pattern lists. Canonical trigger form is always the explicit bracket tag (e.g. `[plan]`) as defined in vocabulary/tags.yml. Natural-language convenience detection (e.g. `/계획/`, `/plan\\b/i`) is a consumer UX layer — each harness independently defines, tests, and maintains locale-specific patterns with own false-positive guards. Divergence between consumers' pattern sets is explicitly acceptable. Rejected: Option B (vocabulary/natural-language-hints.yml informational file) — would make nexus-core responsible for locale coverage (한국어/영어/etc.) and false-positive management; conflicts with Issue #11's consumer-unaware principle; hints without guards are dangerous (pattern matching without context awareness). opencode-nexus response: \"Natural-language patterns confirmed as consumer-owned. Your `tag-parser.ts` NATURAL_PLAN_PATTERNS / NATURAL_RUN_PATTERNS are your UX decision; nexus-core will not provide or constrain them. The canonical trigger contract remains vocabulary/tags.yml bracket tags.\" Bundled into v0.2.0 docs. No schema change."
+          },
+          {
+            "id": 9,
+            "title": "Release bundling + semver 전략 — 8+ 변경을 어떻게 묶고 어느 버전으로 release할 것인가 (첫 major bump 가능성)",
+            "status": "decided",
+            "decision": "**Single v0.2.0 release** bundling all 11 decided issues. Pre-1.0 semver: minor bump = breaking is normal (evolution.md policy). Breaking trigger is Issue #11 (capabilities.yml harness_mapping removal, schema_contract_version 1.0→2.0). All other changes are additive (minor/patch) and naturally bundle. Release contains: (BREAKING) capabilities.yml X3 redesign + no_shell_exec + vocabulary.schema.json capabilityEntry rewrite + common.schema.json harnessId removal; (ADDITIVE) skill.schema.json summary + harness_docs_refs + manual_only description; nx-plan body DO/CHECK principle; Gate 11 tags consistency; G6 lint expansion; (CLEANUP) 12 body.md files neutral rewrite; LINT_EXCLUDE capabilities.yml removal; (NEW) conformance/ directory (state schemas + tool fixtures + scenario fixtures + fixture.schema.json), docs/ directory (nexus-tools-contract.md, nexus-state-overview.md, nexus-layout.md, behavioral-contracts.md), .nexus/memory/consumer-lib-reference.md. CHANGELOG v0.2.0 with \"Consumer Action Required\" section using nx-car:v0.2.0 markers + MIGRATIONS/v0_1_to_v0_2.md (expected >50 lines). Release sequencing: nexus-core internal work → at least 1 consumer draft migration PR ready → nexus-core v0.2.0 publish → consumers merge migration PRs → nexus-code joins from v0.2.0 baseline. v1.0.0 reserved for \"3 consumer stable + 90-day window pass\" milestone. npm files whitelist expanded: add `conformance`, `docs` alongside existing `agents, skills, vocabulary, schema, manifest.json`. package.json exports expanded accordingly."
+          },
+          {
+            "id": 10,
+            "title": "Prerequisite cleanup — G6 lint scope 확장 + body.md harness leakage cleanup 실행 범위 결정 (Issue #1 파생)",
+            "status": "decided",
+            "decision": "Full scope cleanup adopted (a+b+c+d). (a) Widen G6 LINT_INCLUDE to add `agents/**/body.md` and `skills/**/body.md` — body.md now subject to harness-specific tool name lint. (b) Remove `vocabulary/capabilities.yml` from LINT_EXCLUDE — Issue #11 cascade eliminates harness_mapping, so the exception is no longer needed. If any concrete tool name survives, lint catches it. (c) Expand CLAUDE_CODE_TOOLS regex to full rule:no-harness-tool list: `Edit|Write|NotebookEdit|Bash|BashOutput|KillShell|Read|Glob|Grep|WebFetch|WebSearch|Task|TodoWrite|Monitor|SendMessage|TeamCreate|AskUserQuestion|mcp__plugin_[a-z0-9_]+`. Also review OPENCODE_TOOLS for completeness. (d) Clean up 12 body.md files across 9 agents + 2 skills: Agent bodies rewrite \"report to Lead via SendMessage\" → \"report to Lead\" (15+ references). nx-plan body.md rewrite Resume Policy section to be neutral — remove TeamCreate/SendMessage references, reference Issue #1's `harness_docs_refs` for harness-specific resume syntax. nx-run body.md rewrite resume dispatch + \"No file modification via Bash... use Edit/Write tools\" section to neutral phrasing (no tool names). Execution order: (a+b+c) first → run lint → capture full violation list as definitive cleanup checklist → (d) fix all violations. Each body.md fix recalculates body_hash in manifest.json (already part of v0.2.0 breaking release). Semver: body.md rewrites are phrasing changes (harness-specific → neutral) not semantic changes — minor per heuristic; bundled into v0.2.0 major. schema/common.schema.json: remove orphaned `harnessId` $def enum (Issue #11 cascade). This is the prerequisite that makes rule:no-harness-tool universally enforced for the first time — no exceptions, no carve-outs."
+          },
+          {
+            "id": 11,
+            "title": "capabilities.yml을 완전 harness-agnostic semantic description으로 재설계 — nexus-core가 consumer harness를 enumerate하지 않도록 (Issue #2 선행)",
+            "status": "decided",
+            "decision": "Redesign `vocabulary/capabilities.yml` to be fully harness-agnostic. Adopt Option X3 (hybrid schema): each capability entry contains `id`, `description`, `intent` (snake_case machine-readable identifier, e.g. `workspace_write_denial`), `blocks_semantic_classes` (per-capability local snake_case identifiers, not a global taxonomy), and `prose_guidance` (authoritative multi-line normative prose). Remove `harness_mapping` entirely — nexus-core no longer knows which harnesses exist nor their concrete tool names. Consumers (claude-nexus, opencode-nexus, nexus-code) own local capability maps in their own repos; nexus-core never sees them. Correctness model: consumer-side CI asserts coverage against `manifest.json#vocabulary.capabilities[*]`; nexus-core provides no drift-detection helper (would contradict the goal). Release target: **v0.2.0 hard cutover** (no transitional `legacy_harness_mapping` field), under pre-1.0 semver where minor bumps can break. v1.0.0 reserved for \"3-consumer stable\" milestone. `no_shell_exec` included in v0.2.0 vocabulary as a 4th capability entry, but `agents/postdoc/meta.yml` capabilities list stays unchanged — this preserves plan session #2 Issue #3's HOW-symmetry decision (canonical postdoc unchanged) while making the capability available for consumer-side opt-in (resolving Issue #3 Gap 1's opt-in request via cascade). CI gate updates: G1 schema rewrite (`capabilityEntry` in vocabulary.schema.json), G2 unchanged (name-based), G5 redefined (intent non-empty snake_case, classes ≥1, prose_guidance ≥40 chars), G6 LINT_EXCLUDE loses `vocabulary/capabilities.yml` (universal harness-tool ban), `schema/common.schema.json#/$defs/harnessId` enum removed as orphaned, TypeScript `CapabilityEntry` interface updated in `scripts/lib/validate.ts`. CONSUMING.md and capabilities.yml top-comment must declare: \"blocks_semantic_classes is per-capability local, MUST NOT be aggregated globally; prose_guidance is the normative source; consumer local maps MUST cite the prose they map against\". CHANGELOG v0.2.0 includes \"Consumer Action Required\" section with nx-car marker + MIGRATIONS/v0_1_to_v0_2.md (migration >50 lines). Release sequencing: nexus-core v0.2.0 publish gated on at least one consumer draft migration PR being ready (avoid unilateral blocking). Cascade effects: (a) Issue #2 Gap 3 shared-consumer-library becomes moot because `deriveDisallowedTools` ceases to exist — residual shared surface is ~30 LoC trivial helpers each consumer can own; close Gap 3 with Option B+ref. (b) Issue #3 Gap 1 auto-resolved via `no_shell_exec` vocabulary entry. (c) Issue #10 prerequisite cleanup scope extended to include LINT_EXCLUDE and harnessId enum removal. (d) Issue #9 release bundling confirmed as v0.2.0 single bundle. Rejected alternatives: X1 (prose-only, lacks machine correlation), X2 (structured predicates requiring global operation taxonomy — nexus-core would own new harness-adjacent knowledge, violating redesign goal), transitional field (defeats purpose), v1.0.0 target (premature; reserve for stability milestone).",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Recommended X3 hybrid schema: intent + blocks_semantic_classes + prose_guidance. Rejected X1 (prose-only, weak machine anchor) and X2 (requires global operation taxonomy nexus-core must maintain forever). Confirmed all 10 CI gates can survive the redesign with concrete modifications. Top 3 risks: (1) prose drift → consumer misinterpretation [mitigation: CHANGELOG diff documentation + prose citation discipline], (2) semantic classes becoming de facto global taxonomy [mitigation: explicit per-capability local declaration in CONSUMING.md + top comment], (3) hard cutover blocking consumers mid-integration [mitigation: release sequencing, gate v0.2.0 on first consumer draft PR]. Provided concrete sample YAML for all 4 capabilities including no_shell_exec. Flagged Lead confirmation needed on 4 points: v0.2.0 vs v1.0.0, hard cutover vs transitional, no_shell_exec prior-rejection reconciliation, consumer repos as mapping owners. Key finding: vocabulary/capabilities.yml is the ONLY current exception to rule:no-harness-tool (via lint.ts LINT_EXCLUDE and schema/common.schema.json harnessId enum) — redesign eliminates both exceptions universally. schema_contract_version bumps 1.0 → 2.0."
+            }
+          },
+          {
+            "id": 12,
+            "title": "Nexus MCP 도구 + state file + 기타 암묵적 계약의 canonical spec을 nexus-core에 추가 — 현재 informally implied된 계약을 formal neutral schema + semantic contract로 승격",
+            "status": "decided",
+            "decision": "Adopt **conformance test suite pattern**: nexus-core provides semantic spec (prose docs) + state file schemas (JSON Schema) + behavioral conformance fixtures (declarative JSON) — any consumer harness that passes all fixtures is guaranteed interoperable, regardless of implementation language/transport/mechanism. This is the natural completion of Issue #11's \"spec, not implementation\" philosophy: WHAT (semantic) + VERIFY (conformance) + HOW (consumer-owned). Three-layer structure: (1) **Prose contracts** (`docs/nexus-tools-contract.md`, `docs/nexus-state-overview.md`, `docs/nexus-layout.md`, `docs/behavioral-contracts.md`) — normative human/LLM-readable semantic descriptions for 11 Nexus-core MCP tools, state file lifecycles, .nexus/ directory canonical layout, task/plan state machines, resume logic, permission model, session boundaries. (2) **State file JSON Schemas** (`conformance/state-schemas/{plan,tasks,history,runtime,agent-tracker}.schema.json`) — structural validity for cross-harness state file compatibility (bidirectional flip prerequisite). (3) **Conformance fixtures** (`conformance/tools/*.json` per-tool + `conformance/scenarios/*.json` lifecycle sequences) — declarative input→postcondition assertions using JSONPath + type matchers for non-deterministic fields (timestamps, auto-increment IDs). Fixture format has its own schema (`conformance/schema/fixture.schema.json`). Consumer responsibility: write own test runner that loads nexus-core fixtures, calls own tool implementations, verifies postconditions. nexus-core ships zero runtime code — fixtures are `.json` data files, not executable. Conformance scope: **11 Nexus-core tools** (plan_start, plan_status, plan_update, plan_decide, task_list, task_add, task_update, task_close, history_search, context, artifact_write). Explicitly EXCLUDED: AST tools (nx_ast_search/replace) and LSP tools (8 nx_lsp_* tools) — these are code-intelligence utilities, not Nexus orchestration primitives; each harness may offer different utilities or none. Packaging: add `conformance/` and `docs/` to `package.json` files whitelist and exports. rule:no-runtime compliance: `.json` fixtures don't trigger G8 checkPromptOnly (which only flags `.ts/.js/.cjs/.mjs`). No runtime code, no harness names in fixtures (tools referenced by abstract names like `plan_start`, not `mcp__plugin_*` or `nx_plan_start`). v0.2.0 MVP scope: (a) state file schemas for plan.json, tasks.json, history.json, runtime.json; (b) 4 core tool fixtures (plan_start, plan_decide, task_add, task_close) + 2 scenario fixtures (full-plan-cycle, task-deps-ordering); (c) prose docs for all 11 tools + state overview + directory layout; (d) conformance fixture schema. Remaining tools/scenarios deferred to v0.2.x patch releases (additive, no breaking change). Relationship to other decisions: Issue #11 cascade (capabilities.yml harness-agnostic redesign) established \"WHAT vs HOW\" split; Issue #12 adds the \"VERIFY\" layer completing the triangle. Issue #2 Gap 3 (shared consumer library) is further obsoleted — instead of sharing implementation code, nexus-core shares verification assertions. New consumer onboarding: run conformance fixtures against your implementation; passing = ecosystem-compatible. No reference implementation reverse-engineering needed. Breaking change notes: this is additive (new files/directories), not breaking. Bundled into v0.2.0 alongside Issue #11's breaking capabilities.yml change. Cross-harness state compatibility becomes verifiable for the first time."
+          }
+        ],
+        "research_summary": "nexus-core 레포에는 3 GitHub 이슈, 총 8 gap + HARNESS 제안이 있다. 이 이슈들은 consumer(claude-nexus, opencode-nexus)가 nexus-core v0.1.2를 read-only로 adopting하는 과정에서 제기됨.\n\n**Issue #2 (claude-nexus, 3 gaps)**\n- Gap 1: tags.yml `trigger`↔`id` 형식 일관성 검증 부재. 현재 schema는 `id: m-gc` / `trigger: \"[m:gc]\"` 같은 비대칭을 허용. 오타(`[m_gc]` 등)가 silent pass. claude-nexus의 `transformTags()`가 bracket-strip 우회책 사용.\n- Gap 2: skill `description`만으로는 harness UI용 짧은 one-liner 부적합. claude-nexus의 `SKILL_PURPOSE_OVERRIDE` 5-entry 하드코딩 테이블 유지. Option A(harness_display.purpose) / Option B(description_short).\n- Gap 3: DO/CHECK 병렬 분해 hint 부재. claude-nexus refactor 중 engineer 단일 호출이 400 LoC 작업에서 context 고갈로 조기 종료한 사례. 4 engineer 병렬 분해로 복구. 3 options(artifact_granularity / parallelizability block / documentation-only in orchestration.md).\n\n**Issue #3 (opencode-nexus, 4 gaps)**\n- Gap 1: plan #2 Issue #3 reopen 요청. opencode-nexus는 postdoc에 bash 차단을 local override로 유지. 주장: role-semantic separation > HOW symmetry, blast radius, precedent. **Optional** capability(`no_shell_exec`)로 추가하여 canonical postdoc은 opt-out 유지 방안.\n- Gap 2: skill schema의 `manual_only` runtime semantic 미정의. 현재 schema는 `type: boolean, default: false`만 기술. 의미(\"LLM auto-invoke 금지\")는 비공식 brief에만 존재. 제안: schema description 추가 또는 boundaries.md 명시.\n- Gap 3: claude-nexus/opencode-nexus 둘 다 동일한 `generate-from-nexus-core.lib.mjs`(verifyBodyHash, verifyTagDrift, deriveDisallowedTools, SKILL_PURPOSE_OVERRIDE 등)를 각자 유지 → drift 리스크. nexus-core의 `scripts/consumer-lib.mjs`로 승격 요청. **핵심 boundary 질문**: `scripts/`는 build-time 예외로 허용되지만 consumer가 runtime import 하는 library는 \"prompt-only\"와 양립 가능한가? 현재 npm files whitelist에 `scripts/` 미포함. 대안: 별도 `@moreih29/nexus-core-consumer-lib` 패키지.\n- Gap 4: 자연어 trigger 패턴(예: `/계획/`, `/설계/`, `/분석해/`)이 consumer-local. nexus-core의 canonical list 부재. Option A(boundaries.md에 consumer-owned 선언) / Option B(vocabulary/natural-language-hints.yml informational file).\n\n**Issue #4 (claude-nexus, HARNESS:* mechanism)**\n- 동기: Claude Code subagent resume 문법(`SendMessage({to: agentId})`, env var `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`)은 운영상 critical하나 harness-specific이라 neutral body에 기재 불가. 현재는 `.nexus/memory/subagent-resume.md`에만 존재. 이 때문에 operator가 nx-run/nx-plan 사용 중 resume dispatch guidance 없음.\n- 제안: 단일 self-closing HTML comment marker(`<!-- HARNESS:resume_invocation -->`) convention + `vocabulary/harness_keys.yml` allowlist. nexus-core 측 변경 scope: (a) 신규 파일 harness_keys.yml, (b) skills/nx-run/body.md에 marker 1개 삽입, (c) skills/nx-plan/body.md에 marker 1개 삽입, (d) manifest.json body_hash 2개 재계산.\n- Consumer-side 5 safeguards: self-closing only, non-marker line 보존(add-only), size limit(max_lines 32/max_bytes 2048), no recursion, injection log. 검증 책임은 consumer에 있음.\n- Failure policy: unknown key(typo) → throw / unimplemented key(구현 예정) → warn + HTML comment 통과. Sibling release window 지원 근거.\n- **Breaking change**: body.md 변경 → body_hash 변경 → 기존 consumer의 `verifyBodyHash` 실패. 따라서 semver major bump + CHANGELOG \"Consumer Action Required\" 섹션 필수.\n\n**nexus-core 현재 상태**\n- v0.1.2, schema_contract_version 1.0\n- Assets: 9 agents(architect/designer/engineer/postdoc/researcher/reviewer/strategist/tester/writer), 5 skills(nx-init/nx-plan/nx-run/nx-setup/nx-sync), 4 vocabulary files(capabilities/categories/resume-tiers/tags), 5 schemas\n- scripts/: import-from-claude-nexus.ts(Phase 1 1회용), validate.ts(10 gates), lib/{validate,lint,structure,frontmatter}.ts\n- npm files whitelist: agents, skills, vocabulary, schema, manifest.json (scripts 미포함)\n- Runtime: Bun, devDependencies 포함\n\n**금지 원칙 (rules/neutral-principles.md)**\n- no ACP, no runtime code, no concrete model names, no harness-specific tool names, no UI hints, no Supervision logic\n- 예외: `scripts/`의 build-time 유틸(소비자 런타임 미실행)\n\n**미결 항목 (memory/open-questions.md) — 일부 이슈와 연결**\n- (d) tags.yml inline_action handler 이름과 각 consumer 구현 간 계약 → Issue #2 Gap 1과 연관\n- (e) schema_version 필드 도입 (Forward-only 완화 이후 defensive loading) → Issue #3 Gap 2와 연관\n- (a)(b) UI hint, 역매핑 → 이번 이슈와 직접 무관\n\n**추가 발견사항 (consumer 이슈 외)**\n- Issue #4 수용 시 첫 breaking change (v0.1.x → v0.2.0 / v1.0.0) → CHANGELOG nx-car marker + MIGRATIONS/ 기계 처리를 end-to-end 실전 검증하는 기회. 현재는 초기 bootstrap 이후 breaking change 0건.\n- Issue #3 Gap 3의 scripts/consumer-lib.mjs는 currently scripts 예외와 양립 가능하나, npm files에 scripts가 빠져있어 packaging 결정이 별도 필요.\n- Release bundling 미결: 9개 변경을 단일 v0.2.0 bundle vs 여러 minor 릴리스로 나눌 것인가 — semver 해석에 영향.",
+        "created_at": "2026-04-12T01:57:40.750Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Schema + Vocabulary: capabilities.yml X3 redesign + skill.schema + common.schema updates",
+          "context": "Rewrite vocabulary/capabilities.yml to X3 hybrid schema (remove harness_mapping entirely, add intent/blocks_semantic_classes/prose_guidance). Add no_shell_exec as 4th entry. Rewrite schema/vocabulary.schema.json capabilityEntry definition. Remove harnessId $def from schema/common.schema.json. Add summary (optional, minLength 10, maxLength 120) + harness_docs_refs (optional string[]) + manual_only description to schema/skill.schema.json. Reference the Architect's concrete X3 sample YAML from Issue #11 decision. After edits, run bun run validate to ensure schemas are self-consistent.",
+          "approach": "Edit 4 files: vocabulary/capabilities.yml, schema/vocabulary.schema.json, schema/common.schema.json, schema/skill.schema.json. Use Architect's X3 sample for capabilities content. For skill schema, add 3 fields as optional properties. Remove capabilityEntry.harness_mapping and harnessId enum. Run validate after each major edit to catch errors early.",
+          "acceptance": "1. capabilities.yml has 4 entries (no_file_edit, no_task_create, no_task_update, no_shell_exec), each with id/description/intent/blocks_semantic_classes/prose_guidance, NO harness_mapping. 2. vocabulary.schema.json capabilityEntry requires intent+blocks_semantic_classes+prose_guidance, forbids harness_mapping. 3. common.schema.json has no harnessId $def. 4. skill.schema.json has optional summary (string, 10-120), optional harness_docs_refs (string[]), manual_only has description. 5. bun run validate passes.",
+          "risk": "capabilities.yml breaking change — body_hash for agent/skill entries will regenerate. validate.ts CapabilityEntry TS interface may need parallel update (handled in Task 2).",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 11,
+          "owner": "engineer",
+          "created_at": "2026-04-12T05:54:54.611Z"
+        },
+        {
+          "id": 2,
+          "title": "Validation scripts: CapabilityEntry interface + G5' + G6 lint expansion + Gate 11",
+          "context": "Update scripts/lib/validate.ts: change CapabilityEntry TS interface to match new X3 schema (intent, blocks_semantic_classes, prose_guidance — remove harness_mapping). Add G5' post-schema check (intent non-empty snake_case, classes >=1, prose_guidance >=40 chars). Update scripts/lib/lint.ts: expand LINT_INCLUDE to add agents/**/body.md + skills/**/body.md. Remove vocabulary/capabilities.yml from LINT_EXCLUDE. Expand CLAUDE_CODE_TOOLS regex to full list (Edit|Write|NotebookEdit|Bash|BashOutput|KillShell|Read|Glob|Grep|WebFetch|WebSearch|Task|TodoWrite|Monitor|SendMessage|TeamCreate|AskUserQuestion|mcp__plugin_[a-z0-9_]+). Add Gate 11 function: checkTagTriggerConsistency — verify trigger === \"[\" + id.replace(/-/g, \":\") + \"]\" for each tags.yml entry.",
+          "approach": "Edit scripts/lib/validate.ts and scripts/lib/lint.ts. For validate.ts, update the TS interface, add G5' validation in loadVocab or runAll. For lint.ts, update LINT_INCLUDE array, remove capabilities.yml from LINT_EXCLUDE, expand CLAUDE_CODE_TOOLS regex, add new checkTagTriggerConsistency function. Run bun run validate after to ensure gates work.",
+          "acceptance": "1. validate.ts CapabilityEntry interface matches new X3 schema. 2. G5' validates intent/classes/prose per capability. 3. LINT_INCLUDE covers body.md files. 4. capabilities.yml not in LINT_EXCLUDE. 5. CLAUDE_CODE_TOOLS regex covers full rule:no-harness-tool list. 6. Gate 11 passes for current 7 tags. 7. bun run validate passes (may show body.md violations — expected, fixed in Task 4/5).",
+          "risk": "Expanded lint will catch existing body.md violations — expected. Don't fix body.md here, only update gates. Temporarily expect lint warnings/errors until Task 4/5.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 10,
+          "owner": "engineer",
+          "created_at": "2026-04-12T05:55:14.050Z"
+        },
+        {
+          "id": 3,
+          "title": "Conformance: 5 state file JSON schemas (plan, tasks, history, runtime, agent-tracker)",
+          "context": "Create conformance/state-schemas/ directory with 5 JSON Schema files: plan.schema.json (plan.json structure from Explore findings), tasks.schema.json, history.schema.json, runtime.schema.json, agent-tracker.schema.json. Use JSON Schema draft 2020-12 with additionalProperties: false strict mode, matching nexus-core's existing schema conventions. Reference Explore agent's detailed structure findings for each file. These schemas validate the state files that MCP tools read/write.",
+          "approach": "Create conformance/state-schemas/ directory. For each state file, write JSON Schema based on Explore findings: plan.json ({id, topic, issues[], research_summary, created_at}), tasks.json ({goal, decisions[], tasks[]}), history.json ({cycles[]}), runtime.json ({teams_enabled, session_started_at, plugin_version}), agent-tracker.json (array of agent entries). Use strict additionalProperties: false. Include enums for status fields (pending/decided for plan issues, pending/in_progress/completed for tasks).",
+          "acceptance": "1. 5 schema files exist in conformance/state-schemas/. 2. Each uses draft 2020-12, additionalProperties: false. 3. plan.schema covers all fields from Explore findings. 4. tasks.schema covers full Task structure including optional fields. 5. history.schema covers Cycle structure. 6. All are valid JSON Schema (parseable by AJV).",
+          "risk": "Explore findings may not capture every edge case in claude-nexus's actual state files. Schemas should be strict but allow optional fields where Explore showed optionality.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 12,
+          "owner": "engineer",
+          "created_at": "2026-04-12T05:55:24.583Z"
+        },
+        {
+          "id": 4,
+          "title": "Docs: nexus-tools-contract.md (11 tools) + nexus-state-overview.md",
+          "context": "Create docs/nexus-tools-contract.md documenting all 11 Nexus-core MCP tools (plan_start, plan_status, plan_update, plan_decide, task_list, task_add, task_update, task_close, history_search, context, artifact_write). For each tool: abstract name, parameters (name/type/required), return value shape, side effects on state files, error conditions. Use harness-neutral abstract tool names (e.g. plan_start not nx_plan_start or mcp__plugin_*). Create docs/nexus-state-overview.md documenting all state files: path, lifecycle, purpose, which tools read/write them, git-tracked vs session-scoped. Reference Explore agent's comprehensive findings for structure details.",
+          "approach": "Write two markdown documents. For tools-contract, use a consistent template per tool: ## tool_name, Parameters table, Return shape, Side effects, Error conditions. For state-overview, document each file path with lifecycle diagram and tool interaction matrix. Keep prose normative but readable by both humans and LLMs.",
+          "acceptance": "1. docs/nexus-tools-contract.md covers all 11 tools with parameters, return shape, side effects, errors. 2. docs/nexus-state-overview.md covers all state files with lifecycle, tool mapping. 3. No harness-specific tool names (Bash, Edit, mcp__plugin_*, etc.). 4. Prose is normative and self-contained.",
+          "risk": "Tool contract may drift from claude-nexus implementation details. Write based on Explore findings; note any ambiguities as TBD for future conformance fixture coverage.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 12,
+          "owner": "writer",
+          "created_at": "2026-04-12T05:55:35.416Z"
+        },
+        {
+          "id": 5,
+          "title": "Docs: nexus-layout.md + behavioral-contracts.md",
+          "context": "Create docs/nexus-layout.md documenting the canonical .nexus/ directory structure (state/, memory/, context/, rules/, history.json, .gitignore conventions). Clarify which paths are session-scoped vs project-scoped vs git-tracked. Create docs/behavioral-contracts.md covering: task lifecycle state machine (pending→in_progress→completed, reopen), plan lifecycle (pending→decided, reopen), resume_tier + owner_reuse_policy coordination, permission model (Lead vs subagent), session boundary semantics, manual_only contract (from Issue #7 decision), natural-language trigger boundary declaration (from Issue #8 — consumer-owned), content file conventions (markdown + tags frontmatter). Reference Explore findings for behavioral details.",
+          "approach": "Write two normative documents. nexus-layout.md: ASCII directory tree + per-directory explanation. behavioral-contracts.md: state diagrams in text/mermaid, decision trees for resume logic, permission matrix, explicit boundary statements. Keep neutral — no harness tool names.",
+          "acceptance": "1. docs/nexus-layout.md has complete .nexus/ tree with lifecycle annotations. 2. docs/behavioral-contracts.md covers all 7 behavioral contracts listed. 3. manual_only semantic matches Issue #7 decision text. 4. NL trigger boundary matches Issue #8 decision. 5. No harness-specific references.",
+          "risk": "Behavioral contracts may expose edge cases not documented by Explore. Flag ambiguities as TBD.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 12,
+          "owner": "writer",
+          "created_at": "2026-04-12T05:55:45.851Z"
+        },
+        {
+          "id": 6,
+          "title": "Skill meta.yml: populate summary + harness_docs_refs for all 5 skills",
+          "context": "Populate summary values (short one-liner, 10-120 chars) for all 5 skill meta.yml files: nx-init, nx-plan, nx-run, nx-setup, nx-sync. Add harness_docs_refs: [\"resume_invocation\"] to nx-run and nx-plan meta.yml (Issue #1 Alt B). Use claude-nexus SKILL_PURPOSE_OVERRIDE values as reference for summary content. Run bun run validate after.",
+          "approach": "Edit 5 files: skills/{nx-init,nx-plan,nx-run,nx-setup,nx-sync}/meta.yml. Add summary field to each. Add harness_docs_refs to nx-run and nx-plan only. Values: nx-init=\"Project onboarding — scan, mission, essentials, context generation\", nx-plan=\"Structured planning — subagent-based analysis, deliberate decisions, produce execution plan\", nx-run=\"Execution — user-directed agent composition\", nx-setup=\"Interactive Nexus configuration wizard\", nx-sync=\"Context knowledge synchronization\".",
+          "acceptance": "1. All 5 skill meta.yml have summary field (10-120 chars). 2. nx-run and nx-plan have harness_docs_refs: [\"resume_invocation\"]. 3. bun run validate passes.",
+          "risk": "None significant — small additive edits to existing files.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 5,
+          "owner": "lead",
+          "created_at": "2026-04-12T05:56:01.087Z"
+        },
+        {
+          "id": 7,
+          "title": "Conformance: fixture.schema.json + 4 core tool fixtures + 2 scenario fixtures + README",
+          "context": "Create conformance/schema/fixture.schema.json defining the conformance fixture format (test_id, description, precondition, action with tool+params, postcondition with state_files assertions + return_value assertions). Create 4 core tool fixtures in conformance/tools/: plan-start.json, plan-decide.json, task-add.json, task-close.json. Create 2 scenario fixtures in conformance/scenarios/: full-plan-cycle.json (start→decide all→task add→close→history verify), task-deps-ordering.json. Create conformance/README.md with format explanation + consumer test runner authoring guide. Use JSONPath + type matchers for non-deterministic fields (timestamps, auto-increment IDs).",
+          "approach": "Create conformance/schema/, conformance/tools/, conformance/scenarios/ directories. Write fixture.schema.json first (defines the format). Then write 4 tool fixtures based on Explore findings for each tool's input/output/side effects. Then write 2 scenario fixtures as ordered step sequences. README explains format + consumer responsibilities.",
+          "acceptance": "1. fixture.schema.json is valid JSON Schema. 2. 4 tool fixtures cover happy path + 1 error case each. 3. 2 scenarios cover full lifecycle and dependency ordering. 4. README explains format, assertion language, and consumer test runner guide. 5. All fixtures validate against fixture.schema.json.",
+          "risk": "Fixture assertion language design is novel — keep simple (JSONPath + exact/type/length matchers). Don't over-engineer. MVP quality.",
+          "status": "completed",
+          "deps": [
+            3
+          ],
+          "plan_issue": 12,
+          "owner": "engineer",
+          "created_at": "2026-04-12T05:56:12.454Z"
+        },
+        {
+          "id": 8,
+          "title": "Agent body.md neutral cleanup: 9 agents, remove SendMessage/TeamCreate references",
+          "context": "Clean up all 9 agent body.md files to remove harness-specific tool names (SendMessage, TeamCreate, AskUserQuestion, etc.) and replace with neutral phrasing. Specific rewrites: \"report to Lead via SendMessage\" → \"report to Lead\". \"Escalate to architect via SendMessage\" → \"Escalate to architect\". \"via SendMessage using this format\" → \"using this format\". Affected files: agents/{engineer,researcher,writer,tester,strategist,reviewer,postdoc,designer,architect}/body.md. After cleanup, run bun run validate — G6 expanded lint should produce zero harness-tool violations in agent body.md files.",
+          "approach": "Read each body.md, grep for SendMessage/TeamCreate/AskUserQuestion, replace with neutral alternatives. The meaning must be preserved — only the harness-specific tool name reference is removed. Do NOT change behavioral instructions, only the invocation-method wording. Run validate after all edits to confirm G6 passes.",
+          "acceptance": "1. Zero occurrences of SendMessage/TeamCreate/AskUserQuestion in any agents/*/body.md. 2. bun run validate G6 shows no harness-tool violations in agent bodies. 3. Behavioral meaning of each instruction preserved. 4. body_hash values regenerated in manifest.json.",
+          "risk": "Some \"via SendMessage\" phrasings are structurally embedded in Output Format sections. Verify that removing the tool name doesn't break the format instructions.",
+          "status": "completed",
+          "deps": [
+            2
+          ],
+          "plan_issue": 10,
+          "owner": "engineer",
+          "created_at": "2026-04-12T05:56:23.275Z"
+        },
+        {
+          "id": 9,
+          "title": "Skill body.md neutral cleanup: nx-plan + nx-run rewrite + DO/CHECK principle",
+          "context": "Clean up skills/nx-plan/body.md and skills/nx-run/body.md. nx-plan:11 \"NEVER use TeamCreate. SendMessage is permitted ONLY...\" → neutral rewrite referencing harness_docs_refs for resume syntax. nx-plan:157 \"runtime.json teams_enabled\" → reference behavioral-contracts.md for resume gating. nx-run:64 \"Before issuing SendMessage...\" + runtime.json + teams_enabled → neutral resume dispatch description. nx-run:145 \"No file modification via Bash — sed, echo >... Always use Edit/Write tools\" → neutral phrasing (\"Agents must not use shell commands for file modification; use the harness's dedicated file-editing primitives\"). Add DO/CHECK decomposition principle paragraph to nx-plan Step 7 area (Issue #4 decision). After cleanup, run bun run validate — G6 should show zero violations in skill body.md.",
+          "approach": "Read both skill body.md files carefully. Identify all harness-specific references (SendMessage, TeamCreate, Bash, Edit, Write, runtime.json path, teams_enabled). Rewrite each to neutral phrasing while preserving behavioral intent. Add DO/CHECK principle paragraph near Step 7. Run validate after.",
+          "acceptance": "1. Zero harness-specific tool names in skills/nx-plan/body.md and skills/nx-run/body.md. 2. Resume Policy and Resume Dispatch sections rewritten neutrally. 3. DO/CHECK decomposition principle paragraph added to nx-plan near Step 7. 4. bun run validate G6 passes for skill bodies. 5. body_hash regenerated.",
+          "risk": "nx-plan body is long (~310 lines) with complex interlocking instructions. Must be very careful not to break the orchestration logic while removing tool names. Read the full body before editing.",
+          "status": "completed",
+          "deps": [
+            2
+          ],
+          "plan_issue": 10,
+          "owner": "engineer",
+          "created_at": "2026-04-12T05:56:35.181Z"
+        },
+        {
+          "id": 10,
+          "title": "Release artifacts: MIGRATIONS + CHANGELOG + CONSUMING + package.json + README + consumer-lib-ref",
+          "context": "Create MIGRATIONS/v0_1_to_v0_2.md (detailed migration guide for consumers: capabilities.yml changes, new skill schema fields, body_hash changes, conformance suite introduction, consumer test runner setup). Update CHANGELOG.md v0.2.0 with full \"Consumer Action Required\" section using nx-car:v0.2.0 markers. Update CONSUMING.md with new file contracts (conformance/, docs/, harness_docs_refs, summary). Update package.json: add conformance + docs to files whitelist, add exports for ./conformance/* and ./docs/*, bump version to 0.2.0, update schema_contract_version to 2.0 in scripts if needed. Update README.md references. Create .nexus/memory/consumer-lib-reference.md (Issue #2 B+ref: pseudocode for verifyBodyHash + verifyManifestVersion).",
+          "approach": "Write MIGRATIONS guide based on all decided changes. Update CHANGELOG with nx-car markers following evolution.md format. Update CONSUMING.md file contracts table. Edit package.json files + exports. Create consumer-lib-ref memory doc. Cross-reference all decisions for completeness.",
+          "acceptance": "1. MIGRATIONS/v0_1_to_v0_2.md exists and covers capabilities migration + all new artifacts. 2. CHANGELOG v0.2.0 has nx-car markers with Consumer Action Required. 3. CONSUMING.md file contracts table includes conformance/ and docs/. 4. package.json files + exports updated, version=0.2.0. 5. README references updated. 6. consumer-lib-reference.md exists in .nexus/memory/.",
+          "risk": "Must not miss any decided change in the CHANGELOG/MIGRATIONS. Cross-check against all 12 plan decisions.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "plan_issue": 9,
+          "owner": "writer",
+          "created_at": "2026-04-12T05:56:48.187Z"
+        },
+        {
+          "id": 11,
+          "title": "Verify: bun run validate passes all gates + manifest.json regeneration",
+          "context": "Run full validation pipeline (bun run validate) after all engineering + writing tasks complete. Verify: all 11 gates pass (G1-G10 + G11). Verify manifest.json regenerated with correct schema_contract_version=2.0, updated body_hash for all modified agents/skills, new capability structure in vocabulary section, new skill fields (summary, harness_docs_refs). Verify no harness-specific tool names anywhere in published files. Spot-check conformance fixtures for JSON validity.",
+          "approach": "Run bun run validate. If errors, diagnose and report. Manually inspect manifest.json diff. Grep for SendMessage/TeamCreate/Bash/Edit/Write in agents/**/body.md and skills/**/body.md to confirm zero hits. Validate conformance JSON files parse correctly.",
+          "acceptance": "1. bun run validate exits 0 with \"All N validation gates passed.\" 2. manifest.json has schema_contract_version=2.0. 3. Zero harness tool names in published body/meta/vocabulary files. 4. All conformance/*.json files parse as valid JSON. 5. capabilities.yml has no harness_mapping anywhere.",
+          "risk": "If validate fails, need to trace back to which task introduced the error. May require coordination with Lead.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "plan_issue": 9,
+          "owner": "tester",
+          "created_at": "2026-04-12T05:56:57.730Z"
+        },
+        {
+          "id": 12,
+          "title": "Review: all docs/, conformance/, CHANGELOG, MIGRATIONS for accuracy",
+          "context": "Review all newly created documents for accuracy, grammar, completeness, and consistency with plan decisions. Check: docs/nexus-tools-contract.md covers all 11 tools correctly. docs/nexus-state-overview.md matches conformance state schemas. docs/nexus-layout.md matches actual directory structure. docs/behavioral-contracts.md matches Issue #7 (manual_only) and Issue #8 (NL boundary) decisions. CHANGELOG nx-car markers are correctly formatted and non-nested. MIGRATIONS covers all breaking changes. conformance README is actionable for a consumer. No harness-specific tool names leaked into any document.",
+          "approach": "Read each document and cross-check against plan decisions and Explore findings. Flag any inconsistencies, missing coverage, or style issues. Verify CHANGELOG marker format matches evolution.md spec.",
+          "acceptance": "1. All 4 docs are accurate and complete per plan decisions. 2. CHANGELOG nx-car markers properly formatted. 3. MIGRATIONS covers all consumer-facing changes. 4. No harness-specific tool names in any document. 5. Grammar and formatting are clean.",
+          "risk": "Reviewer may find inconsistencies requiring edits — coordinate with Lead for fixes.",
+          "status": "completed",
+          "deps": [
+            4,
+            5,
+            10
+          ],
+          "plan_issue": 12,
+          "owner": "reviewer",
+          "created_at": "2026-04-12T05:57:04.455Z"
+        }
+      ]
     }
   ]
 }

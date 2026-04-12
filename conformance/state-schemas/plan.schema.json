@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conformance/state-schemas/plan.schema.json",
+  "title": "Nexus Plan State",
+  "description": "Schema for .nexus/state/plan.json — the active plan produced by nx-plan and consumed by MCP tools",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "topic", "issues", "created_at"],
+  "properties": {
+    "id": {
+      "type": "number",
+      "minimum": 1,
+      "description": "Monotonically increasing plan identifier"
+    },
+    "topic": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable topic or goal of this plan"
+    },
+    "issues": {
+      "type": "array",
+      "description": "Ordered list of issues analyzed during planning",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "status"],
+        "properties": {
+          "id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "decided"]
+          },
+          "decision": {
+            "type": "string",
+            "description": "The recorded decision; present when status is 'decided'"
+          },
+          "how_agents": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Agent types consulted for this issue"
+          },
+          "how_summary": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Key/value map of per-agent analysis summaries"
+          },
+          "how_agent_ids": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Key/value map of agent type to agent instance ID"
+          }
+        }
+      }
+    },
+    "research_summary": {
+      "type": "string",
+      "description": "Optional background research summary compiled during planning"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this plan was created"
+    }
+  }
+}

@@ -36,6 +36,8 @@ interface SkillMeta {
   name: string;
   alias_ko?: string;
   description: string;
+  summary?: string;
+  harness_docs_refs?: string[];
   triggers: string[];
   manual_only?: boolean;
 }
@@ -43,7 +45,9 @@ interface SkillMeta {
 interface CapabilityEntry {
   id: string;
   description: string;
-  harness_mapping: { claude_code: string[]; opencode: string[] };
+  intent: string;
+  blocks_semantic_classes: string[];
+  prose_guidance: string;
 }
 
 interface SimpleEntry {
@@ -390,6 +394,52 @@ function checkTagIntegrity(
   return results;
 }
 
+// ─── G5': Capability entry integrity ─────────────────────────────────────────
+
+const SNAKE_CASE_RE = /^[a-z][a-z0-9_]*$/;
+
+export function checkCapabilityEntryIntegrity(capabilities: CapabilityEntry[]): ValidationResult[] {
+  const results: ValidationResult[] = [];
+  for (const cap of capabilities) {
+    if (!SNAKE_CASE_RE.test(cap.intent)) {
+      results.push({
+        file: 'vocabulary/capabilities.yml',
+        gate: 'G5-capability-integrity',
+        severity: 'error',
+        message: `Capability '${cap.id}': 'intent' must match snake_case /^[a-z][a-z0-9_]*$/, got '${cap.intent}'`,
+      });
+    }
+    if (!cap.blocks_semantic_classes || cap.blocks_semantic_classes.length === 0) {
+      results.push({
+        file: 'vocabulary/capabilities.yml',
+        gate: 'G5-capability-integrity',
+        severity: 'error',
+        message: `Capability '${cap.id}': 'blocks_semantic_classes' must have at least 1 entry`,
+      });
+    } else {
+      for (const cls of cap.blocks_semantic_classes) {
+        if (!SNAKE_CASE_RE.test(cls)) {
+          results.push({
+            file: 'vocabulary/capabilities.yml',
+            gate: 'G5-capability-integrity',
+            severity: 'error',
+            message: `Capability '${cap.id}': class '${cls}' must match snake_case /^[a-z][a-z0-9_]*$/`,
+          });
+        }
+      }
+    }
+    if (!cap.prose_guidance || cap.prose_guidance.trim().length < 40) {
+      results.push({
+        file: 'vocabulary/capabilities.yml',
+        gate: 'G5-capability-integrity',
+        severity: 'error',
+        message: `Capability '${cap.id}': 'prose_guidance' must be at least 40 characters`,
+      });
+    }
+  }
+  return results;
+}
+
 // ─── Vocabulary loading ───────────────────────────────────────────────────────
 
 async function loadVocab(root: string): Promise<{ vocab: Vocab | null; results: ValidationResult[] }> {
@@ -492,7 +542,7 @@ export async function generateManifest(
   return {
     nexus_core_version: version,
     nexus_core_commit: commit,
-    schema_contract_version: '1.0',
+    schema_contract_version: '2.0',
     agents: agentEntries,
     skills: skillEntries,
     vocabulary: {
@@ -572,6 +622,8 @@ export async function runAll(root: string): Promise<ValidationResult[]> {
     allResults.push(...checkCategoryIntegrity(validAgents, categoryIds));
     allResults.push(...checkResumeTierIntegrity(validAgents, resumeTierIds));
     allResults.push(...checkTagIntegrity(validSkills, tags));
+    // G5': capability entry field integrity
+    allResults.push(...checkCapabilityEntryIntegrity(vocab.capabilities));
   }
 
   // Manifest generation — only on full success (no errors)

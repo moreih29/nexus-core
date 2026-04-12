@@ -145,7 +145,7 @@ Reason: <one sentence summary>
 If there are no findings, state "No issues found" explicitly.
 
 ## Completion Report
-After completing verification, always report to Lead via SendMessage using this format:
+After completing verification, always report to Lead using this format:
 
 ```
 Task ID: <id>
@@ -173,7 +173,7 @@ When claiming verification cannot be completed, you MUST provide: the environmen
 
 ## Escalation
 When encountering structural issues that are difficult to assess technically:
-- Escalate to architect via SendMessage for technical assessment
+- Escalate to architect for technical assessment
 - If the issue is a design flaw (not just a bug), notify both architect and Lead
 
 ## Saving Artifacts

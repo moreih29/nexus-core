@@ -1,0 +1,70 @@
+[
+  {
+    "test_id": "plan_decide_happy_path",
+    "description": "plan_decide marks an issue as decided and records the decision summary on the issue object",
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 1,
+          "topic": "Introduce conformance test fixtures",
+          "issues": [
+            {
+              "id": 1,
+              "title": "What fixture format best supports harness-neutral assertions?",
+              "status": "pending"
+            },
+            {
+              "id": 2,
+              "title": "Which tools should be covered in the MVP?",
+              "status": "pending"
+            }
+          ],
+          "research_summary": "Reviewed state-schemas and tool implementations.",
+          "created_at": "2026-04-12T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_decide",
+      "params": {
+        "issue_id": 1,
+        "summary": "Use declarative JSON with JSONPath assertions. Harness-neutral tool names only."
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.decided": true,
+        "$.allComplete": false,
+        "$.remaining.length": 1
+      },
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "$.issues[0].status": "decided",
+          "$.issues[0].decision": "Use declarative JSON with JSONPath assertions. Harness-neutral tool names only.",
+          "$.issues[1].status": "pending"
+        }
+      }
+    }
+  },
+  {
+    "test_id": "plan_decide_no_active_plan_error",
+    "description": "plan_decide returns an error when no plan.json exists, because there is no active plan session to record decisions against",
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": null
+      }
+    },
+    "action": {
+      "tool": "plan_decide",
+      "params": {
+        "issue_id": 1,
+        "summary": "Some decision"
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.error": "No active plan session"
+      }
+    }
+  }
+]

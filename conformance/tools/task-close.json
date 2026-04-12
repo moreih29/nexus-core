@@ -1,0 +1,98 @@
+[
+  {
+    "test_id": "task_close_happy_path",
+    "description": "task_close archives plan and tasks into history.json then deletes plan.json and tasks.json",
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 1,
+          "topic": "Introduce conformance test fixtures",
+          "issues": [
+            {
+              "id": 1,
+              "title": "What fixture format?",
+              "status": "decided",
+              "decision": "Declarative JSON with JSONPath assertions"
+            },
+            {
+              "id": 2,
+              "title": "Which tools to cover?",
+              "status": "decided",
+              "decision": "plan_start, plan_decide, task_add, task_close"
+            }
+          ],
+          "research_summary": "Reviewed existing state-schemas and tool implementations.",
+          "created_at": "2026-04-12T00:00:00.000Z"
+        },
+        ".nexus/state/tasks.json": {
+          "goal": "Ship MVP conformance fixtures",
+          "decisions": ["Declarative JSON with JSONPath assertions"],
+          "tasks": [
+            {
+              "id": 1,
+              "title": "Create fixture.schema.json",
+              "context": "Define the JSON Schema for fixture files",
+              "status": "completed",
+              "deps": [],
+              "created_at": "2026-04-12T00:00:00.000Z"
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "tool": "task_close",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.closed": true,
+        "$.archived.plan": true,
+        "$.archived.decisions": { "type": "number", "min": 1 },
+        "$.archived.tasks": 1,
+        "$.total_cycles": { "type": "number", "min": 1 }
+      },
+      "state_files": {
+        ".nexus/state/plan.json": null,
+        ".nexus/state/tasks.json": null,
+        ".nexus/history.json": {
+          "$.cycles.length": { "type": "number", "min": 1 },
+          "$.cycles[-1].plan.topic": "Introduce conformance test fixtures",
+          "$.cycles[-1].tasks.length": 1,
+          "$.cycles[-1].completed_at": { "type": "iso8601" }
+        }
+      }
+    }
+  },
+  {
+    "test_id": "task_close_no_plan_or_tasks",
+    "description": "task_close still creates a history cycle with null plan and empty tasks when neither plan.json nor tasks.json exist",
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": null,
+        ".nexus/state/tasks.json": null
+      }
+    },
+    "action": {
+      "tool": "task_close",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.closed": true,
+        "$.archived.plan": false,
+        "$.archived.tasks": 0,
+        "$.total_cycles": { "type": "number", "min": 1 }
+      },
+      "state_files": {
+        ".nexus/state/plan.json": null,
+        ".nexus/state/tasks.json": null,
+        ".nexus/history.json": {
+          "$.cycles.length": { "type": "number", "min": 1 },
+          "$.cycles[-1].plan": null,
+          "$.cycles[-1].tasks.length": 0
+        }
+      }
+    }
+  }
+]

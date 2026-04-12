@@ -1,6 +1,6 @@
 {
   "name": "@moreih29/nexus-core",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Nexus ecosystem Authoring layer — canonical prompts, neutral metadata, and vocabulary shared by Nexus harnesses",
   "license": "MIT",
   "repository": {
@@ -17,6 +17,8 @@
     "./skills/*": "./skills/*",
     "./vocabulary/*": "./vocabulary/*",
     "./schema/*": "./schema/*",
+    "./conformance/*": "./conformance/*",
+    "./docs/*": "./docs/*",
     "./manifest.json": "./manifest.json"
   },
   "files": [
@@ -24,6 +26,8 @@
     "skills",
     "vocabulary",
     "schema",
+    "conformance",
+    "docs",
     "manifest.json"
   ],
   "engines": {

@@ -29,11 +29,19 @@ Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 | `agents/{id}/meta.yml` | Agent neutral metadata | Raw metadata access if manifest is insufficient |
 | `agents/{id}/body.md` | Agent prompt body (markdown + inline XML) | Prompt injection source |
 | `skills/{id}/{meta.yml, body.md}` | Skill definitions (same pattern) | Skill dispatcher data |
-| `vocabulary/capabilities.yml` | Abstract capability definitions + harness mapping | Tool resolution |
+| `vocabulary/capabilities.yml` | Abstract capability definitions (intent, blocks_semantic_classes, prose_guidance) | Semantic capability lookup; map to harness tools via local capability-map |
 | `vocabulary/categories.yml` | HOW/DO/CHECK role categories | Agent classification |
 | `vocabulary/resume-tiers.yml` | persistent/bounded/ephemeral tier definitions | Session persistence decisions |
 | `vocabulary/tags.yml` | Canonical tag trigger definitions | Tag dispatcher |
 | `schema/*.json` | JSON Schema (draft 2020-12) files | Optional runtime validation |
+| `conformance/state-schemas/*.json` | State file structural validation schemas | Validate plan/tasks/history/runtime/agent-tracker files |
+| `conformance/tools/*.json` | Tool behavioral conformance fixtures | Assert tool implementation compatibility |
+| `conformance/scenarios/*.json` | Lifecycle scenario conformance fixtures | Validate end-to-end scenario behavior |
+| `conformance/schema/fixture.schema.json` | Conformance fixture format schema | Validate fixture files themselves |
+| `docs/nexus-tools-contract.md` | 11 Nexus-core tool semantic specifications | Reference for tool implementation |
+| `docs/nexus-state-overview.md` | State file lifecycle and tool interaction overview | Understand state transitions |
+| `docs/nexus-layout.md` | Canonical .nexus/ directory structure | Implement correct directory layout |
+| `docs/behavioral-contracts.md` | Behavioral contracts (state machines, resume, permissions) | Verify harness behavioral compliance |
 | `.nexus/rules/semver-policy.md` | 18-case semver interpretation table (git repo only, WebFetch) | Version bump interpretation |
 | `CHANGELOG.md` (root, in node_modules) | Version history with nx-car breaking change markers | Upgrade delta analysis |
 

@@ -15,7 +15,22 @@
       "items": { "$ref": "common.schema.json#/$defs/id" }
     },
     "alias_ko": { "type": "string" },
-    "manual_only": { "type": "boolean", "default": false }
+    "manual_only": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this skill MUST NOT be auto-invoked by the LLM from natural language inference. Only explicit user-initiated triggers (slash command or bracket tag typed by the user) may activate it."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 120,
+      "description": "Short one-line identity for UI/catalog rendering. Not a substitute for description."
+    },
+    "harness_docs_refs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "List of harness-specific documentation keys that consumers should surface when rendering this skill. Keys reference entries in a consumer-local harness-docs directory."
+    }
   },
   "allOf": [
     {

@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conformance/state-schemas/history.schema.json",
+  "title": "Nexus History",
+  "description": "Schema for .nexus/history.json — append-only log of completed plan/execution cycles",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["cycles"],
+  "properties": {
+    "cycles": {
+      "type": "array",
+      "description": "Chronologically ordered list of completed execution cycles",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["completed_at", "branch", "plan", "tasks"],
+        "properties": {
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this cycle was closed"
+          },
+          "branch": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Git branch active during this cycle"
+          },
+          "plan": {
+            "oneOf": [
+              { "$ref": "#/$defs/planFile" },
+              { "type": "null" }
+            ],
+            "description": "Snapshot of the plan at cycle completion, or null if no plan was active"
+          },
+          "tasks": {
+            "type": "array",
+            "description": "Snapshot of all tasks at cycle completion",
+            "items": { "$ref": "#/$defs/task" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "planFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "topic", "issues", "created_at"],
+      "properties": {
+        "id": {
+          "type": "number",
+          "minimum": 1
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "status"],
+            "properties": {
+              "id": { "type": "number", "minimum": 1 },
+              "title": { "type": "string", "minLength": 1 },
+              "status": { "type": "string", "enum": ["pending", "decided"] },
+              "decision": { "type": "string" },
+              "how_agents": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "how_summary": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              },
+              "how_agent_ids": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              }
+            }
+          }
+        },
+        "research_summary": { "type": "string" },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "context", "status", "deps"],
+      "properties": {
+        "id": { "type": "number", "minimum": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "context": { "type": "string", "minLength": 1 },
+        "approach": { "type": "string" },
+        "acceptance": { "type": "string" },
+        "risk": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "completed"]
+        },
+        "deps": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "plan_issue": { "type": "number" },
+        "owner": { "type": "string" },
+        "owner_agent_id": { "type": "string" },
+        "owner_reuse_policy": {
+          "type": "string",
+          "enum": ["fresh", "resume_if_same_artifact", "resume"]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

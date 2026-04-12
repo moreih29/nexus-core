@@ -1,5 +1,6 @@
 import { glob } from 'tinyglobby';
 import { readFile } from 'node:fs/promises';
+import { parse as parseYaml } from 'yaml';
 import path from 'node:path';
 
 /**
@@ -22,7 +23,9 @@ const LINT_EXCLUDE: string[] = [
   'dist/**',
   '.nexus/**',
   'schema/**',
-  // capabilities.yml legitimately contains harness tool names in harness_mapping values
+  // capabilities.yml prose_guidance naturally uses English words (Read, edit, write)
+  // that match tool-name regexes. After v0.2.0 harness-agnostic redesign, this file
+  // contains zero harness tool names — only semantic descriptions. Excluding is safe.
   'vocabulary/capabilities.yml',
 ];
 
@@ -35,12 +38,18 @@ const LINT_EXCLUDE: string[] = [
  */
 const LINT_INCLUDE: string[] = [
   'agents/**/meta.yml',
+  'agents/**/body.md',
   'skills/**/meta.yml',
+  'skills/**/body.md',
   'vocabulary/*.yml',
 ];
 
 // G6: harness-specific tool names
-const CLAUDE_CODE_TOOLS = /\b(Edit|Write|NotebookEdit|Bash|mcp__plugin_[a-z0-9_]+)\b/g;
+// Distinctive tools — unambiguous, safe to scan in ALL files including body.md prose
+const CLAUDE_CODE_TOOLS_DISTINCTIVE = /\b(NotebookEdit|BashOutput|KillShell|Glob|Grep|WebFetch|WebSearch|TodoWrite|SendMessage|TeamCreate|AskUserQuestion|mcp__plugin_[a-z0-9_]+)\b/g;
+// Ambiguous tools — also common English words (Read, Write, Edit, Bash, Task, Monitor)
+// Only scanned in meta.yml and vocabulary where they are clearly tool references, not prose.
+const CLAUDE_CODE_TOOLS_AMBIGUOUS = /\b(Read|Write|Edit|Bash|Task|Monitor)\b/g;
 const OPENCODE_TOOLS = /\b(edit|write|patch|multiedit|bash)\b/g;
 
 // G7: concrete model names
@@ -87,20 +96,35 @@ function scanRegex(
   return results;
 }
 
-/** G6: harness-specific tool names forbidden in body/meta/vocabulary. */
+/** G6: harness-specific tool names forbidden in body/meta/vocabulary.
+ *
+ * CLAUDE_CODE_TOOLS (capitalized, distinctive) — scanned in ALL lint-included files.
+ * OPENCODE_TOOLS (lowercase, indistinguishable from English words in prose) — scanned
+ * ONLY in meta.yml and vocabulary/*.yml, NOT in body.md or prose_guidance fields.
+ * Rationale: "edit", "write", "bash" are common English words that legitimately appear
+ * in descriptive body prose. Scanning body.md for these produces mass false positives.
+ */
 export async function checkHarnessSpecific(root: string): Promise<ValidationResult[]> {
   const results: ValidationResult[] = [];
   for await (const file of iterFiles(root)) {
     const source = await readFile(file, 'utf8');
     const rel = path.relative(root, file);
+    // Distinctive Claude Code tools (unambiguous) — all files
     results.push(
-      ...scanRegex(source, CLAUDE_CODE_TOOLS, rel, 'G6-harness-lint',
+      ...scanRegex(source, CLAUDE_CODE_TOOLS_DISTINCTIVE, rel, 'G6-harness-lint',
         (m) => `Harness-specific tool name forbidden: '${m}'. Use abstract capability or remove.`)
     );
-    results.push(
-      ...scanRegex(source, OPENCODE_TOOLS, rel, 'G6-harness-lint',
-        (m) => `OpenCode tool name forbidden: '${m}'. Use abstract capability or remove.`)
-    );
+    // Ambiguous tools (Read/Write/Edit/Bash/Task/Monitor + OpenCode lowercase) — meta.yml and vocabulary only
+    if (rel.endsWith('meta.yml') || rel.startsWith('vocabulary/')) {
+      results.push(
+        ...scanRegex(source, CLAUDE_CODE_TOOLS_AMBIGUOUS, rel, 'G6-harness-lint',
+          (m) => `Harness-specific tool name forbidden: '${m}'. Use abstract capability or remove.`)
+      );
+      results.push(
+        ...scanRegex(source, OPENCODE_TOOLS, rel, 'G6-harness-lint',
+          (m) => `OpenCode tool name forbidden: '${m}'. Use abstract capability or remove.`)
+      );
+    }
   }
   return results;
 }
@@ -115,6 +139,52 @@ export async function checkConcreteModel(root: string): Promise<ValidationResult
       ...scanRegex(source, CONCRETE_MODELS, rel, 'G7-model-lint',
         (m) => `Concrete model name forbidden: '${m}'. Use 'model_tier: high | standard'.`)
     );
+  }
+  return results;
+}
+
+/**
+ * G11: tag trigger consistency — each tag's trigger must equal "[" + id.replace(/-/g, ":") + "]".
+ */
+export async function checkTagTriggerConsistency(root: string): Promise<ValidationResult[]> {
+  const tagsPath = path.join(root, 'vocabulary', 'tags.yml');
+  const rel = path.join('vocabulary', 'tags.yml');
+  let source: string;
+  try {
+    source = await readFile(tagsPath, 'utf8');
+  } catch (err) {
+    return [{
+      file: rel,
+      gate: 'G11-tag-trigger',
+      severity: 'error',
+      message: `Cannot read tags.yml: ${(err as Error).message}`,
+    }];
+  }
+
+  let data: unknown;
+  try {
+    data = parseYaml(source);
+  } catch (err) {
+    return [{
+      file: rel,
+      gate: 'G11-tag-trigger',
+      severity: 'error',
+      message: `YAML parse error in tags.yml: ${(err as Error).message}`,
+    }];
+  }
+
+  const tags = (data as { tags?: Array<{ id: string; trigger: string }> })?.tags ?? [];
+  const results: ValidationResult[] = [];
+  for (const tag of tags) {
+    const expected = '[' + tag.id.replace(/-/g, ':') + ']';
+    if (tag.trigger !== expected) {
+      results.push({
+        file: rel,
+        gate: 'G11-tag-trigger',
+        severity: 'error',
+        message: `Tag '${tag.id}': trigger mismatch — expected '${expected}', got '${tag.trigger}'`,
+      });
+    }
   }
   return results;
 }

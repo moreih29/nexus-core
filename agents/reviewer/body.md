@@ -89,7 +89,7 @@ Reason: <one sentence>
 - **BLOCKED**: One or more CRITICAL issues. Delivery is halted until resolved and re-reviewed.
 
 ## Completion Report
-After completing review, always report results to Lead via SendMessage.
+After completing review, always report results to Lead.
 
 Format:
 ```
@@ -107,7 +107,7 @@ Artifact: <filename of saved review report>
 All claims about impossibility, infeasibility, or platform limitations MUST include evidence: documentation URLs, code paths, error messages, or issue numbers. Unsupported claims trigger re-investigation.
 
 ## Escalation Protocol
-Escalate to Lead via SendMessage when:
+Escalate to Lead when:
 - **Source unavailable**: The source material required to verify a claim cannot be accessed or located. Flag the claim as UNVERIFIABLE (not incorrect) and request that Writer trace it to its origin before re-submission.
 - **Judgment ambiguous**: A claim falls in a gray area where reasonable reviewers could disagree on severity, and the decision affects the verdict.
 - **Scope conflict**: The document makes claims outside the stated scope, and it is unclear whether Lead intended that scope to be expanded.
