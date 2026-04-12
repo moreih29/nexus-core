@@ -21,21 +21,21 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
-## [1.0.0] - 2026-04-12
+## [0.3.0] - 2026-04-12
 
 ### BREAKING CHANGES
-<!-- nx-car:v1.0.0:start -->
+<!-- nx-car:v0.3.0:start -->
 - **removed**: `skills/nx-setup/` — `body.md` contained Claude Code–specific tool names and UI idioms throughout, violating the harness-neutral principle. The directory has been deleted from the package.
 - **impact**: any consumer that resolved `nx-setup` from this package (via `manifest.json` lookup, directory traversal, or npm `skills/nx-setup/` path) will find the entry absent. Harnesses that surfaced a setup experience backed by this skill will break at boot or first invocation.
 - **action**: implement a local `setup` skill in your consumer repo. The skill contract (required `meta.yml` fields, expected capability references) is documented in `CONSUMING.md` under "Setup Skill Contract".
-- **migration**: See [MIGRATIONS/v0_2_to_v1_0.md](./MIGRATIONS/v0_2_to_v1_0.md)
-<!-- nx-car:v1.0.0:end -->
+- **migration**: See [MIGRATIONS/v0_2_to_v0_3.md](./MIGRATIONS/v0_2_to_v0_3.md)
+<!-- nx-car:v0.3.0:end -->
 
 ### Consumer Action Required
 
 1. **Remove any reference to `skills/nx-setup/`** from your harness bootstrap, skill-loader, and manifest-resolution logic.
 2. **Implement a local setup skill** in your consumer repo. Consult `CONSUMING.md` → "Setup Skill Contract" for the required `meta.yml` fields and capability references your implementation must declare.
-3. **Update your pin** from `0.2.0` to `1.0.0` only after the local setup skill is in place and validated.
+3. **Update your pin** from `0.2.0` to `0.3.0` only after the local setup skill is in place and validated.
 
 ### Changed
 
@@ -136,8 +136,8 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/moreih29/nexus-core/compare/v0.2.0...v1.0.0
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/moreih29/nexus-core/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/moreih29/nexus-core/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/moreih29/nexus-core/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/moreih29/nexus-core/compare/v0.1.0...v0.1.1
