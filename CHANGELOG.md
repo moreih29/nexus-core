@@ -21,6 +21,36 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.2.0] - 2026-04-12
+
+### BREAKING CHANGES
+<!-- nx-car:v0.2.0:start -->
+- **removed**: `harness_mapping` from `vocabulary/capabilities.yml` — nexus-core no longer knows which harnesses exist
+- **added**: `intent`, `blocks_semantic_classes`, `prose_guidance` fields (X3 hybrid semantic schema)
+- **added**: `no_shell_exec` 4th capability entry (opt-in, no canonical agent references it)
+- **impact**: all consumers reading `harness_mapping[harnessName]` for tool resolution
+- **action**: Create local capability-map in your repo; read `prose_guidance` from manifest.json; map to your harness tools. Add CI test asserting coverage.
+- **schema_contract_version**: 1.0 → 2.0
+- **migration**: See [MIGRATIONS/v0_1_to_v0_2.md](./MIGRATIONS/v0_1_to_v0_2.md)
+<!-- nx-car:v0.2.0:end -->
+
+### Added
+- `conformance/` directory: state file JSON schemas (plan, tasks, history, runtime, agent-tracker) + tool conformance fixtures (plan_start, plan_decide, task_add, task_close) + scenario fixtures (full-plan-cycle, task-deps-ordering)
+- `docs/` directory: nexus-tools-contract.md (11 tool semantic specs), nexus-state-overview.md, nexus-layout.md (.nexus/ canonical structure), behavioral-contracts.md (state machines, resume tiers, permissions, manual_only, NL trigger boundary)
+- `summary` optional field in `skill.schema.json` — short one-liner for UI/catalog rendering
+- `harness_docs_refs` optional field in `skill.schema.json` — references to consumer-local harness-specific documentation
+- Gate 11 (`G11-tag-trigger`): tags.yml trigger↔id consistency validation
+- G5' capability integrity: validates intent/blocks_semantic_classes/prose_guidance
+- G6 lint expansion: now scans `agents/**/body.md` and `skills/**/body.md`
+- DO/CHECK decomposition principle in `skills/nx-plan/body.md`
+- `.nexus/memory/consumer-lib-reference.md` — pseudocode reference for trivial consumer helpers
+
+### Changed
+- All 9 agent body.md files and 5 skill body.md files rewritten for harness-neutrality (tool name references replaced with neutral phrasing)
+- `manual_only` in skill.schema.json now has normative description
+- `vocabulary.schema.json` capabilityEntry definition updated for X3 schema
+- `schema/common.schema.json` harnessId $def removed
+
 ## [0.1.2] - 2026-04-11
 
 ### Added
@@ -77,5 +107,8 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/moreih29/nexus-core/compare/v0.1.2...v0.2.0
+[0.1.2]: https://github.com/moreih29/nexus-core/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/moreih29/nexus-core/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/moreih29/nexus-core/releases/tag/v0.1.0

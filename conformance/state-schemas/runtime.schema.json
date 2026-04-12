@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conformance/state-schemas/runtime.schema.json",
+  "title": "Nexus Runtime State",
+  "description": "Schema for .nexus/state/runtime.json — ephemeral runtime configuration written by the harness at session start",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["teams_enabled", "session_started_at", "plugin_version"],
+  "properties": {
+    "teams_enabled": {
+      "type": "boolean",
+      "description": "Whether multi-agent team orchestration is active in this session"
+    },
+    "session_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the current harness session was started"
+    },
+    "plugin_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version string of the harness plugin that wrote this file"
+    }
+  }
+}

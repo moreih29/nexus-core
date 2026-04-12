@@ -1,0 +1,73 @@
+[
+  {
+    "test_id": "task_add_happy_path",
+    "description": "task_add creates tasks.json with the new task when no tasks.json existed, assigning id=1 and status=pending",
+    "precondition": {
+      "state_files": {
+        ".nexus/state/tasks.json": null
+      }
+    },
+    "action": {
+      "tool": "task_add",
+      "params": {
+        "title": "Create fixture.schema.json",
+        "context": "Define the JSON Schema that validates conformance test fixture files",
+        "deps": [],
+        "approach": "Write schema incrementally, validating against draft/2020-12 spec",
+        "acceptance": "All 6 fixture files validate against the schema without errors",
+        "risk": "JSONPath assertion syntax may need iteration to be harness-implementable"
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.task.id": 1,
+        "$.task.title": "Create fixture.schema.json",
+        "$.task.status": "pending",
+        "$.task.deps.length": 0,
+        "$.task.created_at": { "type": "iso8601" }
+      },
+      "state_files": {
+        ".nexus/state/tasks.json": {
+          "$.tasks.length": 1,
+          "$.tasks[0].id": 1,
+          "$.tasks[0].title": "Create fixture.schema.json",
+          "$.tasks[0].status": "pending",
+          "$.tasks[0].deps.length": 0
+        }
+      }
+    }
+  },
+  {
+    "test_id": "task_add_with_goal",
+    "description": "task_add sets the goal field on tasks.json when the goal parameter is provided on the first call",
+    "precondition": {
+      "state_files": {
+        ".nexus/state/tasks.json": null
+      }
+    },
+    "action": {
+      "tool": "task_add",
+      "params": {
+        "title": "Write conformance tool fixtures",
+        "context": "Create the 4 per-tool fixture files covering happy path and error cases",
+        "deps": [],
+        "goal": "Ship MVP conformance fixtures for nexus-core v0.2.0",
+        "decisions": ["Cover plan_start, plan_decide, task_add, task_close"]
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.task.id": 1,
+        "$.task.title": "Write conformance tool fixtures"
+      },
+      "state_files": {
+        ".nexus/state/tasks.json": {
+          "$.goal": "Ship MVP conformance fixtures for nexus-core v0.2.0",
+          "$.decisions.length": 1,
+          "$.decisions[0]": "Cover plan_start, plan_decide, task_add, task_close",
+          "$.tasks.length": 1
+        }
+      }
+    }
+  }
+]

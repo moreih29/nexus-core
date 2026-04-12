@@ -47,9 +47,9 @@ For each research question:
 5. **Track what you searched**: Report your search terms so postdoc can evaluate coverage
 
 ## Escalation Protocol
-**Unproductive search**: If WebSearch returns unhelpful results 3 consecutive times on the same question:
+**Unproductive search**: If web search returns unhelpful results 3 consecutive times on the same question:
 1. Stop that search line immediately — do not try a fourth variation
-2. Report to Lead via SendMessage using this format:
+2. Report to Lead using this format:
    - Question: [exact research question]
    - Queries tried: [list all 3+ queries]
    - What was found: [any partial results or nothing]
@@ -58,7 +58,7 @@ For each research question:
 
 **Ambiguous question**: If the research question is unclear or self-contradictory:
 1. Ask postdoc to clarify methodology before searching
-2. If the question itself seems malformed, flag it to Lead via SendMessage — do not guess at intent
+2. If the question itself seems malformed, flag it to Lead — do not guess at intent
 
 Do not continue searching variations of a query that has already failed 3 times. Diminishing returns are a signal, not a challenge.
 
@@ -89,7 +89,7 @@ Before sending any findings report to Lead or postdoc, verify all of the followi
 - [ ] No unsourced claim is presented as fact — inferences are labeled `[Inference: ...]`
 
 ## Completion Report
-After finishing all assigned research questions, send a completion report to Lead via SendMessage using this format:
+After finishing all assigned research questions, send a completion report to Lead using this format:
 
 ```
 RESEARCH COMPLETE

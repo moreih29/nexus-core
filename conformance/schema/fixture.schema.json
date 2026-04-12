@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fixture.schema.json",
+  "title": "Nexus Conformance Test Fixture",
+  "description": "Declarative test case for Nexus MCP tool behavioral verification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["test_id", "description"],
+  "properties": {
+    "test_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "description": "Unique identifier for this fixture, used for reporting"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Human-readable description of what behavior this fixture verifies"
+    },
+    "precondition": {
+      "type": "object",
+      "description": "State that must be established before the action or steps are executed",
+      "additionalProperties": false,
+      "properties": {
+        "state_files": {
+          "type": "object",
+          "description": "Map of file path → content object (null means the file must not exist)",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "object" },
+              { "type": "null" }
+            ]
+          }
+        }
+      }
+    },
+    "action": {
+      "$ref": "#/$defs/action",
+      "description": "Single tool invocation — use for single-action fixtures; omit when using steps"
+    },
+    "steps": {
+      "type": "array",
+      "description": "Ordered sequence of tool invocations with per-step assertions — use for multi-step scenarios",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "postcondition": {
+      "$ref": "#/$defs/postcondition",
+      "description": "Assertions evaluated after the action (or all steps) complete"
+    }
+  },
+  "$defs": {
+    "action": {
+      "type": "object",
+      "description": "A single tool invocation",
+      "additionalProperties": false,
+      "required": ["tool", "params"],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "description": "Abstract tool name (e.g. plan_start, task_add). Must not include harness-specific prefixes."
+        },
+        "params": {
+          "type": "object",
+          "description": "Input parameters passed verbatim to the tool"
+        }
+      }
+    },
+    "postcondition": {
+      "type": "object",
+      "description": "Assertions on the state and return value after the action completes",
+      "additionalProperties": false,
+      "properties": {
+        "state_files": {
+          "type": "object",
+          "description": "Map of file path → assertion object (null means the file must not exist after the action)",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "description": "JSONPath assertions on the file content. Keys are JSONPath expressions, values are expected values or matcher objects.",
+                "additionalProperties": {
+                  "oneOf": [
+                    { "type": "string" },
+                    { "type": "number" },
+                    { "type": "boolean" },
+                    { "type": "null" },
+                    {
+                      "type": "object",
+                      "description": "Matcher object for type checks and range assertions",
+                      "required": ["type"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["iso8601", "string", "number", "boolean"],
+                          "description": "Expected value type"
+                        },
+                        "min": {
+                          "type": "number",
+                          "description": "Minimum numeric value (for type: number)"
+                        },
+                        "max": {
+                          "type": "number",
+                          "description": "Maximum numeric value (for type: number)"
+                        },
+                        "minLength": {
+                          "type": "number",
+                          "description": "Minimum string length (for type: string)"
+                        },
+                        "pattern": {
+                          "type": "string",
+                          "description": "Regex pattern the value must match (for type: string)"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              { "type": "null" }
+            ]
+          }
+        },
+        "return_value": {
+          "type": "object",
+          "description": "JSONPath assertions on the tool return value. Same assertion syntax as state_files entries.",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" },
+              { "type": "null" },
+              {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": { "type": "string", "enum": ["iso8601", "string", "number", "boolean"] },
+                  "min": { "type": "number" },
+                  "max": { "type": "number" },
+                  "minLength": { "type": "number" },
+                  "pattern": { "type": "string" }
+                }
+              }
+            ]
+          }
+        },
+        "error": {
+          "type": "boolean",
+          "description": "If true, the action must produce an error response"
+        },
+        "error_contains": {
+          "type": "string",
+          "description": "The error message must contain this substring (implies error: true)"
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "description": "One step in a multi-step scenario",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Optional human-readable label for this step"
+        },
+        "action": { "$ref": "#/$defs/action" },
+        "assert_return": {
+          "type": "object",
+          "description": "JSONPath assertions on the return value of this step's action",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" },
+              { "type": "null" },
+              {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": { "type": "string", "enum": ["iso8601", "string", "number", "boolean"] },
+                  "min": { "type": "number" },
+                  "max": { "type": "number" },
+                  "minLength": { "type": "number" },
+                  "pattern": { "type": "string" }
+                }
+              }
+            ]
+          }
+        },
+        "assert_state": {
+          "type": "object",
+          "description": "Map of file path → assertions on state files after this step completes. null means file must not exist.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "oneOf": [
+                    { "type": "string" },
+                    { "type": "number" },
+                    { "type": "boolean" },
+                    { "type": "null" },
+                    {
+                      "type": "object",
+                      "required": ["type"],
+                      "properties": {
+                        "type": { "type": "string", "enum": ["iso8601", "string", "number", "boolean"] },
+                        "min": { "type": "number" },
+                        "max": { "type": "number" },
+                        "minLength": { "type": "number" },
+                        "pattern": { "type": "string" }
+                      }
+                    }
+                  ]
+                }
+              },
+              { "type": "null" }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

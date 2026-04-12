@@ -1,0 +1,67 @@
+[
+  {
+    "test_id": "plan_start_happy_path",
+    "description": "plan_start creates plan.json with correct structure when given a topic, issues, and research_summary",
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": null
+      }
+    },
+    "action": {
+      "tool": "plan_start",
+      "params": {
+        "topic": "Introduce conformance test fixtures",
+        "issues": [
+          "What fixture format best supports harness-neutral assertions?",
+          "Which tools should be covered in the MVP?"
+        ],
+        "research_summary": "Reviewed existing state-schemas and claude-nexus MCP tool implementations. Conformance fixtures should be declarative JSON with JSONPath assertions."
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.created": true,
+        "$.plan_id": { "type": "number", "min": 1 },
+        "$.topic": "Introduce conformance test fixtures",
+        "$.issueCount": 2
+      },
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "$.id": { "type": "number", "min": 1 },
+          "$.topic": "Introduce conformance test fixtures",
+          "$.issues.length": 2,
+          "$.issues[0].id": 1,
+          "$.issues[0].title": "What fixture format best supports harness-neutral assertions?",
+          "$.issues[0].status": "pending",
+          "$.issues[1].id": 2,
+          "$.issues[1].title": "Which tools should be covered in the MVP?",
+          "$.issues[1].status": "pending",
+          "$.research_summary": { "type": "string", "minLength": 10 },
+          "$.created_at": { "type": "iso8601" }
+        }
+      }
+    }
+  },
+  {
+    "test_id": "plan_start_missing_research_summary_error",
+    "description": "plan_start rejects the invocation when research_summary is omitted — the field is required to enforce that research happened before planning",
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": null
+      }
+    },
+    "action": {
+      "tool": "plan_start",
+      "params": {
+        "topic": "Some topic",
+        "issues": ["Issue A"]
+      }
+    },
+    "postcondition": {
+      "error": true,
+      "state_files": {
+        ".nexus/state/plan.json": null
+      }
+    }
+  }
+]

@@ -1,5 +1,8 @@
 name: nx-run
 description: Execution — user-directed agent composition.
+summary: "Execution — user-directed agent composition"
 triggers:
   - run
+harness_docs_refs:
+  - resume_invocation
 id: nx-run

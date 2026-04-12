@@ -1,32 +1,65 @@
-# Capabilities restrict an agent's access to harness-provided tools.
-# NOT constraints on nexus-core's own scripts/ or tooling.
+# Harness-neutral capability definitions.
+# Each entry describes WHAT is denied in semantic terms.
+# Consumers (claude-nexus, opencode-nexus, nexus-code) maintain their own
+# local map from these ids/classes to concrete tool names in their own repo.
+# nexus-core does not and must not know those tool names.
 
 capabilities:
   - id: no_file_edit
-    description: "Agent cannot create or modify files in the user's workspace"
-    harness_mapping:
-      claude_code:
-        - Edit
-        - Write
-        - NotebookEdit
-      opencode:
-        - edit
-        - write
-        - patch
-        - multiedit
+    description: "Agent cannot create, modify, or delete files in the user's workspace."
+    intent: workspace_write_denial
+    blocks_semantic_classes:
+      - file_creation
+      - file_modification
+      - file_deletion
+      - partial_file_edit
+      - structured_document_edit
+    prose_guidance: |
+      Block any tool whose primary effect is to alter content at a workspace
+      file path. This includes: creating new files at arbitrary paths, rewriting
+      whole file contents, applying partial edits (diffs, patches, find-replace,
+      multi-edit batches), deleting or truncating files, and cell-level edits in
+      structured documents such as notebooks.
+      Read-only operations are NOT blocked: reading file contents, querying
+      metadata, listing directories, and running code-intelligence queries that
+      do not mutate files.
 
   - id: no_task_create
-    description: "Agent cannot create new tasks in the Nexus task pipeline"
-    harness_mapping:
-      claude_code:
-        - mcp__plugin_claude-nexus_nx__nx_task_add
-      opencode:
-        - nx_task_add
+    description: "Agent cannot create new tasks in the Nexus task pipeline."
+    intent: task_pipeline_append_denial
+    blocks_semantic_classes:
+      - nexus_task_creation
+    prose_guidance: |
+      Block any tool that appends a new task to the Nexus task pipeline (the
+      mechanism by which Lead-owned work is enqueued for execution). Tools that
+      read, list, or query existing tasks are NOT blocked. Tools that modify
+      existing task state belong to a separate capability (no_task_update) and
+      are not governed here.
 
   - id: no_task_update
-    description: "Agent cannot update the state of existing Nexus tasks"
-    harness_mapping:
-      claude_code:
-        - mcp__plugin_claude-nexus_nx__nx_task_update
-      opencode:
-        - nx_task_update
+    description: "Agent cannot update the state of existing Nexus tasks."
+    intent: task_pipeline_mutate_denial
+    blocks_semantic_classes:
+      - nexus_task_state_transition
+      - nexus_task_metadata_modification
+    prose_guidance: |
+      Block any tool that mutates an existing Nexus task: changing its status,
+      editing its description, reassigning ownership, closing it, or modifying
+      any field on its record. Tools that read, list, or query tasks are NOT
+      blocked. Creation of new tasks is governed by no_task_create, not here.
+
+  - id: no_shell_exec
+    description: "Agent cannot execute arbitrary shell commands or spawn subprocesses."
+    intent: shell_execution_denial
+    blocks_semantic_classes:
+      - shell_command_exec
+      - subprocess_spawn
+      - interactive_shell_session
+    prose_guidance: |
+      Block any tool whose primary effect is to run a command-line invocation,
+      shell script, or spawn a subprocess on the user's machine. This includes
+      general-purpose shell runners, background process managers, shell output
+      readers, and shell-session kill operations. Tools that read files, query
+      metadata, or call specialized non-shell APIs (HTTP, language-server
+      queries, sandboxed code evaluators that do not spawn user-machine
+      processes) are NOT blocked.

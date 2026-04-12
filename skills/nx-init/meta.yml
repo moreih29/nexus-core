@@ -1,4 +1,5 @@
 name: nx-init
 description: Project onboarding — scan, mission, essentials, context generation
+summary: "Project onboarding — scan, mission, essentials, context generation"
 manual_only: true
 id: nx-init

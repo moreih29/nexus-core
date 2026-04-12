@@ -8,7 +8,7 @@ Facilitate structured multi-perspective analysis using subagents to decompose is
 - NEVER call `nx_plan_start` before research is complete (research_summary is required)
 - NEVER present multiple issues at once — one issue at a time only
 - NEVER ask groundless questions — always research code/knowledge/decisions first
-- NEVER use TeamCreate. SendMessage is permitted ONLY for resuming completed subagents whose `resume_tier` is `persistent` or `bounded`, and ONLY within the constraints of the Resume Policy section below. SendMessage to a `name` (running teammate communication) remains forbidden in plan sessions.
+- NEVER use the harness's team creation primitive. Inter-agent messaging for resume is permitted ONLY for resuming completed subagents whose `resume_tier` is `persistent` or `bounded`, and ONLY within the constraints of the Resume Policy section below. Direct inter-agent communication to running teammates remains forbidden in plan sessions.
 - MUST record all decisions with `[d]` tag so they are not scattered across turns
 - MUST call `nx_plan_decide` when recording `[d]`
 - MUST check for existing plan.json before starting a new session
@@ -50,7 +50,7 @@ When triggered with `[plan:auto]` or invoked via `Skill({ args: "auto" })`, run 
 5. **Plan document** — generate tasks.json following Step 7 rules (including HOW-assisted decomposition if `how_agents` present in plan.json issues). Apply owner table and verification auto-pairing.
 
 Key differences from interactive mode:
-- No `AskUserQuestion` or comparison tables — Lead decides autonomously
+- No user prompts or comparison tables — Lead decides autonomously
 - No dynamic agenda proposals — Lead handles all derived issues internally
 - Output: tasks.json ready for `[run]` execution
 
@@ -87,7 +87,7 @@ Determine planning depth and identify which HOW subagents to delegate analysis t
 
 Understand code, core knowledge, and prior decisions before forming a planning agenda.
 
-**Start by checking existing knowledge**: before spawning any subagent, use Glob/Read to scan `.nexus/memory/` and `.nexus/context/` for relevant memos and context files, and use `nx_history_search` to check for prior decisions on this topic. If the needed information is already there, use it directly and skip or narrow the subagent spawn. Only spawn subagents to fill gaps not covered by existing knowledge.
+**Start by checking existing knowledge**: before spawning any subagent, use file pattern search and file reading to scan `.nexus/memory/` and `.nexus/context/` for relevant memos and context files, and use `nx_history_search` to check for prior decisions on this topic. If the needed information is already there, use it directly and skip or narrow the subagent spawn. Only spawn subagents to fill gaps not covered by existing knowledge.
 
 **Approach selection:**
 
@@ -154,7 +154,7 @@ For each issue:
 
 ## Resume Policy
 
-When `.nexus/state/runtime.json` shows `teams_enabled: false`, ALL resume paths are disabled — force fresh spawn. Otherwise:
+When the harness's resume mechanism is unavailable, ALL resume paths are disabled — force fresh spawn. Otherwise:
 
 | resume_tier | Same-issue default | Cross-issue | Disqualifiers |
 |---|---|---|---|
@@ -211,7 +211,7 @@ All issues decided → generate the plan document (tasks.json) immediately:
    - `deps` — task dependencies based on execution order
    - `owner` — assign based on delegation analysis:
 
-   | Task type | owner | Criteria |
+   | Work type | owner | Criteria |
    |-----------|-------|----------|
    | Single file, small change | **lead** | Subagent overhead > task effort |
    | Code implementation (.ts, .js, .py, etc.) | **engineer** | Source code creation/modification |
@@ -220,11 +220,14 @@ All issues decided → generate the plan document (tasks.json) immediately:
    | Design analysis / review | **architect** etc. HOW | Technical trade-off judgment |
    | Sequential edits to same file | **lead** | Parallel subagents risk conflict |
 
-   **Verification task auto-pairing** — create separate verification tasks:
-   - Task with `owner: "engineer"` + `acceptance` field → pair a **tester** task (verify acceptance criteria)
-   - Task with `owner: "writer"` → pair a **reviewer** task (verify deliverable)
+   **Verification auto-pairing** — create separate verification tasks:
+   - Any task with `owner: "engineer"` + `acceptance` field → pair a **tester** task (verify acceptance criteria)
+   - Any task with `owner: "writer"` → pair a **reviewer** task (verify deliverable)
    - Paired verification tasks are linked via `deps` to the original task
-4. **Write tasks.json** via `nx_task_add`:
+
+   **DO/CHECK decomposition principle**: DO category agents (engineer, writer, researcher) and CHECK category agents (tester, reviewer) operate on artifact-level scope and accumulate less per-task context than HOW category agents. When a task involves multiple independent artifacts (several files, several verification targets, multiple research questions), decompose the task across multiple parallel DO/CHECK subagents rather than bundling them into a single subagent. Single-subagent bundles risk context exhaustion with no wall-clock benefit over parallel decomposition. HOW agents benefit from consolidated context and should generally remain as single sessions. Task granularity is assessed per-task by the plan author, not declared per-agent in meta.yml.
+
+4. **Populate tasks.json** via `nx_task_add`:
    - Set `goal` from the plan topic
    - Set `decisions` from plan.json decided summaries
    - Call `nx_task_add(plan_issue=N, approach, acceptance, risk, owner)` for each task
@@ -292,8 +295,8 @@ Proceed with `[run]` to execute.
 ```
 
 - **Create**: `nx_plan_start(topic, issues, research_summary)` — called in Step 3; auto-archives any existing plan.json
-- **Read**: `nx_plan_status()` — check current issue state + decisions
-- **Update**: `nx_plan_update(action, ...)` — add/remove/edit/reopen issues
+- **Status**: `nx_plan_status()` — check current issue state + decisions
+- **Update**: `nx_plan_update(action, ...)` — add/remove/modify/reopen issues
 - **Decide**: `nx_plan_decide(issue_id, summary)` — marks issue as `decided`, writes decision inline
 - **File presence = session in progress**
 

@@ -85,7 +85,7 @@ Before sending output to Reviewer or reporting completion, verify:
 This is Writer's self-check scope. **Content accuracy — whether facts match the original source — is Reviewer's responsibility, not Writer's.**
 
 ## Completion Report
-After completing a document, report to Lead via SendMessage with the following fields:
+After completing a document, report to Lead with the following fields:
 - **File**: artifact filename written via `nx_artifact_write`
 - **Audience**: who the document is for and what they will do with it
 - **Sources**: which agents or documents provided the source material

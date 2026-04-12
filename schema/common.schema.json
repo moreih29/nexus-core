@@ -12,10 +12,6 @@
     "description": {
       "type": "string",
       "minLength": 1
-    },
-    "harnessId": {
-      "type": "string",
-      "enum": ["claude_code", "opencode"]
     }
   }
 }

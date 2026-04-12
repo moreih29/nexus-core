@@ -10,6 +10,7 @@ import {
   checkHarnessSpecific,
   checkConcreteModel,
   checkPromptOnly,
+  checkTagTriggerConsistency,
 } from './lib/lint.ts';
 import {
   checkDirectoryStrict,
@@ -48,12 +49,16 @@ async function main(): Promise<void> {
   const idResults = await checkIdMatch(root);
   allResults.push(...idResults);
 
+  // Gate 11: tag trigger consistency
+  const tagTriggerResults = await checkTagTriggerConsistency(root);
+  allResults.push(...tagTriggerResults);
+
   // Report
   const errors = allResults.filter((r) => r.severity === 'error');
   const warnings = allResults.filter((r) => r.severity === 'warning');
 
   if (allResults.length === 0) {
-    console.log('All 10 validation gates passed.');
+    console.log('All 11 validation gates passed.');
     return;
   }
 

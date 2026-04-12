@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conformance/state-schemas/tasks.schema.json",
+  "title": "Nexus Tasks State",
+  "description": "Schema for .nexus/state/tasks.json — the task list produced by nx-plan and mutated by MCP tools during nx-run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["goal", "decisions", "tasks"],
+  "properties": {
+    "goal": {
+      "type": "string",
+      "minLength": 1,
+      "description": "High-level goal statement for the current execution cycle"
+    },
+    "decisions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Key decisions carried forward from planning that constrain execution"
+    },
+    "tasks": {
+      "type": "array",
+      "description": "Ordered list of tasks to be executed",
+      "items": {
+        "$ref": "#/$defs/task"
+      }
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "context", "status", "deps"],
+      "properties": {
+        "id": {
+          "type": "number",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Background context and motivation for this task"
+        },
+        "approach": {
+          "type": "string",
+          "description": "Implementation approach guidance"
+        },
+        "acceptance": {
+          "type": "string",
+          "description": "Acceptance criteria for task completion"
+        },
+        "risk": {
+          "type": "string",
+          "description": "Known risks or concerns"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "completed"]
+        },
+        "deps": {
+          "type": "array",
+          "items": { "type": "number" },
+          "description": "Task IDs that must complete before this task can start"
+        },
+        "plan_issue": {
+          "type": "number",
+          "description": "ID of the plan issue that originated this task"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Agent type assigned to own this task (e.g. 'engineer')"
+        },
+        "owner_agent_id": {
+          "type": "string",
+          "description": "Specific agent instance ID assigned to this task"
+        },
+        "owner_reuse_policy": {
+          "type": "string",
+          "enum": ["fresh", "resume_if_same_artifact", "resume"],
+          "description": "Policy controlling agent instance reuse across task executions"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when this task was created"
+        }
+      }
+    }
+  }
+}

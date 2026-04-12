@@ -2,6 +2,9 @@ name: nx-plan
 description: Structured multi-perspective analysis to decompose issues, align on
   decisions, and produce an enriched plan before execution. Plan only — does not
   execute.
+summary: "Structured planning — subagent-based analysis, deliberate decisions, produce execution plan"
 triggers:
   - plan
+harness_docs_refs:
+  - resume_invocation
 id: nx-plan

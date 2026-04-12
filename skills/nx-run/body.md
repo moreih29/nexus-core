@@ -4,10 +4,10 @@ Execution norm that Lead follows when the user invokes the [run] tag. Composes s
 
 ## Constraints
 
-- NEVER modify files via Bash (sed, echo >, cat <<EOF, tee, etc.) — always use Edit/Write tools (Gate enforced)
+- NEVER modify files via shell commands (sed, echo redirection, heredoc, tee, etc.) — always use the harness's dedicated file-editing primitives (gate enforced)
 - NEVER terminate while pending tasks remain (Gate Stop nonstop)
 - NEVER spawn a new branch without checking for main/master first
-- MUST check tasks.json before executing — if absent, write the plan first
+- MUST check tasks.json before executing — if absent, generate the plan first
 - MUST spawn subagents per-task based on owner field — Do not handle multi-task work as Lead solo when task count ≥ 2 or target files ≥ 2
 - MUST NOT spawn parallel Engineers if their target files overlap — serialize instead
 - MUST call nx_task_close before completing the cycle — archive plan+tasks to history.json
@@ -61,7 +61,7 @@ For each task, Lead chooses between fresh spawn and resume based on the `owner`'
 2. If `ephemeral` → fresh spawn. Stop.
 3. If `bounded` → check tasks.json history: did the same `owner` previously work on overlapping target files? If yes AND no intervening edits by other agents → resume candidate. Otherwise fresh. Always include "re-read target files before any modification" instruction in the resume prompt.
 4. If `persistent` → resume by default if the same agent worked earlier in this run. Cross-task reuse allowed.
-5. Before issuing SendMessage for any resume, verify `.nexus/state/runtime.json` has `teams_enabled: true`. Otherwise fall back to fresh spawn silently — do NOT throw an error.
+5. Before attempting any resume, verify the harness's resume mechanism is available. If unavailable, fall back to fresh spawn silently — do NOT throw an error.
 
 ### Step 3: Verify (Lead + Check subagents)
 
@@ -142,7 +142,7 @@ ACCEPTANCE:
 6. **SubagentStop escalation** — when a subagent stops with incomplete work, escalate through HOW diagnosis → re-delegation → user report. Max 1 cycle per task.
 7. **Gate Stop nonstop** — cannot terminate while pending tasks exist
 8. **Plan first** — if tasks.json is absent, nx-plan must run before Step 2
-9. **No file modification via Bash** — sed, echo >, cat <<EOF, tee, and similar Bash-based file edits are prohibited. Always use Edit/Write tools (Gate enforced)
+9. **No file modification via shell commands** — sed, echo redirection, heredoc, tee, and similar shell-based file edits are prohibited. Always use the harness's dedicated file-editing primitives (gate enforced)
 ## State Management
 
 `.nexus/state/tasks.json` — produced by nx-plan, managed via `nx_task_add`/`nx_task_update`. Gate Stop enforcement.
