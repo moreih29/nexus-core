@@ -45,7 +45,7 @@ git pull origin main
 # Install deps and verify
 bun install --frozen-lockfile
 bun run typecheck                 # expect: 0 errors
-bun run validate                  # expect: "All 10 validation gates passed."
+bun run validate                  # expect: "All 11 validation gates passed."
 ```
 
 If any of the above fails, **stop** and surface the error to the user. Do
@@ -192,7 +192,7 @@ Expected steps, all green, under 30 seconds total:
 2. Setup Bun (1.3.x)
 3. Setup Node 24 (bundled npm 11+ required for OIDC)
 4. Install dependencies
-5. Run validation (10 gates)
+5. Run validation (11 gates)
 6. Version match check (git tag vs package.json)
 7. Pack (dry-run verification)
 8. Publish to npm (OIDC Trusted Publishing)
@@ -258,12 +258,15 @@ during the bootstrap phase. Treat them as inviolate.
   with Node 24 and later only.
 - **DO NOT** push runtime code (`.ts` / `.js` / `.cjs` / `.mjs`) anywhere
   outside `scripts/`. G8 `prompt-only` gate will fail.
-- **DO NOT** include harness-specific tool names (`Edit`, `Write`,
-  `Bash`, `mcp__plugin_*`, `edit`, `write`, `patch`, `multiedit`, `bash`)
-  in `agents/*/meta.yml`, `skills/*/meta.yml`, or any
-  `vocabulary/*.yml` file other than `vocabulary/capabilities.yml`
-  (where they belong as `harness_mapping` values). G6 gate will fail.
-  `body.md` prose is exempt from this check.
+- **DO NOT** include harness-specific tool names in `agents/*/meta.yml`,
+  `skills/*/meta.yml`, or `vocabulary/*.yml`. Distinctive Claude Code
+  tool names (`SendMessage`, `TeamCreate`, `AskUserQuestion`, `Glob`,
+  `Grep`, `WebFetch`, `WebSearch`, `NotebookEdit`, `BashOutput`,
+  `KillShell`, `TodoWrite`, `mcp__plugin_*`) are also forbidden in
+  `body.md` files. Ambiguous tool names that overlap with English words
+  (`Read`, `Write`, `Edit`, `Bash`, `Task`, `Monitor`) are checked in
+  `meta.yml` and `vocabulary/*.yml` only (not `body.md` prose).
+  G6 gate will fail on violations.
 - **DO NOT** include concrete model names (`opus`, `sonnet`, `haiku`,
   `gpt-*`, `claude-*`) in `meta.yml` files. Use `model_tier: high` or
   `model_tier: standard`. G7 gate will fail.
@@ -277,7 +280,7 @@ during the bootstrap phase. Treat them as inviolate.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `bun run validate` reports G1 schema error in a `meta.yml` | Missing required field or type mismatch | Read the AJV error, cross-reference `schema/{agent,skill,vocabulary}.schema.json`, fix the meta.yml |
-| G6 `harness-lint` error on body.md | Should not happen — body.md is excluded | Confirm `scripts/lib/lint.ts` `LINT_INCLUDE` only lists `meta.yml` and `vocabulary/*.yml` |
+| G6 `harness-lint` error on body.md | Distinctive tool name found in prose (e.g., `SendMessage`, `AskUserQuestion`) | Replace with neutral phrasing. Ambiguous words (`Read`, `Write`, `Edit`, `Bash`, `Task`, `Monitor`) are NOT checked in body.md — only distinctive names. |
 | G9 `directory-strict` error | Extra file in `agents/{id}/` or `skills/{id}/` | Remove the extra file. Only `body.md` and `meta.yml` are allowed |
 | G10 `id-match` error | `meta.yml.id` != directory name, or id violates `^[a-z][a-z0-9_-]*$` | Rename directory or edit `meta.yml.id` |
 | `tsc --noEmit` AJV type error | Used `ajv.getSchema()` return value as `Ajv['validate']` | Use `ValidateFunction` type from `ajv` |
