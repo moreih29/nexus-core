@@ -719,9 +719,9 @@ If your harness exposes an inter-agent communication tool, it must be available 
 
 ---
 
-## 11. Conformance Verification
+## 11. Conformance Verification (Required)
 
-Conformance fixtures verify that your tool implementations behave identically to the nexus-core specification. Passing all fixtures guarantees interoperability with any other nexus-core consumer and ensures your harness will remain compatible as nexus-core evolves.
+Consumers MUST pass all conformance fixtures to claim nexus-core compatibility. This is not optional — it is the mechanism by which cross-harness interoperability is guaranteed. Non-conforming implementations may produce state files that other Nexus ecosystem components cannot read, or exhibit behavioral divergence that breaks plan/task lifecycle assumptions.
 
 ### Fixture types
 
@@ -761,7 +761,7 @@ For runner implementation patterns and a TypeScript sketch, see [conformance/REA
 
 ### CI integration
 
-Add the conformance test runner to your CI pipeline. Conformance failures on a version bump indicate a breaking behavioral change in your tool implementation. Do not merge harness changes that break conformance unless you have intentionally diverged from the spec (which is not recommended and is not supported).
+Add the conformance test runner to your CI pipeline. Conformance failures MUST block release. Do not merge harness changes that break conformance — a conformance failure means your implementation diverges from the Nexus ecosystem contract.
 
 Conformance verification is distinct from your harness's own unit tests. Run both.
 

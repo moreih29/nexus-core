@@ -56,6 +56,17 @@ Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 | `.nexus/rules/semver-policy.md` | 18-case semver interpretation table (git repo only, WebFetch) | Version bump interpretation |
 | `CHANGELOG.md` (root, in node_modules) | Version history with nx-car breaking change markers | Upgrade delta analysis |
 
+## Conformance Obligation
+
+Consumers MUST pass all conformance fixtures (`conformance/tools/*.json` and `conformance/scenarios/*.json`) to claim nexus-core compatibility. This is not optional.
+
+- **Tool fixtures** verify that each MCP tool implementation produces correct state transitions and return values.
+- **Scenario fixtures** verify that multi-step lifecycle sequences (plan→decide→task→close) behave correctly end to end.
+- Non-conforming implementations are not guaranteed to interoperate with other Nexus ecosystem components (e.g., state files created by one harness may not be readable by another).
+- Add the conformance test runner to your CI pipeline. Conformance failures block release.
+
+See [conformance/README.md](./conformance/README.md) for fixture format and test runner guide.
+
 ## CHANGELOG Marker Regex
 
 To extract breaking changes for a specific version, match this pattern on the CHANGELOG file content:
