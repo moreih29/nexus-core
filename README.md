@@ -70,9 +70,7 @@ CONSUMING.md는 LLM 에이전트 전용 문서입니다. 사람 독자는 이 RE
 
 ## Status
 
-Plan session #2 (2026-04-11) 구현 결정 완료. 첫 release `v0.1.0` 준비 중 (bootstrap import + validation pipeline + CI workflows + CONSUMING 프로토콜). 상세 변경 이력은 [CHANGELOG.md](./CHANGELOG.md) 참조.
-
-> **Note**: 첫 publish 이후 이 섹션은 "Phase 1 완료, Phase 2 진입"으로 업데이트됩니다. Task 22(bootstrap 실행)와 Task 23(첫 release) 이후 최종 업데이트.
+v0.2.0 (2026-04-12). Plan sessions #1–#4 결정 완료. Harness-agnostic capabilities redesign, conformance test suite, consumer implementation guide 포함. 상세 변경 이력은 [CHANGELOG.md](./CHANGELOG.md) 참조.
 
 ## References
 

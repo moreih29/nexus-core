@@ -1,8 +1,22 @@
 {
   "nexus_core_version": "0.2.0",
-  "nexus_core_commit": "93d8d74",
+  "nexus_core_commit": "923ee9d",
   "schema_contract_version": "2.0",
   "agents": [
+    {
+      "name": "writer",
+      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
+      "task": "Technical writing, documentation, presentations",
+      "alias_ko": "라이터",
+      "category": "do",
+      "resume_tier": "bounded",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_task_create"
+      ],
+      "id": "writer",
+      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
+    },
     {
       "name": "strategist",
       "description": "Business strategy — evaluates market positioning, competitive landscape, and business viability of decisions",
@@ -35,36 +49,6 @@
       "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
     },
     {
-      "name": "researcher",
-      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
-      "task": "Web search, independent investigation",
-      "alias_ko": "리서처",
-      "category": "do",
-      "resume_tier": "persistent",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "researcher",
-      "body_hash": "sha256:7f5db3b52ae76a3b3214cf73b076980e15ef85c80b9aa86a9704f737e4b13251"
-    },
-    {
-      "name": "reviewer",
-      "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
-      "task": "Content verification, fact-checking, grammar review",
-      "alias_ko": "리뷰어",
-      "category": "check",
-      "resume_tier": "ephemeral",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "reviewer",
-      "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
-    },
-    {
       "name": "engineer",
       "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
       "task": "Code implementation, edits, debugging",
@@ -77,20 +61,6 @@
       ],
       "id": "engineer",
       "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
-    },
-    {
-      "name": "writer",
-      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
-      "task": "Technical writing, documentation, presentations",
-      "alias_ko": "라이터",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "writer",
-      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
     },
     {
       "name": "designer",
@@ -139,6 +109,36 @@
       ],
       "id": "postdoc",
       "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
+    },
+    {
+      "name": "reviewer",
+      "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
+      "task": "Content verification, fact-checking, grammar review",
+      "alias_ko": "리뷰어",
+      "category": "check",
+      "resume_tier": "ephemeral",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "reviewer",
+      "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
+    },
+    {
+      "name": "researcher",
+      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
+      "task": "Web search, independent investigation",
+      "alias_ko": "리서처",
+      "category": "do",
+      "resume_tier": "persistent",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "researcher",
+      "body_hash": "sha256:7f5db3b52ae76a3b3214cf73b076980e15ef85c80b9aa86a9704f737e4b13251"
     }
   ],
   "skills": [
@@ -174,6 +174,14 @@
       "body_hash": "sha256:11761d37bad2fb30ef1d562d22d9a395e27e0c3ce58ea42ad3b1799f47bf8950"
     },
     {
+      "name": "nx-setup",
+      "description": "Interactive project setup wizard for Nexus configuration.",
+      "summary": "Interactive Nexus configuration wizard",
+      "manual_only": true,
+      "id": "nx-setup",
+      "body_hash": "sha256:e66b0116d5da403c6480876a5b0a575110bcd26ecaa30079ce17de64fc112e65"
+    },
+    {
       "name": "nx-plan",
       "description": "Structured multi-perspective analysis to decompose issues, align on decisions, and produce an enriched plan before execution. Plan only — does not execute.",
       "summary": "Structured planning — subagent-based analysis, deliberate decisions, produce execution plan",
@@ -185,14 +193,6 @@
       ],
       "id": "nx-plan",
       "body_hash": "sha256:2e3f4fabb2961c052c4449f19ec16ed940394be037a63d4af90a3d12df8e4895"
-    },
-    {
-      "name": "nx-setup",
-      "description": "Interactive project setup wizard for Nexus configuration.",
-      "summary": "Interactive Nexus configuration wizard",
-      "manual_only": true,
-      "id": "nx-setup",
-      "body_hash": "sha256:e66b0116d5da403c6480876a5b0a575110bcd26ecaa30079ce17de64fc112e65"
     }
   ],
   "vocabulary": {

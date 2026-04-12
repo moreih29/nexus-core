@@ -93,6 +93,14 @@ Before attempting to resume a prior agent session, the harness must verify that 
 
 **Gate enforcement.** The mechanism by which capability gates are enforced is harness-specific. nexus-core specifies the semantic — which capabilities a role holds — but not the enforcement implementation. Harnesses are responsible for translating capability declarations into their native access-control mechanism.
 
+**Capability override rule (additive-only).** A consumer's effective capability set for any agent is computed as:
+
+```
+effective_capabilities(agent) = canonical_capabilities(agent) ∪ consumer_additions(agent)
+```
+
+`canonical_capabilities` is the `capabilities` array in `agents/{id}/meta.yml` — the nexus-core canonical definition. `consumer_additions` is a harness-local set of additional capabilities the consumer chooses to apply (format and storage are consumer decisions). Consumers may **add** capabilities but **must not remove** canonical ones. Removing a canonical capability (e.g., removing `no_file_edit` from an agent that canonically carries it) would violate the nexus-core design intent and is forbidden. The union is idempotent — if nexus-core later adds a capability that a consumer already applied locally, the overlap is harmless.
+
 ---
 
 ## 5. Session Boundary Semantics

@@ -922,6 +922,118 @@
           "created_at": "2026-04-12T05:57:04.455Z"
         }
       ]
+    },
+    {
+      "completed_at": "2026-04-12T07:01:20.613Z",
+      "branch": "feat/v0.2.0-harness-agnostic-redesign",
+      "plan": {
+        "id": 1,
+        "topic": "nexus-core v0.2.0 시나리오 검증 gap 해결 — Consumer Implementation Guide + MIGRATIONS 수정 + capability override 메커니즘",
+        "issues": [
+          {
+            "id": 1,
+            "title": "G4+G8: MIGRATIONS/v0_1_to_v0_2.md 정확성 수정 + 누락 항목 추가 (v0.2.0 릴리스 blocker)",
+            "status": "decided",
+            "decision": "Fix MIGRATIONS/v0_1_to_v0_2.md accuracy issues + add missing items. (A) Before example: fix harness names (claude-nexus→claude_code, opencode-nexus→opencode), complete tool lists, move schema_contract_version reference. (B) After example: fix intent format (prose→snake_case workspace_write_denial), fix semantic class names to match actual v0.2.0 (file_creation/file_modification/file_deletion/partial_file_edit/structured_document_edit), add description field, use actual prose_guidance excerpt. (C) capability-map example: replace wrong class names with actual ones from all 4 capabilities. (D) Add Step 0 to checklist: manual ^0.2.0 version range change (pre-1.0 semver ^0.1.x won't auto-install 0.2.0). Add Step 5.5: remove SKILL_PURPOSE_OVERRIDE table if exists, use manifest.json summary field instead. (E) Update README.md Status section from \"v0.1.0 준비 중\" to current v0.2.0 state. All factual corrections — no design decisions involved."
+          },
+          {
+            "id": 2,
+            "title": "G7: Consumer-side capability override 메커니즘 설계 — canonical agent capabilities와 consumer local override의 관계 정의",
+            "status": "decided",
+            "decision": "Adopt Option B (Merge rule — additive-only). Consumer capability override mechanism: `effective_capabilities(agent) = canonical_capabilities(agent) ∪ consumer_additions(agent)`. Canonical capabilities from `agents/{id}/meta.yml` are the base — consumers can ADD capabilities but CANNOT REMOVE canonical ones. Rationale: (1) Safety — removing canonical capabilities (e.g., removing no_file_edit from postdoc) would violate nexus-core's design intent and is dangerous; (2) Simplicity — single union rule, no new file format needed, consumer implements in whatever format they prefer; (3) Issue #11 pattern consistency — \"base is nexus-core, additions are consumer\" mirrors \"semantic is nexus-core, mapping is consumer\"; (4) YAGNI — no real use case exists for removing canonical capabilities; (5) Drift prevention — canonical retains base authority, unlike Option C where consumer could ignore canonical entirely. Postdoc no_shell_exec scenario: consumer adds no_shell_exec to their local postdoc capability additions → effective list becomes [no_file_edit, no_task_create, no_task_update, no_shell_exec]. If nexus-core later adds no_shell_exec to canonical postdoc, the consumer's addition becomes redundant (union is idempotent) — not harmful, consumer can clean up at leisure. Documentation: principle stated in docs/behavioral-contracts.md + detailed howto in docs/consumer-implementation-guide.md \"Capability Handling\" section. Rejected: Option A (override file — unnecessary complexity, new format to define/maintain) and Option C (consumer full ownership — erodes canonical authority, enables drift where consumer silently drops safety capabilities)."
+          },
+          {
+            "id": 3,
+            "title": "G1+G5: Consumer Implementation Guide 문서 범위와 구조 결정 (docs/consumer-implementation-guide.md)",
+            "status": "decided",
+            "decision": "Create `docs/consumer-implementation-guide.md` as a single comprehensive document — Option A (single guide). 12 sections covering the full consumer build journey: (1) Overview, (2) Prerequisites, (3) Component Map + Build Order (7 components, dependency graph, recommended sequence), (4) State File Management, (5) MCP Tool Implementation (ref: nexus-tools-contract.md), (6) Capability Handling (G5 — local capability-map creation, additive-only merge rule from Issue #2, coverage CI assertion), (7) Agent Catalog Construction (body.md + meta.yml transformation, effective_capabilities computation, neutral body + harness context synthesis), (8) Skill Activation Architecture (G2 — tag detection from vocabulary/tags.yml, skill body loading, LLM context injection mechanism as consumer decision, manual_only enforcement, deactivation), (9) Hook Event Lifecycle (G3 — 8 abstract events: session_start/user_message/subagent_spawn/subagent_complete/pre_tool_use/post_tool_use/session_end/context_compact, each with expected state management behavior), (10) Subagent Orchestration Model (G6 — abstract spawn model, context passing via structured delegation, result collection, resume tier interpretation, inter-agent communication as consumer-decided mechanism), (11) Conformance Verification (ref: conformance/README.md), (12) Minimum Viable Consumer definition (4 tools + 1 agent + [plan] tag = smallest working Nexus session). Existing 4 docs (tools-contract, state-overview, layout, behavioral-contracts) remain as reference docs — guide cross-references them. No separate documents for G2/G3/G6 — all absorbed into guide sections §8/§9/§10. Issue #4 is subsumed by this decision. behavioral-contracts.md gets a 1-line addition for the additive-only capability merge rule (from Issue #2)."
+          },
+          {
+            "id": 4,
+            "title": "G2+G3+G6: Runtime Architecture Model — skill activation + hook lifecycle + subagent orchestration을 어떻게 문서화할 것인가",
+            "status": "decided",
+            "decision": "Subsumed by Issue #3 decision. G2 (Skill Activation Architecture) → guide §8, G3 (Hook Event Lifecycle) → guide §9, G6 (Subagent Orchestration Model) → guide §10. No separate documents needed — all runtime architecture content is integrated into the single Consumer Implementation Guide. The guide provides the assembly-level tutorial; existing docs/ files remain as detailed reference. No additional design decisions required beyond what Issue #3 specified for section structure and content scope."
+          }
+        ],
+        "research_summary": "시나리오 1(민수 — 신규 consumer from scratch)과 시나리오 2(영희 — v0.1.2→v0.2.0 업그레이드)에서 총 8개 gap을 발견. 추가로 시나리오 3(지훈 — nexus-code supervision)과 시나리오 4(LLM mid-session neutral body)를 검토하여 시나리오 1 gap에 흡수됨을 확인.\n\n**8개 gap 상세:**\n\nG1 (Critical): Consumer Implementation Guide 부재. CONSUMING.md는 \"upgrade protocol\"만 다루고, \"처음부터 consumer를 만드는 방법\"이 없음. 민수가 nexus-core만 보고 OpenCode plugin을 만들려면: agent catalog 변환, skill dispatcher 구현, MCP tool 11개 구현, hook/gate 시스템, capability mapping, conformance 검증 — 이 7개 컴포넌트를 만들어야 하는데, 조립 순서/연결 방식/입출력 관계를 설명하는 문서가 없음. \"IKEA 가구의 부품은 있으나 조립 설명서가 없는 상태.\"\n\nG2 (Critical): Skill Activation Architecture 부재. vocabulary/tags.yml이 \"[plan] → nx-plan\"을 선언하지만, user input → tag detection → skill body loading → LLM context injection → deactivation의 전체 flow가 정의되지 않음.\n\nG3 (Critical): Hook Event Lifecycle Model 부재. Consumer plugin이 반응해야 하는 lifecycle events (SessionStart, SubagentStart/Stop, UserPromptSubmit, PreToolUse, PostToolUse, Stop, PostCompact)와 각 event에서의 expected behavior(runtime.json 생성, agent-tracker 초기화, knowledge index 주입, tool-log 기록, pending task 차단 등)가 nexus-core 어디에도 정의되지 않음. claude-nexus의 gate.ts만이 reference implementation.\n\nG4 (Critical): MIGRATIONS/v0_1_to_v0_2.md의 코드 예시가 전수 부정확. \"Before\" 예시: harness 이름 오류(claude-nexus→claude_code, opencode-nexus→opencode), tool list 불완전. \"After\" 예시: intent 형식 오류(prose→snake_case), semantic class 이름 불일치(file_write→file_creation 등), description 필드 누락, prose_guidance 간소화. capability-map 예시: 존재하지 않는 semantic class 사용.\n\nG5 (Important): Capability Map 작성법 부재. 포맷, 위치, 새 capability 추가 시 감지 방법, coverage 검증 미정의.\n\nG6 (Important): Subagent Orchestration 개념 모델 부재. spawn(격리된 LLM session + body.md injection), context passing(structured delegation), result collection, resume의 abstract model 없음.\n\nG7 (Important): Consumer-side capability override 메커니즘 미정의. canonical agent capabilities list와 consumer local override의 관계가 정의되지 않음. 영희의 postdoc no_shell_exec opt-in 시나리오에서 발견 — \"vocabulary에 capability 존재 + canonical agent에 미적용 + consumer에서 추가 적용\"의 구체 방법이 없음.\n\nG8 (Minor): MIGRATIONS에 SKILL_PURPOSE_OVERRIDE 제거 안내 누락, semver range ^0.1.x→^0.2.0 수동 변경 안내 누락.\n\n**Gap 간 관계:**\n- G4+G8은 기존 문서 수정 — 즉시 fix 가능\n- G7은 설계 결정 필요 — G1 Consumer Guide 작성 전에 결정해야 함 (guide가 override 방법을 설명해야 하므로)\n- G1+G5는 G7 결정에 의존하는 문서 작성\n- G2+G3+G6은 G1의 하위 섹션이 될 수 있으나, 독립 문서로 분리할 수도 있음\n\n**현재 docs/ 구조:**\ndocs/nexus-tools-contract.md, docs/nexus-state-overview.md, docs/nexus-layout.md, docs/behavioral-contracts.md — 4개 파일. Consumer Implementation Guide는 5번째 파일이 됨.\n\n**Issue #12 (plan session #3)의 conformance suite 결정과의 관계:**\nConformance fixtures는 \"tool이 정확히 동작하는가\" 검증. G2/G3/G6은 \"tool을 어떤 맥락에서 어떻게 호출하는가\"의 상위 아키텍처. 서로 보완적이지 겹치지 않음.",
+        "created_at": "2026-04-12T06:45:21.334Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Fix MIGRATIONS/v0_1_to_v0_2.md accuracy + add missing steps + update README Status",
+          "context": "Fix all inaccurate code examples in MIGRATIONS: Before example (harness names claude_code/opencode, complete tool lists), After example (intent=workspace_write_denial snake_case, correct semantic class names, add description field, actual prose_guidance), capability-map example (correct class names from all 4 capabilities). Add Step 0 (manual ^0.2.0 version change) and Step 5.5 (SKILL_PURPOSE_OVERRIDE removal) to checklist. Update README.md Status section from v0.1.0 to v0.2.0.",
+          "approach": "Read current MIGRATIONS file, identify each inaccuracy by comparing with actual vocabulary/capabilities.yml content, make targeted edits. Read README.md, update Status section.",
+          "acceptance": "1. All code examples match actual v0.2.0 file content. 2. Checklist has 11 steps (was 9). 3. README Status reflects v0.2.0.",
+          "risk": "None — factual corrections only.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-12T06:50:23.539Z"
+        },
+        {
+          "id": 2,
+          "title": "Add additive-only capability merge rule to docs/behavioral-contracts.md",
+          "context": "Add a new section (or extend existing Permission Model section) in behavioral-contracts.md: 'Capability Override Rule: effective_capabilities(agent) = canonical_capabilities(agent) ∪ consumer_additions(agent). Consumers may ADD capabilities to an agent but MUST NOT REMOVE canonical ones. Canonical capabilities in agents/{id}/meta.yml are the immutable base; consumer additions are harness-local.' Keep concise — 1 paragraph + the formula.",
+          "approach": "Read behavioral-contracts.md, find Permission Model section (contract #4), add capability override subsection.",
+          "acceptance": "1. Additive-only merge rule stated with formula. 2. Explicitly says removal forbidden. 3. References canonical source (agents/*/meta.yml).",
+          "risk": "None — additive documentation.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "lead",
+          "created_at": "2026-04-12T06:50:35.809Z"
+        },
+        {
+          "id": 3,
+          "title": "Write docs/consumer-implementation-guide.md (12 sections, comprehensive)",
+          "context": "Create the Consumer Implementation Guide — the most important new document for v0.2.0. 12 sections: (1) Overview, (2) Prerequisites, (3) Component Map + Build Order with dependency graph, (4) State File Management, (5) MCP Tool Implementation (ref tools-contract), (6) Capability Handling (local map creation, additive-only merge, CI coverage), (7) Agent Catalog Construction (body+meta transform, effective_capabilities, neutral body + harness context synthesis), (8) Skill Activation Architecture (tag detection, skill body loading, injection mechanism, manual_only, deactivation), (9) Hook Event Lifecycle (8 abstract events: session_start, user_message, subagent_spawn, subagent_complete, pre_tool_use, post_tool_use, session_end, context_compact — each with expected behavior), (10) Subagent Orchestration Model (spawn, context passing, result collection, resume tiers, inter-agent communication), (11) Conformance Verification, (12) Minimum Viable Consumer (4 tools + 1 agent + [plan] tag). Cross-reference existing docs extensively. Use claude-nexus at ~/workspaces/areas/claude-nexus as reference implementation for behavioral details. Write in English (matching existing docs/ convention).",
+          "approach": "Read all existing docs/ files for cross-reference accuracy. Read claude-nexus source for hook lifecycle and skill activation details. Structure as a linear tutorial that 민수 (new consumer developer) can follow cover-to-cover. Each section: what to build, why, how it connects to nexus-core, reference to detailed docs. Keep each section 50-150 lines. Total target: 600-1000 lines.",
+          "acceptance": "1. All 12 sections present with substantive content. 2. Component Map shows 7+ components with dependency arrows. 3. §8 covers full tag→skill→injection→deactivation flow. 4. §9 covers all 8 abstract events with expected behaviors. 5. §10 covers spawn/context/resume/communication. 6. §12 defines concrete MVC (4 tools, 1 agent, [plan] tag). 7. Cross-references to existing docs are accurate. 8. Zero harness-specific tool names.",
+          "risk": "Largest single document in nexus-core. Risk of being too verbose or too abstract. Balance: concrete enough for implementation, abstract enough for harness-neutrality. Reference claude-nexus for behavioral grounding but don't copy harness-specific details.",
+          "status": "completed",
+          "deps": [
+            1,
+            2
+          ],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-12T06:50:58.336Z"
+        },
+        {
+          "id": 4,
+          "title": "Verify: bun run validate + scenario re-run mental check",
+          "context": "After all fixes: run bun run validate (must pass all 11 gates). Then mentally re-trace 민수 scenario: with consumer-implementation-guide.md now available, can 민수 build an OpenCode Nexus plugin from scratch? Check each of the 7 components has guidance. Re-trace 영희 scenario: with fixed MIGRATIONS, can 영희 upgrade correctly? Check each checklist step is accurate.",
+          "approach": "Run validate. Read consumer-implementation-guide.md and verify all 12 sections exist. Grep for harness tool names. Check MIGRATIONS examples against actual files.",
+          "acceptance": "1. bun run validate passes. 2. Guide has 12 sections. 3. MIGRATIONS examples match actual files. 4. Zero harness tool names in new docs.",
+          "risk": "Guide may have gaps only discoverable by actual implementation attempt.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3
+          ],
+          "plan_issue": 3,
+          "owner": "tester",
+          "created_at": "2026-04-12T06:51:11.585Z"
+        },
+        {
+          "id": 5,
+          "title": "Review: consumer-implementation-guide.md quality + MIGRATIONS accuracy",
+          "context": "Review the Consumer Implementation Guide for completeness, accuracy, and readability. Verify MIGRATIONS corrections are accurate by comparing code examples with actual files. Check cross-references to existing docs are valid paths.",
+          "approach": "Read guide cover-to-cover. Cross-check each reference. Verify MIGRATIONS before/after examples against actual vocabulary/capabilities.yml.",
+          "acceptance": "1. All 12 guide sections are substantive (not stubs). 2. All cross-references resolve to existing files. 3. MIGRATIONS examples 100% match actual file content. 4. No factual errors.",
+          "risk": "Reviewer should flag style/clarity issues for Lead to decide on.",
+          "status": "completed",
+          "deps": [
+            3
+          ],
+          "plan_issue": 3,
+          "owner": "reviewer",
+          "created_at": "2026-04-12T06:51:15.786Z"
+        }
+      ]
     }
   ]
 }
