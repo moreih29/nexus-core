@@ -2,17 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "conformance/state-schemas/agent-tracker.schema.json",
   "title": "Nexus Agent Tracker",
-  "description": "Schema for .nexus/state/agent-tracker.json — registry of spawned agent instances tracked across a session",
+  "description": "Schema for .nexus/state/agent-tracker.json — registry of spawned agent instances tracked across a session. No schema_version field: this file is session-scoped and deleted on session end — migration anchor not required.",
   "type": "array",
   "items": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["agent_type", "agent_id", "started_at", "resume_count", "status"],
+    "required": ["harness_id", "agent_name", "agent_id", "started_at", "resume_count", "status"],
     "properties": {
-      "agent_type": {
+      "harness_id": {
         "type": "string",
-        "minLength": 1,
-        "description": "Qualified agent type identifier (e.g. 'claude-nexus:engineer')"
+        "pattern": "^[a-z][a-z0-9-]*$",
+        "description": "Identifier of the harness that spawned this agent."
+      },
+      "agent_name": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$",
+        "description": "Neutral agent id as defined in nexus-core agents/{id}/meta.yml (e.g. 'architect', 'engineer')."
       },
       "agent_id": {
         "type": "string",

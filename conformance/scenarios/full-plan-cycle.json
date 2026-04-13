@@ -15,7 +15,7 @@
     },
     "description": "End-to-end lifecycle scenario: plan/task/history state transitions and each tool's return value across 5 sequential invocations."
   },
-  "uncovered_params": ["research_summary", "issue_id", "summary", "title", "context", "deps"],
+  "uncovered_params": ["research_summary", "issue_id", "decision", "title", "context", "deps"],
   "precondition": {
     "state_files": {
       ".nexus/state/plan.json": null,
@@ -56,7 +56,7 @@
         "tool": "plan_decide",
         "params": {
           "issue_id": 1,
-          "summary": "Keep .nexus/state/ as the canonical location. Documented in state-schemas README."
+          "decision": "Keep .nexus/state/ as the canonical location. Documented in state-schemas README."
         }
       },
       "assert_return": {
@@ -78,7 +78,7 @@
         "tool": "plan_decide",
         "params": {
           "issue_id": 2,
-          "summary": "Ship a one-shot migration script as a standalone npm script. Document in RELEASING.md."
+          "decision": "Ship a one-shot migration script as a standalone npm script. Document in RELEASING.md."
         }
       },
       "assert_return": {

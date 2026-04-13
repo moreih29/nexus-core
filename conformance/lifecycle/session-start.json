@@ -11,7 +11,8 @@
     "type": "session_start",
     "params": {
       "teams_enabled": true,
-      "plugin_version": "0.4.0"
+      "harness_id": "claude-nexus",
+      "harness_version": "0.25.0"
     },
     "description": "Harness session hook fires at startup, injecting runtime configuration and initializing the agent registry"
   },
@@ -20,7 +21,8 @@
       ".nexus/state/runtime.json": {
         "$.teams_enabled": true,
         "$.session_started_at": { "type": "iso8601" },
-        "$.plugin_version": { "type": "string", "minLength": 1 }
+        "$.harness_id": "claude-nexus",
+        "$.harness_version": { "type": "string", "minLength": 1 }
       },
       ".nexus/state/agent-tracker.json": {
         "$.length": 0
@@ -29,7 +31,7 @@
   },
   "covers": {
     "state_schemas": {
-      "runtime.schema.json": ["teams_enabled", "session_started_at", "plugin_version"],
+      "runtime.schema.json": ["schema_version", "teams_enabled", "session_started_at", "harness_id", "harness_version"],
       "agent-tracker.schema.json": []
     }
   }

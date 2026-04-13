@@ -102,7 +102,17 @@ Mutates the issue list of the active planning session. Supports four discrete ac
 
 ### Return Value
 
-All responses include an `issue` field containing the affected `PlanIssue` object. The discriminating field varies by action:
+All responses include an `issue` field containing the affected `PlanIssue` object.
+
+The `issue` object contains:
+
+| Field | Type | Presence |
+|-------|------|----------|
+| `id` | `number` | always |
+| `title` | `string` | on `add`, `edit`, `reopen` |
+| `status` | `"pending" \| "decided"` | on `add`, `reopen` |
+
+The discriminating field varies by action:
 
 | Action | Discriminating Field | Value |
 |--------|----------------------|-------|
@@ -140,7 +150,7 @@ Records a decision for a specific issue and marks it as `"decided"`. Triggered b
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `issue_id` | `number` | yes | Identifier of the issue being decided |
-| `summary` | `string` | yes | Decision summary to record against the issue |
+| `decision` | `string` | yes | Decision text to record against the issue |
 | `how_agents` | `string[]` | no | Names of HOW agents that contributed analysis |
 | `how_summary` | `Record<string, string>` | no | Per-agent key position summaries |
 | `how_agent_ids` | `Record<string, string>` | no | Agent name to agent-instance ID mapping for future resume |

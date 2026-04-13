@@ -170,6 +170,7 @@ Assertions are key/value objects where keys are JSONPath expressions and values 
 | `"$.field": { "type": "number", "min": 1 }` | Numeric value >= 1 |
 | `"$.field": { "type": "string", "minLength": 5 }` | String with minimum length |
 | `".nexus/state/plan.json": null` | File must not exist |
+| `".nexus/state/artifacts/findings.md": {}` | File must exist; content not inspected (use for non-JSON artifacts like .md, .txt, binary files) |
 
 For `state_files`, a `null` value at the file path key means the file must be absent. A `null` value at a JSONPath key within a file assertion means that field must be `null`.
 
@@ -240,7 +241,10 @@ A conformance test runner does the following for each fixture:
    - For multi-step scenarios: iterate `steps` in order, calling each `action` (or triggering each `event`) and evaluating `assert_return` and `assert_state` after each step before proceeding.
 4. **Evaluate postconditions**:
    - Check `postcondition.return_value` assertions against the tool's return value.
-   - Check `postcondition.state_files` assertions against the actual file system state.
+   - Check `postcondition.state_files` assertions against the actual file system state. For each entry in `state_files`:
+     - Value is `null` → assert the file does NOT exist.
+     - Value is an empty object `{}` → assert the file EXISTS; do NOT parse content (use for non-JSON artifacts: .md, .txt, binary).
+     - Value is a non-empty object `{...}` → parse file as JSON and evaluate each JSONPath assertion against the parsed content.
    - If `postcondition.error` is `true`, the tool call must have produced an error.
    - If `postcondition.error_contains` is set, the error message must contain that substring.
 5. **Report** pass/fail per `test_id`.

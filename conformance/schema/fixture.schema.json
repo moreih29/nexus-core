@@ -112,7 +112,7 @@
       "properties": {
         "state_files": {
           "type": "object",
-          "description": "Map of file path to content object (null means the file must not exist)",
+          "description": "Map of file path to content object. null = file must not exist; empty object {} = file must exist but content is not inspected (use for non-JSON artifacts like .md, .txt, binary files); non-empty object = precondition content written as-is (typically JSON).",
           "additionalProperties": {
             "oneOf": [
               { "type": "object" },
@@ -171,7 +171,7 @@
         },
         "params": {
           "type": "object",
-          "description": "Optional event-specific parameters (e.g. agent_type and agent_id for agent_spawn)",
+          "description": "Optional event-specific parameters (e.g. harness_id, agent_name, and agent_id for agent_spawn)",
           "additionalProperties": true
         },
         "description": {
@@ -187,7 +187,7 @@
       "properties": {
         "state_files": {
           "type": "object",
-          "description": "Map of file path to assertion object (null means the file must not exist after the action)",
+          "description": "Map of file path to assertion object. null = file must not exist after the action; empty object {} = file must exist but content is not inspected (use for non-JSON artifacts like .md, .txt, binary files); non-empty object = JSONPath assertions on parsed JSON content.",
           "additionalProperties": {
             "oneOf": [
               {

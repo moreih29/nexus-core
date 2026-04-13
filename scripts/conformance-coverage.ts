@@ -11,9 +11,25 @@
  * rule:no-runtime exception — this is a build-time utility under scripts/.
  */
 
-import { readFile } from 'node:fs/promises';
-import { glob } from 'tinyglobby';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+
+/**
+ * List *.json files (non-recursive) in a directory.
+ * Returns absolute or repo-relative paths matching the input dir style.
+ * Returns [] when the directory does not exist.
+ */
+async function listJsonFiles(dir: string): Promise<string[]> {
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((name) => name.endsWith('.json'))
+    .map((name) => path.join(dir, name));
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -193,8 +209,8 @@ async function loadFixtures(root: string): Promise<Fixture[]> {
     path.join(root, 'conformance/lifecycle'),
   ];
 
-  const patterns = dirs.map((d) => path.join(d, '*.json'));
-  const files = await glob(patterns);
+  const fileLists = await Promise.all(dirs.map((d) => listJsonFiles(d)));
+  const files = fileLists.flat();
 
   const fixtures: Fixture[] = [];
 
@@ -380,7 +396,7 @@ async function main(): Promise<void> {
 
   // 1. Load state schemas
   const schemaDir = path.join(root, 'conformance/state-schemas');
-  const schemaFiles = await glob(path.join(schemaDir, '*.json'));
+  const schemaFiles = await listJsonFiles(schemaDir);
 
   const schemaFields = new Map<string, string[]>();
   for (const schemaFile of schemaFiles) {
