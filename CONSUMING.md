@@ -29,6 +29,7 @@ When `@moreih29/nexus-core` version changes in your consumer repo's `package.jso
 3. **WebFetch** `https://github.com/moreih29/nexus-core/blob/v{X.Y.Z}/CHANGELOG.md` — scan for `<!-- nx-car:v{X.Y.Z}:start -->` / `<!-- nx-car:v{X.Y.Z}:end -->` markers for breaking changes since the last seen version
 4. **WebFetch** `https://github.com/moreih29/nexus-core/blob/v{X.Y.Z}/MIGRATIONS/{from}_to_{to}.md` — if listed in a CHANGELOG entry
 5. **WebFetch** `https://github.com/moreih29/nexus-core/blob/v{X.Y.Z}/.nexus/rules/semver-policy.md` — interpretation guide for major/minor/patch bumps
+6. Run `bun run validate:conformance` in the consumer repo to confirm field coverage is preserved. If new state-schema fields were added in the upgrade, extend your fixture set accordingly.
 
 Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 
@@ -55,6 +56,10 @@ Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 | `docs/behavioral-contracts.md` | Behavioral contracts (state machines, resume, permissions) | Verify harness behavioral compliance |
 | `.nexus/rules/semver-policy.md` | 18-case semver interpretation table (git repo only, WebFetch) | Version bump interpretation |
 | `CHANGELOG.md` (root, in node_modules) | Version history with nx-car breaking change markers | Upgrade delta analysis |
+| `conformance/lifecycle/*.json` | Event-based lifecycle conformance fixtures | Validate harness-managed file behavior (runtime.json, agent-tracker.json) |
+| `conformance/lifecycle/README.md` | Lifecycle fixture explanation | Reference for event trigger semantics |
+| `docs/nexus-outputs-contract.md` | Normative contract for harness outputs (tool-produced/harness-produced/agent-produced) | Must-read before implementing state persistence |
+| `scripts/conformance-coverage.ts` | Schema-field × fixture.covers coverage validator | Consumer CI pipeline integration |
 
 ## Conformance Obligation
 
@@ -66,6 +71,23 @@ Consumers MUST pass all conformance fixtures (`conformance/tools/*.json` and `co
 - Add the conformance test runner to your CI pipeline. Conformance failures block release.
 
 See [conformance/README.md](./conformance/README.md) for fixture format and test runner guide.
+
+### Schema Field Coverage Obligation
+
+Consumers MUST pass all fixture behavioral assertions AND achieve 100% state-schema field coverage across their fixture set. The authoritative check is:
+
+```bash
+bun run validate:conformance
+```
+
+(equivalent: `bun run scripts/conformance-coverage.ts`)
+
+This validator enforces two obligations:
+
+1. Every field in every state-schema file (plan/tasks/history/runtime/agent-tracker) must appear in at least one fixture's `covers` declaration.
+2. Every `action.params` key must be asserted in postcondition or declared in the fixture's `uncovered_params` list — this prevents "silent drop" regressions where a tool receives a parameter but silently discards it.
+
+Validator exit code 1 is a release block. The same rules apply to consumer-authored custom fixtures: if you add a state field or a tool parameter, you must extend at least one fixture to cover it.
 
 ## Setup Skill Contract
 
@@ -115,3 +137,5 @@ This one-time setup lets your consumer repo's LLM agents discover the upgrade pr
 - [.nexus/rules/semver-policy.md](./.nexus/rules/semver-policy.md) — version bump interpretation
 - [.nexus/context/evolution.md](./.nexus/context/evolution.md) — Forward-only 완화 정책 근거
 - plan session #2 Issue #8 (2026-04-11) — this protocol's design decisions
+- [docs/nexus-outputs-contract.md](./docs/nexus-outputs-contract.md) — normative outputs contract (tool-produced / harness-produced / agent-produced)
+- [conformance/lifecycle/README.md](./conformance/lifecycle/README.md) — lifecycle fixture reference and event trigger semantics

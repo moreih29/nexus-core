@@ -1,0 +1,36 @@
+{
+  "test_id": "session_start",
+  "description": "Verifies that session_start writes runtime.json with required fields and initializes agent-tracker.json as an empty array",
+  "precondition": {
+    "state_files": {
+      ".nexus/state/runtime.json": null,
+      ".nexus/state/agent-tracker.json": null
+    }
+  },
+  "event": {
+    "type": "session_start",
+    "params": {
+      "teams_enabled": true,
+      "plugin_version": "0.4.0"
+    },
+    "description": "Harness session hook fires at startup, injecting runtime configuration and initializing the agent registry"
+  },
+  "postcondition": {
+    "state_files": {
+      ".nexus/state/runtime.json": {
+        "$.teams_enabled": true,
+        "$.session_started_at": { "type": "iso8601" },
+        "$.plugin_version": { "type": "string", "minLength": 1 }
+      },
+      ".nexus/state/agent-tracker.json": {
+        "$.length": 0
+      }
+    }
+  },
+  "covers": {
+    "state_schemas": {
+      "runtime.schema.json": ["teams_enabled", "session_started_at", "plugin_version"],
+      "agent-tracker.schema.json": []
+    }
+  }
+}

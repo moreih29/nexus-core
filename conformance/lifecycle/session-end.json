@@ -1,0 +1,31 @@
+{
+  "test_id": "session_end",
+  "description": "Verifies that session_end removes runtime.json and agent-tracker.json, completing the full session lifecycle deletion",
+  "precondition": {
+    "state_files": {
+      ".nexus/state/runtime.json": {
+        "teams_enabled": true,
+        "session_started_at": "2026-04-13T00:00:00.000Z",
+        "plugin_version": "0.4.0"
+      },
+      ".nexus/state/agent-tracker.json": []
+    }
+  },
+  "event": {
+    "type": "session_end",
+    "description": "Harness session hook fires at shutdown, cleaning up all runtime state files"
+  },
+  "postcondition": {
+    "state_files": {
+      ".nexus/state/runtime.json": null,
+      ".nexus/state/agent-tracker.json": null
+    }
+  },
+  "covers": {
+    "state_schemas": {
+      "runtime.schema.json": ["teams_enabled", "session_started_at", "plugin_version"],
+      "agent-tracker.schema.json": []
+    },
+    "description": "Covers deletion aspect of the full runtime/agent-tracker lifecycle — absence of both files after session_end"
+  }
+}

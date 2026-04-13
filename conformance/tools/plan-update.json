@@ -1,0 +1,341 @@
+[
+  {
+    "test_id": "plan_update_add_happy_path",
+    "description": "plan_update with action:add appends a new issue to the active plan with status pending and returns added:true",
+    "covers": {
+      "state_schemas": {
+        "plan.schema.json": ["issues[].id", "issues[].title", "issues[].status"]
+      },
+      "return_value": {
+        "plan_update": ["added", "issue.id", "issue.title", "issue.status"]
+      }
+    },
+    "uncovered_params": ["action"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 1,
+          "topic": "Refactor state layer",
+          "issues": [
+            {
+              "id": 1,
+              "title": "Identify coupling points",
+              "status": "pending"
+            }
+          ],
+          "research_summary": "Reviewed codebase for state dependencies.",
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_update",
+      "params": {
+        "action": "add",
+        "title": "new issue"
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.added": true,
+        "$.issue.title": "new issue",
+        "$.issue.status": "pending"
+      },
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "$.issues.length": 2,
+          "$.issues[1].title": "new issue",
+          "$.issues[1].status": "pending"
+        }
+      }
+    }
+  },
+  {
+    "test_id": "plan_update_remove_happy_path",
+    "description": "plan_update with action:remove deletes the target issue from the plan and returns removed:true",
+    "covers": {
+      "state_schemas": {
+        "plan.schema.json": ["issues[].id"]
+      },
+      "return_value": {
+        "plan_update": ["removed", "issue.id"]
+      }
+    },
+    "uncovered_params": ["action", "issue_id"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 2,
+          "topic": "Refactor state layer",
+          "issues": [
+            {
+              "id": 1,
+              "title": "Identify coupling points",
+              "status": "pending"
+            },
+            {
+              "id": 2,
+              "title": "Draft migration plan",
+              "status": "pending"
+            }
+          ],
+          "research_summary": "Reviewed codebase for state dependencies.",
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_update",
+      "params": {
+        "action": "remove",
+        "issue_id": 1
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.removed": true,
+        "$.issue.id": 1
+      },
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "$.issues.length": 1,
+          "$.issues[0].id": 2
+        }
+      }
+    }
+  },
+  {
+    "test_id": "plan_update_edit_happy_path",
+    "description": "plan_update with action:edit changes the title of the target issue and returns edited:true",
+    "covers": {
+      "state_schemas": {
+        "plan.schema.json": ["issues[].title"]
+      },
+      "return_value": {
+        "plan_update": ["edited", "issue.title"]
+      }
+    },
+    "uncovered_params": ["action", "issue_id"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 3,
+          "topic": "Refactor state layer",
+          "issues": [
+            {
+              "id": 1,
+              "title": "Old title",
+              "status": "pending"
+            }
+          ],
+          "research_summary": "Reviewed codebase for state dependencies.",
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_update",
+      "params": {
+        "action": "edit",
+        "issue_id": 1,
+        "title": "edited"
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.edited": true,
+        "$.issue.title": "edited"
+      },
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "$.issues[0].title": "edited"
+        }
+      }
+    }
+  },
+  {
+    "test_id": "plan_update_reopen_clears_decision",
+    "description": "plan_update with action:reopen resets a decided issue back to pending status and removes its decision field",
+    "covers": {
+      "state_schemas": {
+        "plan.schema.json": ["issues[].status", "issues[].decision"]
+      },
+      "return_value": {
+        "plan_update": ["reopened", "issue.status"]
+      }
+    },
+    "uncovered_params": ["action", "issue_id"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 4,
+          "topic": "Refactor state layer",
+          "issues": [
+            {
+              "id": 1,
+              "title": "Identify coupling points",
+              "status": "decided",
+              "decision": "Use dependency injection to decouple state access."
+            }
+          ],
+          "research_summary": "Reviewed codebase for state dependencies.",
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_update",
+      "params": {
+        "action": "reopen",
+        "issue_id": 1
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.reopened": true,
+        "$.issue.status": "pending"
+      },
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "$.issues[0].status": "pending",
+          "$.issues[0].decision": null
+        }
+      }
+    }
+  },
+  {
+    "test_id": "plan_update_no_active_plan_error",
+    "description": "plan_update returns an error containing 'No active plan session' when plan.json does not exist",
+    "covers": {
+      "return_value": {
+        "plan_update": ["error"]
+      }
+    },
+    "uncovered_params": ["action", "title"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": null
+      }
+    },
+    "action": {
+      "tool": "plan_update",
+      "params": {
+        "action": "add",
+        "title": "Should fail"
+      }
+    },
+    "postcondition": {
+      "error_contains": "No active plan session"
+    }
+  },
+  {
+    "test_id": "plan_update_missing_issue_id_error",
+    "description": "plan_update with action:remove returns an error when issue_id is omitted, because it is required for remove",
+    "covers": {
+      "return_value": {
+        "plan_update": ["error"]
+      }
+    },
+    "uncovered_params": ["action"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 5,
+          "topic": "Refactor state layer",
+          "issues": [
+            {
+              "id": 1,
+              "title": "Identify coupling points",
+              "status": "pending"
+            }
+          ],
+          "research_summary": "Reviewed codebase for state dependencies.",
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_update",
+      "params": {
+        "action": "remove"
+      }
+    },
+    "postcondition": {
+      "error_contains": "issue_id is required"
+    }
+  },
+  {
+    "test_id": "plan_update_not_found_error",
+    "description": "plan_update returns an error containing the issue id when the referenced issue_id does not exist in the plan",
+    "covers": {
+      "return_value": {
+        "plan_update": ["error"]
+      }
+    },
+    "uncovered_params": ["action", "issue_id", "title"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 6,
+          "topic": "Refactor state layer",
+          "issues": [
+            {
+              "id": 1,
+              "title": "Identify coupling points",
+              "status": "pending"
+            }
+          ],
+          "research_summary": "Reviewed codebase for state dependencies.",
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_update",
+      "params": {
+        "action": "edit",
+        "issue_id": 999,
+        "title": "x"
+      }
+    },
+    "postcondition": {
+      "error_contains": "Issue 999 not found"
+    }
+  },
+  {
+    "test_id": "plan_update_unknown_action_error",
+    "description": "plan_update returns an error containing 'Unknown action' when an unrecognized action value is passed",
+    "covers": {
+      "return_value": {
+        "plan_update": ["error"]
+      }
+    },
+    "uncovered_params": ["action"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 7,
+          "topic": "Refactor state layer",
+          "issues": [
+            {
+              "id": 1,
+              "title": "Identify coupling points",
+              "status": "pending"
+            }
+          ],
+          "research_summary": "Reviewed codebase for state dependencies.",
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_update",
+      "params": {
+        "action": "invalid"
+      }
+    },
+    "postcondition": {
+      "error_contains": "Unknown action"
+    }
+  }
+]

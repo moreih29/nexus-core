@@ -1,0 +1,97 @@
+[
+  {
+    "test_id": "artifact_write_first",
+    "description": "artifact_write creates the artifacts directory and writes the file when no artifacts directory exists, returning success:true and a path ending in the filename",
+    "covers": {
+      "return_value": {
+        "artifact_write": ["success", "path"]
+      }
+    },
+    "uncovered_params": ["filename", "content"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/artifacts/findings.md": null
+      }
+    },
+    "action": {
+      "tool": "artifact_write",
+      "params": {
+        "filename": "findings.md",
+        "content": "# Findings\n\nInitial research findings for the conformance test suite."
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.success": true,
+        "$.path": { "type": "string", "pattern": "findings\\.md$" }
+      },
+      "state_files": {
+        ".nexus/state/artifacts/findings.md": {}
+      }
+    }
+  },
+  {
+    "test_id": "artifact_write_overwrite",
+    "description": "artifact_write overwrites an existing artifact file and returns success:true without error",
+    "covers": {
+      "return_value": {
+        "artifact_write": ["success", "path"]
+      }
+    },
+    "uncovered_params": ["filename", "content"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/artifacts/existing.md": {
+          "content": "old content"
+        }
+      }
+    },
+    "action": {
+      "tool": "artifact_write",
+      "params": {
+        "filename": "existing.md",
+        "content": "new content"
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.success": true,
+        "$.path": { "type": "string", "pattern": "existing\\.md$" }
+      },
+      "state_files": {
+        ".nexus/state/artifacts/existing.md": {}
+      }
+    }
+  },
+  {
+    "test_id": "artifact_write_creates_directory",
+    "description": "artifact_write auto-creates the .nexus/state/artifacts/ directory when it does not exist and then writes the file successfully",
+    "covers": {
+      "return_value": {
+        "artifact_write": ["success", "path"]
+      }
+    },
+    "uncovered_params": ["filename", "content"],
+    "precondition": {
+      "state_files": {
+        ".nexus/state/artifacts/synthesis.md": null
+      }
+    },
+    "action": {
+      "tool": "artifact_write",
+      "params": {
+        "filename": "synthesis.md",
+        "content": "# Synthesis\n\nCross-cycle pattern analysis."
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.success": true,
+        "$.path": { "type": "string", "pattern": "synthesis\\.md$" }
+      },
+      "state_files": {
+        ".nexus/state/artifacts/synthesis.md": {}
+      }
+    }
+  }
+]

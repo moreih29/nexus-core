@@ -21,6 +21,36 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.4.0] - 2026-04-13 — Conformance full-coverage
+
+### Added
+
+- `docs/nexus-outputs-contract.md` — normative 3-category output contract (Tool-produced / Harness-produced / Agent-produced)
+- `conformance/lifecycle/*.json` — 5 event-based fixtures (session_start, session_end, agent_spawn, agent_complete, agent_resume)
+- `conformance/lifecycle/README.md`
+- `scripts/conformance-coverage.ts` — validator: schema field × fixture.covers coverage + params anti-pattern detection
+- `conformance/tools/plan-update.json`, `plan-status.json`, `history-search.json`, `context.json`, `artifact-write.json` — 5 new tool fixtures completing 11/11 tool coverage
+- `package.json` script `validate:conformance`
+
+### Changed
+
+- `conformance/schema/fixture.schema.json` — `covers` required, `uncovered_params` optional, `event` oneOf branch for harness-managed file validation
+- `conformance/README.md` — Authoring Rules, Lifecycle Fixtures, Running the Coverage Validator sections; Coverage section updated (11/11 tools, 5/5 events, 54/54 fields)
+- `CONSUMING.md` — Schema Field Coverage Obligation subsection added under §Conformance Obligation; File Contracts table gains 4 rows; Upgrade Protocol adds validator step
+- Existing 6 tool fixtures — `covers` field added; postconditions strengthened to verify previously-dropped fields (`how_agents`, `approach`/`acceptance`/`risk`, `owner*`, `branch`)
+
+<!-- nx-car:v0.4.0:start -->
+### Consumer Action Required
+
+- **Impact**: `fixture.schema.json` now requires a `covers` field on every fixture object. Consumers with custom fixture sets must add `covers` to each fixture or `validate:conformance` will exit with code 1. CI pipelines must add `bun run validate:conformance` as a release gate.
+- **Action**:
+  1. Run `bun run validate:conformance` against your fixture set. If it exits with code 1, follow the diagnostic output — either add missing fields to a fixture's `covers` or declare routing-only parameters in `uncovered_params`.
+  2. Extend each custom fixture's top-level to include `covers: { state_schemas: {...}, return_value: {...} }` (at least one non-empty key required).
+  3. For fixtures whose `action.params` carry routing-only values (e.g., `action`, `issue_id` for `plan_update`), declare those keys in `uncovered_params`.
+  4. Add `bun run validate:conformance` to your CI workflow as a release gate.
+- **Migration**: see `MIGRATIONS/v0_3_to_v0_4.md` for concrete before/after examples and the full gap catalog.
+<!-- nx-car:v0.4.0:end -->
+
 ## [0.3.0] - 2026-04-12
 
 ### BREAKING CHANGES
@@ -136,7 +166,8 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/moreih29/nexus-core/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/moreih29/nexus-core/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/moreih29/nexus-core/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/moreih29/nexus-core/compare/v0.1.1...v0.1.2

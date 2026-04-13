@@ -65,6 +65,10 @@ semver 해석 판단(어떤 변경이 major/minor/patch인지)은 `.nexus/rules/
 
 plan session #3에서 capabilities.yml harness-agnostic 재설계를 결정하고 v0.2.0으로 실행했다. CHANGELOG.md의 nx-car:v0.2.0 marker, MIGRATIONS/v0_1_to_v0_2.md 199줄 migration guide, "Consumer Action Required" 섹션이 처음으로 실전 사용되었다. breaking change 대응 절차의 기계적 요소(marker 파싱, version range 관리)는 설계대로 작동함을 확인했다.
 
+### v0.4.0 — Additive-with-obligation minor bump (2026-04-13)
+
+plan session #4에서 conformance full-coverage를 결정하고 v0.4.0으로 실행했다. 추가 항목(conformance/lifecycle/, docs/nexus-outputs-contract.md, scripts/conformance-coverage.ts)은 additive이나 fixture.schema.json의 `covers` 필드가 required로 승격되어 기존 custom fixture를 가진 consumer에게 migration 의무가 발생한다. pre-v1 semver 정책에 따라 major bump 대신 minor bump + nx-car 마커로 처리했다(CHANGELOG.md nx-car:v0.4.0 marker, MIGRATIONS/v0_3_to_v0_4.md). validate:conformance CI gate가 이번 bump를 통해 처음으로 도입되었다.
+
 ---
 
 ## CHANGELOG Canonical 포맷

@@ -2,6 +2,11 @@
   {
     "test_id": "task_list_no_tasks_file",
     "description": "task_list returns exists:false when tasks.json does not exist",
+    "covers": {
+      "return_value": {
+        "task_list": ["exists"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/tasks.json": null
@@ -20,6 +25,11 @@
   {
     "test_id": "task_list_happy_path",
     "description": "task_list returns goal, full task list, and a correct progress summary when tasks.json exists",
+    "covers": {
+      "return_value": {
+        "task_list": ["goal", "tasks", "summary.total", "summary.completed", "summary.pending", "summary.ready"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/tasks.json": {
@@ -74,6 +84,11 @@
   {
     "test_id": "task_list_all_pending_no_deps",
     "description": "task_list marks all tasks as ready when they have no dependencies and are all pending",
+    "covers": {
+      "return_value": {
+        "task_list": ["summary.total", "summary.pending", "summary.completed", "summary.ready"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/tasks.json": {
@@ -116,6 +131,11 @@
   {
     "test_id": "task_list_blocked_task_not_ready",
     "description": "task_list excludes a task from ready when its dependency is still pending",
+    "covers": {
+      "return_value": {
+        "task_list": ["summary.total", "summary.ready"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/tasks.json": {

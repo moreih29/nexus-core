@@ -2,6 +2,31 @@
   {
     "test_id": "task_close_happy_path",
     "description": "task_close archives plan and tasks into history.json then deletes plan.json and tasks.json",
+    "covers": {
+      "state_schemas": {
+        "history.schema.json": [
+          "cycles[].completed_at",
+          "cycles[].branch",
+          "cycles[].plan",
+          "cycles[].tasks",
+          "cycles[].tasks[].title",
+          "cycles[].tasks[].context",
+          "cycles[].tasks[].approach",
+          "cycles[].tasks[].acceptance",
+          "cycles[].tasks[].risk",
+          "cycles[].tasks[].status",
+          "cycles[].tasks[].deps[]",
+          "cycles[].tasks[].plan_issue",
+          "cycles[].tasks[].owner",
+          "cycles[].tasks[].owner_agent_id",
+          "cycles[].tasks[].owner_reuse_policy",
+          "cycles[].tasks[].created_at"
+        ]
+      },
+      "return_value": {
+        "task_close": ["closed", "archived.plan", "archived.decisions", "archived.tasks", "total_cycles"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/plan.json": {
@@ -32,9 +57,24 @@
               "id": 1,
               "title": "Create fixture.schema.json",
               "context": "Define the JSON Schema for fixture files",
+              "approach": "Write incrementally",
+              "acceptance": "All fixture files validate",
+              "risk": "Need iteration on JSONPath syntax",
+              "status": "completed",
+              "deps": [2],
+              "plan_issue": 1,
+              "owner": "engineer",
+              "owner_agent_id": "uuid-eng01",
+              "owner_reuse_policy": "fresh",
+              "created_at": "2026-04-12T00:00:00.000Z"
+            },
+            {
+              "id": 2,
+              "title": "Research fixture formats",
+              "context": "Survey existing contract-testing frameworks",
               "status": "completed",
               "deps": [],
-              "created_at": "2026-04-12T00:00:00.000Z"
+              "created_at": "2026-04-11T00:00:00.000Z"
             }
           ]
         }
@@ -49,7 +89,7 @@
         "$.closed": true,
         "$.archived.plan": true,
         "$.archived.decisions": { "type": "number", "min": 1 },
-        "$.archived.tasks": 1,
+        "$.archived.tasks": 2,
         "$.total_cycles": { "type": "number", "min": 1 }
       },
       "state_files": {
@@ -58,8 +98,21 @@
         ".nexus/history.json": {
           "$.cycles.length": { "type": "number", "min": 1 },
           "$.cycles[-1].plan.topic": "Introduce conformance test fixtures",
-          "$.cycles[-1].tasks.length": 1,
-          "$.cycles[-1].completed_at": { "type": "iso8601" }
+          "$.cycles[-1].tasks.length": 2,
+          "$.cycles[-1].completed_at": { "type": "iso8601" },
+          "$.cycles[-1].branch": { "type": "string", "minLength": 1 },
+          "$.cycles[-1].tasks[0].title": "Create fixture.schema.json",
+          "$.cycles[-1].tasks[0].context": { "type": "string", "minLength": 1 },
+          "$.cycles[-1].tasks[0].approach": { "type": "string", "minLength": 1 },
+          "$.cycles[-1].tasks[0].acceptance": { "type": "string", "minLength": 1 },
+          "$.cycles[-1].tasks[0].risk": { "type": "string", "minLength": 1 },
+          "$.cycles[-1].tasks[0].status": "completed",
+          "$.cycles[-1].tasks[0].plan_issue": 1,
+          "$.cycles[-1].tasks[0].owner": "engineer",
+          "$.cycles[-1].tasks[0].owner_agent_id": "uuid-eng01",
+          "$.cycles[-1].tasks[0].owner_reuse_policy": "fresh",
+          "$.cycles[-1].tasks[0].created_at": { "type": "iso8601" },
+          "$.cycles[-1].tasks[0].deps[0]": 2
         }
       }
     }
@@ -67,6 +120,14 @@
   {
     "test_id": "task_close_no_plan_or_tasks",
     "description": "task_close still creates a history cycle with null plan and empty tasks when neither plan.json nor tasks.json exist",
+    "covers": {
+      "state_schemas": {
+        "history.schema.json": ["cycles[].plan", "cycles[].tasks"]
+      },
+      "return_value": {
+        "task_close": ["closed", "archived.plan", "archived.tasks", "total_cycles"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/plan.json": null,
