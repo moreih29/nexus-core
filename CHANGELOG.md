@@ -31,6 +31,9 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 - `scripts/conformance-coverage.ts` — validator: schema field × fixture.covers coverage + params anti-pattern detection
 - `conformance/tools/plan-update.json`, `plan-status.json`, `history-search.json`, `context.json`, `artifact-write.json` — 5 new tool fixtures completing 11/11 tool coverage
 - `package.json` script `validate:conformance`
+- `docs/nexus-outputs-contract.md §Harness-local State Extension` — normative convention for harness-local state files (namespace directory `.nexus/state/{harness-id}/` + `.extension.json` suffix for common-file extensions)
+- `.nexus/rules/neutral-principles.md` rule #7 `rule:harness-state-namespace` — enforceable rule prohibiting root-level harness files and common-schema field injection
+- `CONSUMING.md §Harness-local State Extension` — consumer quick reference for the namespace + extension convention
 
 ### Changed
 
@@ -48,6 +51,7 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
   2. Extend each custom fixture's top-level to include `covers: { state_schemas: {...}, return_value: {...} }` (at least one non-empty key required).
   3. For fixtures whose `action.params` carry routing-only values (e.g., `action`, `issue_id` for `plan_update`), declare those keys in `uncovered_params`.
   4. Add `bun run validate:conformance` to your CI workflow as a release gate.
+  5. (If you have harness-local state files currently at `.nexus/state/` root other than `edit-tracker.json` or `reopen-tracker.json`) Move them to `.nexus/state/{your-harness-id}/` and add a local JSON Schema at `state-schemas/*.extension.schema.json` or an independent schema file. See `docs/nexus-outputs-contract.md §Harness-local State Extension` for the full contract.
 - **Migration**: see `MIGRATIONS/v0_3_to_v0_4.md` for concrete before/after examples and the full gap catalog.
 <!-- nx-car:v0.4.0:end -->
 

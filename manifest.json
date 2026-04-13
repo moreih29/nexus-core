@@ -1,6 +1,6 @@
 {
   "nexus_core_version": "0.4.0",
-  "nexus_core_commit": "c5953c7",
+  "nexus_core_commit": "13b6998",
   "schema_contract_version": "2.0",
   "agents": [
     {
@@ -20,19 +20,20 @@
       "body_hash": "sha256:0254b4144a22c66209bd68119553d9057a4fb7f9b1ff7ebb9878687d99583465"
     },
     {
-      "name": "reviewer",
-      "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
-      "task": "Content verification, fact-checking, grammar review",
-      "alias_ko": "리뷰어",
-      "category": "check",
-      "resume_tier": "ephemeral",
-      "model_tier": "standard",
+      "name": "architect",
+      "description": "Technical design — evaluates How, reviews architecture, advises on implementation approach",
+      "task": "Architecture, technical design, code review",
+      "alias_ko": "아키텍트",
+      "category": "how",
+      "resume_tier": "persistent",
+      "model_tier": "high",
       "capabilities": [
         "no_file_edit",
-        "no_task_create"
+        "no_task_create",
+        "no_task_update"
       ],
-      "id": "reviewer",
-      "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
+      "id": "architect",
+      "body_hash": "sha256:85f9a3de419f32cdae284436eb1d902bff19a2230c50fe3068ffc642949a63b7"
     },
     {
       "name": "designer",
@@ -51,35 +52,6 @@
       "body_hash": "sha256:88ac56147d0e5bdf23fa591ce570a9c2d0eb1338df4ec2219f6238ddfcb65df4"
     },
     {
-      "name": "researcher",
-      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
-      "task": "Web search, independent investigation",
-      "alias_ko": "리서처",
-      "category": "do",
-      "resume_tier": "persistent",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "researcher",
-      "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
-    },
-    {
-      "name": "writer",
-      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
-      "task": "Technical writing, documentation, presentations",
-      "alias_ko": "라이터",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "writer",
-      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
-    },
-    {
       "name": "tester",
       "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
       "task": "Testing, verification, security review",
@@ -93,6 +65,21 @@
       ],
       "id": "tester",
       "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
+    },
+    {
+      "name": "reviewer",
+      "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
+      "task": "Content verification, fact-checking, grammar review",
+      "alias_ko": "리뷰어",
+      "category": "check",
+      "resume_tier": "ephemeral",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "reviewer",
+      "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
     },
     {
       "name": "engineer",
@@ -109,22 +96,6 @@
       "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
     },
     {
-      "name": "architect",
-      "description": "Technical design — evaluates How, reviews architecture, advises on implementation approach",
-      "task": "Architecture, technical design, code review",
-      "alias_ko": "아키텍트",
-      "category": "how",
-      "resume_tier": "persistent",
-      "model_tier": "high",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create",
-        "no_task_update"
-      ],
-      "id": "architect",
-      "body_hash": "sha256:85f9a3de419f32cdae284436eb1d902bff19a2230c50fe3068ffc642949a63b7"
-    },
-    {
       "name": "postdoc",
       "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
       "task": "Research methodology, evidence synthesis",
@@ -139,6 +110,35 @@
       ],
       "id": "postdoc",
       "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
+    },
+    {
+      "name": "writer",
+      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
+      "task": "Technical writing, documentation, presentations",
+      "alias_ko": "라이터",
+      "category": "do",
+      "resume_tier": "bounded",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_task_create"
+      ],
+      "id": "writer",
+      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
+    },
+    {
+      "name": "researcher",
+      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
+      "task": "Web search, independent investigation",
+      "alias_ko": "리서처",
+      "category": "do",
+      "resume_tier": "persistent",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "researcher",
+      "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
     }
   ],
   "skills": [
@@ -153,19 +153,6 @@
       "body_hash": "sha256:a7b0ae8f13ebcd10e52361d0ada1570ff0c47933f731deec07e95539c63e6946"
     },
     {
-      "name": "nx-plan",
-      "description": "Structured multi-perspective analysis to decompose issues, align on decisions, and produce an enriched plan before execution. Plan only — does not execute.",
-      "summary": "Structured planning — subagent-based analysis, deliberate decisions, produce execution plan",
-      "triggers": [
-        "plan"
-      ],
-      "harness_docs_refs": [
-        "resume_invocation"
-      ],
-      "id": "nx-plan",
-      "body_hash": "sha256:85b858089bd3dc276be61baa3f5265bc107a85470f169983e710fecb404bb4b1"
-    },
-    {
       "name": "nx-run",
       "description": "Execution — user-directed agent composition.",
       "summary": "Execution — user-directed agent composition",
@@ -177,6 +164,19 @@
       ],
       "id": "nx-run",
       "body_hash": "sha256:6c8d1a36626d4034209ff83780dec6238297ec4710612441b2ef09daac714ca8"
+    },
+    {
+      "name": "nx-plan",
+      "description": "Structured multi-perspective analysis to decompose issues, align on decisions, and produce an enriched plan before execution. Plan only — does not execute.",
+      "summary": "Structured planning — subagent-based analysis, deliberate decisions, produce execution plan",
+      "triggers": [
+        "plan"
+      ],
+      "harness_docs_refs": [
+        "resume_invocation"
+      ],
+      "id": "nx-plan",
+      "body_hash": "sha256:85b858089bd3dc276be61baa3f5265bc107a85470f169983e710fecb404bb4b1"
     },
     {
       "name": "nx-init",

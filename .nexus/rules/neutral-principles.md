@@ -156,3 +156,46 @@
 **위반 시 동작**: Lead는 즉시 작업을 중단하고 사용자에게 확인을 요청한다.
 
 근거: `.nexus/context/boundaries.md` 참조.
+
+---
+
+### rule:harness-state-namespace — 하네스 고유 state는 namespace 디렉토리에 격리
+
+**금지 대상**:
+
+1. 하네스가 `.nexus/state/` 루트에 신규 파일을 생성하는 행위
+2. `{harness-id}/` namespace 하위에 공통 schema 파일명(`plan.json`, `tasks.json`, `history.json`, `runtime.json`, `agent-tracker.json`)을 재사용하는 행위
+3. 다른 하네스의 namespace 디렉토리에 쓰거나 읽는 행위
+4. 공통 state 파일(plan/tasks/history/runtime/agent-tracker)의 schema에 undeclared 필드를 추가하는 행위 (schema `additionalProperties: false` 위반)
+
+**허용 패턴**:
+
+- `.nexus/state/{harness-id}/{any-name}.json` — 하네스 독립 파일
+- `.nexus/state/{harness-id}/{common-base}.extension.json` — 공통 파일의 확장
+
+**Extension 파일 요건**:
+
+- 파일명은 `{공통-base}.extension.json` 형식
+- 최상위 `extends` 필드에 공통 schema 이름 명시
+- 공통 레코드와 연결되는 join 필드 명시
+- 하네스 repo에 자체 JSON Schema(draft 2020-12, `additionalProperties: false`) 정의
+- 공통 필드 재선언 금지 — 확장 필드만
+
+**위반 예시**:
+
+- `.nexus/state/my-tracker.json` 생성 (루트에 신규 파일)
+- `.nexus/state/claude-nexus/plan.json` (namespace 하위에 공통 이름 재사용)
+- `opencode-nexus` 하네스가 `.nexus/state/claude-nexus/*` 읽기/쓰기
+- `plan.json`의 `issues[]`에 `priority: "high"` 필드 직접 추가
+
+**허용 예시**:
+
+- `.nexus/state/claude-nexus/edit-tracker.json` ✓
+- `.nexus/state/claude-nexus/plan.extension.json` ✓ (extends: plan.schema.json)
+- `.nexus/state/opencode-nexus/permission-log.json` ✓
+
+**예외**: v0.3.x 이하에 루트 경로로 등록된 legacy 2종(`edit-tracker.json`, `reopen-tracker.json`)은 `task_close` tool 계약에 명시되어 backward-compat으로 유지. 신규 파일은 이 예외에 편승하지 않는다.
+
+**위반 시 동작**: Lead는 즉시 작업을 중단하고 사용자에게 확인을 요청한다.
+
+근거: `.nexus/context/boundaries.md` (포함/제외 범위 원칙), `docs/nexus-outputs-contract.md §Harness-local State Extension` 참조.
