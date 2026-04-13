@@ -4,7 +4,7 @@
     "description": "plan_start creates plan.json with correct structure when given a topic, issues, and research_summary",
     "covers": {
       "state_schemas": {
-        "plan.schema.json": ["id", "topic", "issues[].id", "issues[].title", "issues[].status", "research_summary", "created_at"]
+        "plan.schema.json": ["schema_version", "id", "topic", "issues[].id", "issues[].title", "issues[].status", "research_summary", "created_at"]
       },
       "return_value": {
         "plan_start": ["created", "plan_id", "topic", "issueCount"]

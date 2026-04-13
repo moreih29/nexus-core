@@ -6,7 +6,8 @@
       ".nexus/state/runtime.json": {
         "teams_enabled": true,
         "session_started_at": "2026-04-13T00:00:00.000Z",
-        "plugin_version": "0.4.0"
+        "harness_id": "claude-nexus",
+        "harness_version": "0.25.0"
       },
       ".nexus/state/agent-tracker.json": []
     }
@@ -23,7 +24,7 @@
   },
   "covers": {
     "state_schemas": {
-      "runtime.schema.json": ["teams_enabled", "session_started_at", "plugin_version"],
+      "runtime.schema.json": ["teams_enabled", "session_started_at", "harness_id", "harness_version"],
       "agent-tracker.schema.json": []
     },
     "description": "Covers deletion aspect of the full runtime/agent-tracker lifecycle — absence of both files after session_end"

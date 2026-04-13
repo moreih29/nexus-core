@@ -7,14 +7,24 @@
   "additionalProperties": false,
   "required": ["cycles"],
   "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "nexus-core version that introduced this schema shape (e.g. '0.5'). Optional in v0.5.0 — candidate for required in v1.0.0 (Phase 2 entry)."
+    },
     "cycles": {
       "type": "array",
       "description": "Chronologically ordered list of completed execution cycles",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["completed_at", "branch", "plan", "tasks"],
+        "required": ["completed_at", "branch", "plan", "tasks", "schema_version"],
         "properties": {
+          "schema_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+$",
+            "description": "Version tag recorded at the time this cycle was archived. Required for every cycle as history.json accumulates across nexus-core versions."
+          },
           "completed_at": {
             "type": "string",
             "format": "date-time",

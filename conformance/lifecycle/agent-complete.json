@@ -5,7 +5,8 @@
     "state_files": {
       ".nexus/state/agent-tracker.json": [
         {
-          "agent_type": "claude-nexus:engineer",
+          "harness_id": "claude-nexus",
+          "agent_name": "architect",
           "agent_id": "uuid-eng01",
           "started_at": "2026-04-13T00:00:00.000Z",
           "resume_count": 0,

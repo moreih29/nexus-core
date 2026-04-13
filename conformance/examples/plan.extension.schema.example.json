@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conformance/examples/plan.extension.schema.example.json",
+  "title": "Example: Harness-local plan state extension",
+  "description": "Non-normative reference example of a harness-local extension schema for plan.json. Harnesses MAY add supplemental fields via {base}.extension.json files in .nexus/state/{harness-id}/. Consumers replace harness_specific_field_example with their own fields. See docs/nexus-outputs-contract.md §Harness-local State Extension for the pattern definition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["extends"],
+  "properties": {
+    "extends": {
+      "type": "string",
+      "const": "conformance/state-schemas/plan.schema.json",
+      "description": "Reference to the parent common-schema this extension supplements"
+    },
+    "harness_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Identifier of the harness that produced this extension file"
+    },
+    "harness_specific_field_example": {
+      "type": "string",
+      "description": "Placeholder — replace with your harness's actual extension fields as needed"
+    }
+  }
+}

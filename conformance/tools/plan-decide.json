@@ -1,7 +1,7 @@
 [
   {
     "test_id": "plan_decide_happy_path",
-    "description": "plan_decide marks an issue as decided and records the decision summary on the issue object",
+    "description": "plan_decide marks an issue as decided and records the decision text on the issue object",
     "covers": {
       "state_schemas": {
         "plan.schema.json": ["issues[].status", "issues[].decision"]
@@ -10,7 +10,7 @@
         "plan_decide": ["decided", "allComplete", "remaining"]
       }
     },
-    "uncovered_params": ["issue_id", "summary"],
+    "uncovered_params": ["issue_id", "decision"],
     "precondition": {
       "state_files": {
         ".nexus/state/plan.json": {
@@ -37,7 +37,7 @@
       "tool": "plan_decide",
       "params": {
         "issue_id": 1,
-        "summary": "Use declarative JSON with JSONPath assertions. Harness-neutral tool names only."
+        "decision": "Use declarative JSON with JSONPath assertions. Harness-neutral tool names only."
       }
     },
     "postcondition": {
@@ -63,7 +63,7 @@
         "plan.schema.json": []
       }
     },
-    "uncovered_params": ["issue_id", "summary"],
+    "uncovered_params": ["issue_id", "decision"],
     "precondition": {
       "state_files": {
         ".nexus/state/plan.json": null
@@ -73,7 +73,7 @@
       "tool": "plan_decide",
       "params": {
         "issue_id": 1,
-        "summary": "Some decision"
+        "decision": "Some decision"
       }
     },
     "postcondition": {
@@ -90,7 +90,7 @@
         "plan.schema.json": ["issues[].how_agents", "issues[].how_agents[]", "issues[].how_summary", "issues[].how_agent_ids"]
       }
     },
-    "uncovered_params": ["issue_id"],
+    "uncovered_params": ["issue_id", "decision"],
     "precondition": {
       "state_files": {
         ".nexus/state/plan.json": {
@@ -112,7 +112,7 @@
       "tool": "plan_decide",
       "params": {
         "issue_id": 1,
-        "summary": "Declarative JSON with JSONPath assertions, harness-neutral.",
+        "decision": "Declarative JSON with JSONPath assertions, harness-neutral.",
         "how_agents": ["architect", "postdoc"],
         "how_summary": {
           "architect": "JSONPath assertions provide harness-agnostic verifiability.",

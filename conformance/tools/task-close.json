@@ -5,6 +5,8 @@
     "covers": {
       "state_schemas": {
         "history.schema.json": [
+          "schema_version",
+          "cycles[].schema_version",
           "cycles[].completed_at",
           "cycles[].branch",
           "cycles[].plan",

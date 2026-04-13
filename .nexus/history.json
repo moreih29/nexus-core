@@ -1417,6 +1417,362 @@
       "branch": "feat/conformance-full-coverage",
       "plan": null,
       "tasks": []
+    },
+    {
+      "completed_at": "2026-04-13T13:48:20.064Z",
+      "branch": "feat/v0.5.0-integrated-release",
+      "plan": {
+        "id": 1,
+        "topic": "v0.5.0 통합 릴리즈 — 이슈 #8/#9/#10/#11/#12 한 번에 처리",
+        "issues": [
+          {
+            "id": 1,
+            "title": "배포 방식 (#8/#11): files에 scripts 추가 vs bin 엔트리 vs 둘 다",
+            "status": "decided",
+            "decision": "옵션 C 채택 — package.json에 `files`에 `scripts` 추가 + `bin: {\"nexus-validate-conformance\": \"./scripts/conformance-coverage.ts\"}` 엔트리 신설. scripts/conformance-coverage.ts 상단에 `#!/usr/bin/env bun` shebang 추가. 근거: (1) bin 엔트리는 필연적으로 scripts 배포를 전제하므로 \"bin만\" 옵션은 구조적으로 불가능 → 실질 선택은 \"scripts만\" vs \"scripts+bin\", (2) CONSUMING.md의 `bun run validate:conformance` 명령을 consumer가 `bunx nexus-validate-conformance`로 그대로 재현 가능해야 계약 실행 가능, (3) bin 추가 비용은 거의 0인데 consumer UX 차이는 크다, (4) boundaries.md L45-51에서 scripts/는 build-time util로 prompt-only 예외 허용되므로 원칙 위배 없음, (5) 3 consumer 모두 Bun 기반이므로 shebang 제약 문제 없음. 옵션 A(scripts만) 기각 이유: consumer가 node_modules 내부 경로를 알아야 wrapper script를 정의할 수 있어 추상화 누수.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "옵션 C(files+bin) 권장. CONSUMING.md가 이미 `validate:conformance` 명령을 명시하므로 bin 엔트리로 노출해야 계약 재현 가능. scripts는 build-time 유틸리티로 neutral-principles 예외 허용. Consumer 비용은 package.json script 한 줄 교체. Node 폴백은 현재 불필요."
+            },
+            "how_agent_ids": {
+              "architect": "ac3f5261f5d2cbf37"
+            }
+          },
+          {
+            "id": 2,
+            "title": "#9: runtime.json/agent-tracker.json common schema의 harness-specific 필드 처리 전략",
+            "status": "decided",
+            "decision": "옵션 C (하이브리드) 채택. runtime.schema.json: `plugin_version` 제거, `harness_id`(pattern ^[a-z][a-z0-9-]*$)와 `harness_version` 필수 필드 추가. required=[teams_enabled, session_started_at, harness_id, harness_version]. agent-tracker.schema.json: `agent_type` 제거, `harness_id`와 `agent_name`(pattern ^[a-z][a-z0-9-]*$)을 필수 필드로 분해. required=[harness_id, agent_name, agent_id, started_at, resume_count, status]. 두 schema 모두 additionalProperties: false 유지. Extension 파일은 현재 agent-tracker/runtime에 신설하지 않음 — 실제 harness-specific 데이터가 생기면 그때 추가. 근거: (1) Supervision(nexus-code)이 cross-harness aggregation 시 harness_id를 common의 구조적 field access로 읽어야 가독성 확보, extension으로 숨기면 오히려 Supervision이 harness마다 extension 스키마 알아야 하는 역설, (2) harness_id를 enum 아닌 free string(pattern only)으로 선언하면 nexus-core는 harness 목록 모르는 neutral 상태 유지 — boundaries 거절 근거 4 일관성, (3) agent_name은 nexus-core agents/{id} neutral 값 참조이므로 prefix 제거 후 직접 사용 가능, (4) multi-harness simultaneous 제약은 옵션 C 고유 문제 아님 — runtime.json single-file 구조로 이미 v0.4.0 이하에도 존재 (nexus-outputs-contract.md L93-97). 옵션 C는 이 암묵적 전제를 명시화할 뿐. 옵션 A(extension 완전 이동) 기각: cross-harness visibility 손실 + 문제 미해결(runtime.json single-file race condition 동일). 옵션 B(리네이밍만) 기각: agent_type prefix 잔존으로 거절 근거 4 위배 지속.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "하이브리드 권장. agent_type의 prefix는 혼합 의미론을 단일 문자열에 압축 — Supervision이 identity 조회 시 파싱 의존. {harness_id, agent_name} 분해로 cross-harness agent visibility 보존. plugin_version은 harness_version으로 리네이밍하면 값은 이미 neutral(semver)이므로 common 유지 타당. 옵션 B(extension 완전 이동)은 cross-harness 가독성 깨뜨려 거부. Consumer 비용: agent-tracker writer 한 곳, fixture 5개 갱신."
+            },
+            "how_agent_ids": {
+              "architect": "ac3f5261f5d2cbf37"
+            }
+          },
+          {
+            "id": 3,
+            "title": "#10: schema_version 필드 도입 범위 (전체 5개 state vs history.json만 vs 하이브리드)",
+            "status": "decided",
+            "decision": "옵션 C 채택 — 5개 state schema 전체에 top-level optional `schema_version` 추가 + history.json cycle items에 required `schema_version` 추가. 값 포맷: `\"\\\\d+\\\\.\\\\d+\"` (예: \"0.5\"). 의미: nexus-core가 해당 schema 모양을 도입한 버전, future migration script 앵커. Consumer는 해석 의무 없음. 적용 대상: plan.schema.json, tasks.schema.json, runtime.schema.json, agent-tracker.schema.json (top-level optional), history.schema.json (top-level optional + cycles[].schema_version required). 근거: (1) history.json은 long-lived append-only로 per-cycle 버전 앵커 필수 — 여러 nexus-core 버전이 누적되는 유일한 파일, (2) plan/tasks도 task_close가 history로 archive할 때 per-cycle로 자연 전파되려면 원본에 schema_version 있어야 함, (3) runtime/agent-tracker는 세션 삭제 파일이라 실익 낮으나 optional이므로 harm 없음 + consumer defensive loading 로직 통일성 확보, (4) evolution.md L181-185 미결 항목 (e)가 plan session #1 이래 TBD 상태 — v0.5.0이 자연스러운 해소 시점, (5) pre-v1 retrofit 비용 저렴 (1-2시간). CHANGELOG에 로드맵 명시: v0.5.0 optional 도입, 차기 major bump에서 required 승격 후보. 옵션 B(history만) 기각: 파일별 룰이 달라 consumer 판단 로직 복잡, plan/tasks archive 시 nexus-core 상수 참조 필요. 옵션 D(runtime/tracker 제외) 기각: 일관성 대비 이득 미미.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "옵션 C 권장. history.json은 long-lived archive로 per-cycle schema_version 필수. 전체 5개 state 파일 optional top-level이 consumer defensive loading enabler. Phase 2 3-consumer 환경에서 조회 사이드에 음 2차. evolution.md의 미결 항목 (e) 직접 해소. CHANGELOG에 required 승격 로드맵 기록 필요."
+            },
+            "how_agent_ids": {
+              "architect": "ac3f5261f5d2cbf37"
+            }
+          },
+          {
+            "id": 4,
+            "title": "#12 Gap 1: plan_decide 파라미터명 canonical 결정 (summary vs decision)",
+            "status": "decided",
+            "decision": "옵션 B 채택 — `plan_decide` 파라미터명을 `summary`에서 `decision`으로 리네이밍하여 state field와 통일. 변경 대상: (1) docs/nexus-tools-contract.md L143 Parameters 테이블 param 이름, (2) conformance/tools/plan-decide.json 세 fixture의 params.summary와 uncovered_params, (3) consumer MCP tool 구현(claude-nexus/opencode-nexus의 nx_plan_decide wrapper). 근거: (1) state field가 이미 schema에 `decision`으로 canonical 선언됨 → field가 원본이고 param이 맞춰야 자연스러움, (2) plan.schema.json의 `research_summary` 필드와의 네임스페이스 충돌 해소 — \"summary\"는 research 한정, 결정은 \"decision\"으로 분리, (3) `[d]` 태그의 d가 decision → 태그-param-field 삼각형 일관성 확보, (4) field 리네이밍(옵션 A)은 plan/history/archive 체인 전체 영향이라 비용 훨씬 큼, (5) 문서화만(옵션 C)은 \"왜 의도적으로 다른가\"에 대한 convincing 근거 제시 불가, 이슈 제기자의 canonical 결정 요구 미충족. Consumer cost: nx_plan_decide wrapper 한 곳씩 param 이름 변경 (sed 수준). Breaking change이므로 CHANGELOG nx-car 마커 + MIGRATIONS 가이드 필수.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "`decision` 채택 권장. postcondition이 $.issues[].decision을 검증하므로 파라미터명과 state field명 일치가 가독성/디버깅 개선. `summary`는 plan의 research_summary와 충돌 소지. breaking change이므로 v0.5.0에 포함 합리적. Consumer 비용: tool wrapper 한 곳 + 고유 fixture."
+            },
+            "how_agent_ids": {
+              "architect": "ac3f5261f5d2cbf37"
+            }
+          },
+          {
+            "id": 5,
+            "title": "#12 Gap 3: state_files empty {} 시맨틱 처리 (문서화 vs 명시 sentinel)",
+            "status": "decided",
+            "decision": "옵션 A 채택 — 시맨틱 변경 없이 문서화만 강화. 변경 대상: (1) conformance/README.md Assertion conventions 테이블(L159-174)에 행 추가: `\".nexus/state/artifacts/findings.md\": {}` → \"File must exist; content not inspected (use for non-JSON artifacts like .md or binary files)\", (2) conformance/README.md Writing a test runner 섹션(L231 이하)에 naive runner 예방용 runner 구현 가이드 추가: state_files 값 분기 로직(`null` → must not exist, `{}` → exists only, `{...}` → JSON parse + JSONPath), (3) fixture.schema.json L191-194의 state_files description 강화: \"null = file must not exist; empty object {} = file must exist but content is not inspected (use for non-JSON artifacts like .md, .txt, binary files); non-empty object = JSONPath assertions on parsed JSON content.\" 기존 artifact-write.json 등 fixture 파일은 수정하지 않음(empty {} 그대로 유지). 근거: (1) null(no exist) / {...}(assertions) / {}(exists, no assertions)은 이미 수학적 대칭 — sentinel은 이 대칭을 깬다, (2) fixture.schema.json이 이미 `object | null`로 empty object 허용 중 — schema 작성자가 의도한 문법, (3) 옵션 B(sentinel)는 기존 fixture 3개+ 전수 마이그레이션 유발 shotgun surgery, (4) Rule 4 Truthful Covers 철학과 일관 — \"설명은 문서에\" 원칙. Breaking 아님(pure docs).",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "옵션 A 권장. sentinel 도입은 기존 fixture 전체 수정 유발(shotgun surgery). empty {}는 null과 대칭적 음아서 자연스러움 — 문서 gap일 뿐. README 한 줄 + fixture.schema.json description 강화로 해소."
+            },
+            "how_agent_ids": {
+              "architect": "ac3f5261f5d2cbf37"
+            }
+          },
+          {
+            "id": 6,
+            "title": "#12 Gap 2/4/5/6: contract docs/schema 정합성 일괄 보강 (plan_update return shape 문서화, plan.schema의 how_agents 필드 선언 검증, extension schema 예시 추가, MIGRATIONS typo 수정)",
+            "status": "decided",
+            "decision": "Gap 2/4/5/6 일괄 처리 승인. 실제 실행 항목 4개: (1) **Gap 2 — plan_update return 명세 보강**: docs/nexus-tools-contract.md L105-114에 `issue` 객체 내부 shape 테이블 추가 — `{id: number, title: string (add/edit/reopen), status: \"pending\"|\"decided\" (add/reopen)}`. 기존 discriminating field 테이블 유지. (2) **Gap 4 — verification only**: plan.schema.json L44-58에 how_agents/how_summary/how_agent_ids 이미 선언됨, plan-decide.json L90 covers에 이미 열거됨, validator 통과 중. v0.5.0에서 해당 필드 건드리지 않음을 릴리즈 노트로 확인. 별도 액션 없음. (3) **Gap 5 — extension example schema 신설**: conformance/examples/plan.extension.schema.example.json 신규 파일 작성. `extends` 필드(const: \"conformance/state-schemas/plan.schema.json\"), harness_id 필드(pattern ^[a-z][a-z0-9-]*$), harness_specific_field_example 필드(consumer가 실제 필드로 대체). additionalProperties: false. docs/nexus-outputs-contract.md Harness-local State Extension 섹션에 이 파일을 reference example로 링크 추가. (4) **Gap 6 — close with note**: grep 결과 `@anthropic-ai/claude-code` 오타가 프로젝트 전체(특히 MIGRATIONS/v0_3_to_v0_4.md)에 존재하지 않음 확인. 이슈 제기자의 오인이거나 이미 수정된 상태. GitHub issue #12 comment로 \"Gap 6 close with verification note\" 남김. 근거: Gap 2는 실제 명세 gap이므로 보강 타당, Gap 4는 이미 완료되어 추가 액션 없음, Gap 5는 extension 패턴을 v0.4.0에서 도입하고 example 없이 방치된 문서 gap이라 이번에 해소, Gap 6은 invalid 판정.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "4개 sub-gap 일괄 처리 권장. Gap 2(issue shape 명세), Gap 5(extension example)만 실제 작업. Gap 4는 이미 해결, Gap 6은 invalid. 간단 docs/schema 작업으로 총 소요 시간 1-2시간 수준."
+            },
+            "how_agent_ids": {
+              "architect": "ac3f5261f5d2cbf37"
+            }
+          },
+          {
+            "id": 7,
+            "title": "버전 전략: v0.5.0 minor bump vs v1.0.0 major bump",
+            "status": "decided",
+            "decision": "옵션 A 채택 — v0.5.0 minor bump + nx-car:v0.5.0 마커. 근거: (1) Phase 1 잔존 확정 — 3 consumer 중 opencode-nexus만 실제 소비 중이므로 v1.0.0은 시기상조. v1.0.0은 Phase 2 안정화 이후 \"진짜 stable API\" 선언 시점으로 유보. (2) 선례 일관성 — v0.2.0(harness-agnostic 재설계, breaking), v0.4.0(conformance covers required, breaking) 모두 pre-v1 minor bump로 처리. 이번만 major로 승격하면 정책의 자의성 신호. (3) pre-v1 정책(evolution.md L64-70)의 요점이 \"breaking은 허용하되 nx-car 마커로 명시 신호\" — nx-car:v0.5.0 + MIGRATIONS/v0_4_to_v0_5.md가 그 신호 역할. (4) Consumer 심리 — \"minor pain\" vs \"큰일 났다\" 메시징 차이. 실행 산출물: CHANGELOG.md에 v0.5.0 엔트리 + nx-car:v0.5.0 블록(영향 consumer 3개 명시, 4가지 required action, migration guide 링크, upgrade gate 명령), MIGRATIONS/v0_4_to_v0_5.md 신규 작성, package.json/manifest.json 버전 bump. Roadmap: schema_version required 승격을 v1.0.0(Phase 2 진입) 후보로 CHANGELOG에 명시.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "v0.5.0 minor bump 권장. Phase 1 잔존 상태에서 v1.0.0은 수라다. evolution.md 정책 선례(v0.2.0, v0.4.0) 일관. nx-car 마커 + MIGRATIONS로 breaking change 신호 충분."
+            },
+            "how_agent_ids": {
+              "architect": "ac3f5261f5d2cbf37"
+            }
+          }
+        ],
+        "research_summary": "**현재 상태**: v0.4.0, files=[agents, skills, vocabulary, schema, conformance, docs, manifest.json]에 scripts 누락, bin 엔트리 없음. runtime.schema required=[teams_enabled, session_started_at, plugin_version], agent-tracker.schema required=[agent_type, agent_id, started_at, resume_count, status]. plan-decide fixture는 params.summary 사용하나 postcondition은 $.issues[].decision 체크. 5개 state schema 모두 schema_version 필드 없음. docs/nexus-tools-contract.md에 plan_decide/plan_update 섹션 존재하나 return shape/param canonical 명시 안 됨. docs/nexus-outputs-contract.md L89-126에 Harness-local State Extension 섹션 존재하나 예시 schema 없음. MIGRATIONS/v0_3_to_v0_4.md에는 dependency 언급 없음(이슈 #12 Gap6은 다른 문서일 가능성, 재확인 필요).\n\n**기존 원칙 (.nexus/context)**: (1) boundaries.md L45-51 — scripts/는 build-time util로 prompt-only 예외 허용. (2) evolution.md L64-70 — pre-v1에서 breaking도 minor bump + nx-car marker로 처리 (v0.2.0 harness-agnostic, v0.4.0 conformance 선례). (3) evolution.md L181-185 — schema_version은 이미 미결 항목 (e)로 제기된 상태, 이슈 #10이 직접 대응. (4) 거절 근거 4 — harness-specific tool 이름 금지, capability abstraction 원칙.\n\n**아키텍트(architect) 사전 분석**: #8+#11 옵션 C(files+bin) 권장 — bin 엔트리로 consumer 명령 재현성 확보. #9 하이브리드 권장 — agent_type을 {harness_id, agent_name}로 분해(common 유지, Supervision 조회 용이성 보존), plugin_version은 harness_version으로 리네이밍 후 common 유지. 옵션 B(extension 완전 이동)는 cross-harness agent identity 깨뜨려 거부. #10 하이브리드 권장 — 전체 옵셔널 + history.json per-cycle. #12 Gap 1 `decision` 채택 — state field와 일치, 가독성. Gap 3 문서화만 — sentinel은 shotgun surgery. 아키텍트는 \"major bump\" 언급했으나 evolution.md 선례상 minor bump가 일관성 있음.\n\n**Tool Inventory**: 5개 state schema 파일 위치 확인, 11개 conformance/tools/*.json fixture 존재, CHANGELOG.md의 nx-car:v0.4.0 블록 포맷 확인, `.nexus/rules/semver-policy.md` 18-case 표 존재.",
+        "created_at": "2026-04-13T13:03:37.698Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "package.json 배포 설정 수정 (files + bin + shebang)",
+          "context": "이슈 #8/#11 해결. scripts/ 배포 + bin 엔트리 추가로 consumer가 `bunx nexus-validate-conformance` 직접 실행 가능하게 함.",
+          "approach": "(1) package.json의 files 배열에 \"scripts\" 추가. (2) package.json에 bin 필드 신설: {\"nexus-validate-conformance\": \"./scripts/conformance-coverage.ts\"}. (3) scripts/conformance-coverage.ts 최상단에 `#!/usr/bin/env bun` shebang 추가.",
+          "acceptance": "files 배열에 \"scripts\" 포함, bin.nexus-validate-conformance가 올바른 경로 지정, scripts/conformance-coverage.ts 첫 줄이 shebang. 로컬 `npm pack` → tarball 내용에 scripts/ 포함 확인. 별도 임시 디렉토리에서 `npm install ./moreih29-nexus-core-0.5.0.tgz` 후 `bunx nexus-validate-conformance` 실행 성공.",
+          "risk": "Windows 호환성 — bin 엔트리 TS 파일은 일부 환경에서 직접 실행 불가. 현재 3 consumer 모두 Unix/Bun 기반이므로 우선 unblock. 향후 Node-only 환경 대응은 별도 이슈.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-13T13:22:16.677Z"
+        },
+        {
+          "id": 2,
+          "title": "runtime.schema.json + agent-tracker.schema.json 재구성",
+          "context": "이슈 #9 해결. common schema에서 harness-prefixed 식별자 제거하고 harness_id + agent_name을 structurally 분해된 필수 필드로 선언.",
+          "approach": "(1) runtime.schema.json: required에서 plugin_version 제거, harness_id와 harness_version 추가. harness_id는 pattern `^[a-z][a-z0-9-]*$` free string (enum 아님 — nexus-core는 harness 목록 모름). harness_version은 string(semver 가정). 기존 teams_enabled, session_started_at은 유지. additionalProperties: false 유지. (2) agent-tracker.schema.json: items.required에서 agent_type 제거, harness_id와 agent_name 추가. 둘 다 pattern `^[a-z][a-z0-9-]*$`. agent_id, started_at, resume_count, status는 유지. (3) lifecycle fixture 5개(session-start/end, agent-spawn/complete/resume) params 및 postcondition 업데이트.",
+          "acceptance": "두 schema 파일이 draft 2020-12 valid, required 필드 정확히 반영. bun run validate:conformance 통과. lifecycle fixture 5개가 새 schema로 검증 통과.",
+          "risk": "Consumer(opencode-nexus)의 기존 agent-tracker.json writer가 agent_type을 사용 중. Migration 가이드 필수. Supervision layer(nexus-code)가 agent_type 파싱 코드를 유지 중이라면 breaking — MIGRATIONS로 명시.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-13T13:22:31.677Z"
+        },
+        {
+          "id": 3,
+          "title": "5개 state schema에 schema_version 필드 추가",
+          "context": "이슈 #10 해결. migration 앵커로 schema_version 도입. 5개 전체 top-level optional, history.json은 per-cycle required.",
+          "approach": "(1) plan.schema.json, tasks.schema.json, runtime.schema.json, agent-tracker.schema.json: top-level properties에 schema_version 추가 (type string, pattern `^\\\\d+\\\\.\\\\d+$`, description \"nexus-core version that introduced this schema shape, e.g. '0.5'\"). additionalProperties: false 유지이므로 properties에 명시적 추가. required에는 미포함. (2) history.schema.json: cycles[].properties에 schema_version 추가 + cycles[].required에 schema_version 포함. top-level에도 optional schema_version 추가. (3) 각 schema description에 \"optional in v0.5.0, candidate for required in v1.0.0\" 명시.",
+          "acceptance": "5개 schema 모두 validate, validate:conformance 통과. 기존 state-schema 필드 coverage 유지. 신규 필드가 validator의 schema field coverage union에 포함되어 fixture에서 적어도 하나가 covers 선언.",
+          "risk": "Fixture 중 state file을 기록하는 fixture들이 schema_version을 기록하지 않으면 schema 통과는 하지만 새 필드 coverage 미달. 관련 fixture(task-close의 history archive, session-start의 runtime 등)에 schema_version 포함 필요. covers 선언도 업데이트.",
+          "status": "completed",
+          "deps": [
+            2
+          ],
+          "plan_issue": 3,
+          "owner": "engineer",
+          "created_at": "2026-04-13T13:22:44.939Z"
+        },
+        {
+          "id": 4,
+          "title": "plan_decide 파라미터 decision 리네이밍 (fixture)",
+          "context": "이슈 #12 Gap 1 해결. plan_decide의 input 파라미터명을 summary에서 decision으로 변경하여 state field와 통일.",
+          "approach": "(1) conformance/tools/plan-decide.json 3개 fixture(plan_decide_happy_path, plan_decide_no_active_plan_error, plan_decide_with_how_agents)의 action.params.summary를 action.params.decision으로 변경. (2) uncovered_params 배열의 \"summary\" → \"decision\". (3) description 필드에 \"decision summary\" 등 텍스트가 있다면 \"decision text\"로 명세 일치. (4) 다른 fixture(예: scenarios/)에서 plan_decide 호출 시 params.summary 사용하는 곳도 전수 검색 + 변경.",
+          "acceptance": "grep으로 \"summary\" in plan_decide action.params 0건. bun run validate:conformance 통과. plan.schema.json의 issues[].decision 필드 coverage 유지.",
+          "risk": "Consumer의 MCP tool wrapper가 summary를 받고 있으면 v0.5.0 업그레이드 시 breaking. MIGRATIONS에서 명시적 안내 필요. nexus-core 자체는 MCP tool 구현을 포함하지 않으므로 fixture/docs만 변경.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 4,
+          "owner": "engineer",
+          "created_at": "2026-04-13T13:22:58.481Z"
+        },
+        {
+          "id": 5,
+          "title": "plan.extension.schema.example.json 신설",
+          "context": "이슈 #12 Gap 5 해결. v0.4.0에서 도입된 Harness-local State Extension 패턴의 concrete 예시 schema를 reference로 제공.",
+          "approach": "(1) conformance/examples/ 디렉토리 신설. (2) conformance/examples/plan.extension.schema.example.json 파일 작성: $schema draft 2020-12, $id로 자기 경로 기록, extends 필드(type string, const \"conformance/state-schemas/plan.schema.json\"), harness_id(pattern ^[a-z][a-z0-9-]*$), harness_specific_field_example(설명: consumer가 실제 필드로 대체). additionalProperties: false. title/description에 \"non-normative reference example\" 명시. (3) package.json#files에 \"conformance\"가 이미 포함되어 있으므로 별도 files 수정 불필요.",
+          "acceptance": "파일이 valid JSON Schema draft 2020-12. bun run validate (전체 schema 검증) 통과. bun run validate:conformance 통과(example 디렉토리는 state-schema coverage 대상 아님). 파일 내 설명에 consumer가 자기 fields로 교체해야 함을 분명히 명시.",
+          "risk": "examples/ 디렉토리를 conformance/ 하위에 두면 validator가 오탐할 수 있음. scripts/conformance-coverage.ts가 state-schemas/ 만 스캔하는지 확인 필요. 오탐 시 validator 코드 수정 또는 examples/를 conformance/ 밖(docs/examples/)으로 이동 고려.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 6,
+          "owner": "engineer",
+          "created_at": "2026-04-13T13:23:13.938Z"
+        },
+        {
+          "id": 6,
+          "title": "conformance/README.md + fixture.schema.json: empty {} 시맨틱 문서화",
+          "context": "이슈 #12 Gap 3 해결. state_files의 empty {} 시맨틱을 normative 문서로 명시하여 naive runner가 non-JSON 파일을 JSON.parse하지 않도록 가이드.",
+          "approach": "(1) conformance/README.md Assertion conventions 테이블(L159 근처)에 행 추가: `\".nexus/state/artifacts/findings.md\": {}` → \"File must exist; content not inspected (use for non-JSON artifacts like .md, .txt, binary files)\". (2) conformance/README.md Writing a test runner 섹션(L231 이하)에 state_files 분기 로직 명시: null = must-not-exist, {} = must-exist-only, {...keys} = JSON parse + JSONPath assertions. (3) conformance/schema/fixture.schema.json L191 근처 state_files description 확장: 3가지 시맨틱을 한 줄에 서술.",
+          "acceptance": "README에 empty {} 행 존재. fixture.schema.json의 state_files description에 세 시맨틱 명시. Pure docs change이므로 validator 영향 없음. grep으로 변경 확인.",
+          "risk": "없음. Docs-only, breaking 아님.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-13T13:23:26.194Z"
+        },
+        {
+          "id": 7,
+          "title": "docs/nexus-tools-contract.md 업데이트 (plan_decide + plan_update)",
+          "context": "이슈 #12 Gap 1 + Gap 2 해결. plan_decide 파라미터명 canonical 반영 및 plan_update return value의 issue 객체 shape 명세.",
+          "approach": "(1) L143 plan_decide Parameters 테이블: `summary`를 `decision`으로 변경. Description \"Decision text to record against the issue\"로 명료화. (2) L105-114 plan_update Return Value 섹션에 issue 객체 shape 테이블 추가: id(number, always), title(string, present on add/edit/reopen), status(\"pending\"|\"decided\", present on add/reopen). 기존 action별 discriminating field 테이블은 유지. (3) Side Effects 섹션의 관련 문구 재확인 — \"summary\" 언급이 남아있으면 \"decision text\"로 수정.",
+          "acceptance": "grep \"summary\" in nexus-tools-contract.md → plan_decide 관련 언급 0건 (plan.research_summary는 유지). plan_update return value에 issue shape 테이블 존재. reviewer가 docs-spec 일관성 확인.",
+          "risk": "다른 docs(consumer-implementation-guide.md 등)에서 plan_decide의 summary를 언급하는 곳 누락 가능. 전수 grep 필요.",
+          "status": "completed",
+          "deps": [
+            4
+          ],
+          "plan_issue": 4,
+          "owner": "writer",
+          "created_at": "2026-04-13T13:23:39.571Z"
+        },
+        {
+          "id": 8,
+          "title": "docs/nexus-outputs-contract.md: extension example 링크 추가",
+          "context": "이슈 #12 Gap 5 보완. Harness-local State Extension 섹션에서 conformance/examples/plan.extension.schema.example.json을 reference로 링크.",
+          "approach": "docs/nexus-outputs-contract.md의 Harness-local State Extension 섹션(L89-126 근처)에 \"Reference example: conformance/examples/plan.extension.schema.example.json\" 링크 및 짧은 설명 추가. `extends` 필드 의미와 additionalProperties: false 기본 정책 재언급.",
+          "acceptance": "링크가 올바른 상대 경로로 존재. 섹션이 consumer가 extension schema를 만들 때 참조할 수 있을 정도의 안내 수준. reviewer 체크.",
+          "risk": "없음. Docs-only.",
+          "status": "completed",
+          "deps": [
+            5
+          ],
+          "plan_issue": 6,
+          "owner": "writer",
+          "created_at": "2026-04-13T13:23:48.757Z"
+        },
+        {
+          "id": 9,
+          "title": "MIGRATIONS/v0_4_to_v0_5.md 신규 작성",
+          "context": "이슈 #8/#9/#10/#11/#12 consumer migration 가이드. 3개 consumer(claude-nexus, opencode-nexus, nexus-code)가 v0.5.0으로 업그레이드할 때 필요한 4가지 action 단계별 명세.",
+          "approach": "파일 구조 — Release date 2026-04-13, Type \"Multiple breaking changes (schema + param rename + schema_version required)\", Affected consumers 3개 명시. 섹션 1: runtime.json writer 변경 (before/after 코드 블록으로 plugin_version → harness_id+harness_version). 섹션 2: agent-tracker.json writer 변경 (agent_type → harness_id+agent_name, 파싱 로직 제거). 섹션 3: plan_decide MCP wrapper 파라미터 rename (summary → decision). 섹션 4: history.json writer에 per-cycle schema_version 추가 (값 \"0.5\"). 각 섹션에 Consumer action required 체크리스트 + 검증 방법(bunx nexus-validate-conformance). 마지막에 Troubleshooting FAQ.",
+          "acceptance": "파일이 각 breaking change의 before/after, action checklist, 검증 명령을 포함. v0_3_to_v0_4.md와 동일한 구조 준수. nx-car:v0.5.0 블록과 교차 참조. reviewer가 consumer 3개 모두 실제로 이 가이드로 migration 가능함을 판정.",
+          "risk": "Consumer별 tool wrapper 구현 차이로 일부 가이드가 harness-specific code snippet 유혹. neutral pseudo-code 또는 schema-level diff만 제시하여 harness-neutrality 유지.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "plan_issue": 7,
+          "owner": "writer",
+          "created_at": "2026-04-13T13:24:05.825Z"
+        },
+        {
+          "id": 10,
+          "title": "CHANGELOG.md v0.5.0 엔트리 추가 (nx-car 블록 포함)",
+          "context": "이슈 #7 버전 전략 실행. Keep a Changelog 포맷 + nx-car:v0.5.0 versioned HTML 주석 marker 포함.",
+          "approach": "[0.5.0] - 2026-04-13 — \"Consumer experience + harness-neutral refinements\" 헤더. Added 섹션: bin entry, scripts 배포, plan.extension.schema.example.json, schema_version optional on 5 schemas + required per-cycle in history, nexus-tools-contract의 plan_update issue shape. Changed 섹션: runtime.schema.json/agent-tracker.schema.json 필드 재구성, plan_decide param, empty {} 시맨틱 문서화. BREAKING CHANGES 섹션에 nx-car:v0.5.0:start/end 마커로 감싼 Consumer Action Required 블록 — 영향 consumer 3개 명시, 4가지 required action, MIGRATIONS/v0_4_to_v0_5.md 링크, upgrade gate 명령(bunx nexus-validate-conformance). Roadmap 섹션에 schema_version required 승격을 v1.0.0 후보로 명시. evolution.md CHANGELOG Canonical 포맷 규칙 준수.",
+          "acceptance": "CHANGELOG.md에 v0.5.0 엔트리가 v0.4.0 위에 위치. nx-car:v0.5.0:start/end 마커 한 쌍(중첩 금지). Affected consumers 3개(claude-nexus, opencode-nexus, nexus-code) 명시. MIGRATIONS 링크 정상 작동. Keep a Changelog Added/Changed 구조 준수.",
+          "risk": "nx-car 마커 중첩 금지 규칙 — 기존 v0.4.0 마커와 섞이지 않도록 주의. 반드시 end 마커로 닫고 새 start 마커 열기.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "plan_issue": 7,
+          "owner": "writer",
+          "created_at": "2026-04-13T13:24:22.038Z"
+        },
+        {
+          "id": 11,
+          "title": "package.json + manifest.json version bump 0.5.0",
+          "context": "릴리즈 확정. 모든 구현 task 완료 후 버전 문자열을 0.4.0 → 0.5.0으로 동기화.",
+          "approach": "(1) package.json version \"0.4.0\" → \"0.5.0\". (2) scripts/validate.ts 또는 manifest 생성 로직이 package.json을 source of truth로 쓰는지 확인. (3) bun run validate 실행하여 manifest.json의 nexus_core_version이 0.5.0으로 자동 재생성되는지 확인. 자동 생성이면 수동 수정 불필요.",
+          "acceptance": "package.json.version === \"0.5.0\". manifest.json.nexus_core_version === \"0.5.0\". bun run validate 통과. git status에 두 파일 변경 반영.",
+          "risk": "manifest.json은 validate가 재생성하므로 수동 수정 시 hash 체계 깨질 수 있음. validate 스크립트에 의존.",
+          "status": "completed",
+          "deps": [
+            10
+          ],
+          "plan_issue": 7,
+          "owner": "lead",
+          "created_at": "2026-04-13T13:24:32.566Z"
+        },
+        {
+          "id": 12,
+          "title": "전체 CI gate 시뮬레이션 (validator + typecheck)",
+          "context": "모든 schema/fixture/docs 변경 후 CI 통과 시뮬레이션. 로컬 npm pack → 임시 디렉토리 설치 → bunx 실행 end-to-end 확인.",
+          "approach": "(1) bun run validate (10-gate schema 검증 + manifest 생성) 통과 확인. (2) bun run validate:conformance (state-schema field coverage + params anti-pattern) 통과 확인. (3) bun run typecheck 통과 확인. (4) npm pack으로 tarball 생성 → 임시 디렉토리에 `npm install ./moreih29-nexus-core-0.5.0.tgz` → `bunx nexus-validate-conformance` 실행 성공 확인. (5) tarball 내 scripts/, conformance/examples/ 포함 여부 확인(tar tzf).",
+          "acceptance": "3개 bun script 모두 exit 0. tarball 설치 후 bin 명령 동작. tarball에 scripts/conformance-coverage.ts, conformance/examples/plan.extension.schema.example.json 포함. 모든 fixture의 covers 선언이 state-schema 변경 반영.",
+          "risk": "scripts/conformance-coverage.ts가 examples/ 디렉토리를 스캔하여 오탐할 가능성. 이 경우 validator 코드에 exclude 패턴 추가 또는 examples/ 경로 이동 필요.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            11
+          ],
+          "plan_issue": 7,
+          "owner": "tester",
+          "created_at": "2026-04-13T13:24:45.040Z"
+        },
+        {
+          "id": 13,
+          "title": "Writer 산출물 통합 reviewer 검토",
+          "context": "writer owner의 문서/스키마 산출물 6건 통합 검토 — 정확성, 일관성, neutral 원칙 준수, consumer 이해 가능성.",
+          "approach": "(1) conformance/README.md + fixture.schema.json의 empty {} 시맨틱 문서화가 실제 runner 구현 가이드로 충분한지 평가. (2) docs/nexus-tools-contract.md의 plan_decide param 변경과 plan_update issue shape 테이블이 consumer-implementation-guide.md 등 다른 문서와 일관성 유지하는지 cross-check. (3) docs/nexus-outputs-contract.md extension example 링크가 올바른 상대 경로로 작동. (4) MIGRATIONS/v0_4_to_v0_5.md가 harness-neutral pseudo-code 유지 + 4가지 action 모두 before/after 제공. (5) CHANGELOG.md v0.5.0 엔트리의 nx-car 마커 중첩 없음, affected consumers 3개 명시, Added/Changed 분류 정확. (6) 전체 grep으로 stale reference(summary for plan_decide, plugin_version, agent_type) 0건 확인.",
+          "acceptance": "6건 산출물 모두 reviewer OK. 발견 이슈는 수정 사이클로 되돌림. Final state: docs/schema/changelog 일관성 유지.",
+          "risk": "MIGRATIONS 가이드가 harness-specific 예시(예: bun-only 코드)를 포함하면 neutral 원칙 위배. reviewer가 이 체크를 놓치지 말 것.",
+          "status": "completed",
+          "deps": [
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "plan_issue": 7,
+          "owner": "reviewer",
+          "created_at": "2026-04-13T13:25:00.327Z"
+        },
+        {
+          "id": 14,
+          "title": ".nexus/context/evolution.md에 v0.5.0 선례 기록",
+          "context": "v0.2.0(L64-66), v0.4.0(L68-70) 선례와 같이 v0.5.0도 breaking-with-minor-bump 사례로 기록. 향후 policy 적용 근거로 보존.",
+          "approach": ".nexus/context/evolution.md의 Breaking Change 대응 절차 섹션 하단에 \"### v0.5.0 — Consumer experience + harness-neutral refinements (2026-04-13)\" 서브섹션 추가. 요약: 이슈 #8/#9/#10/#11/#12 통합 처리, 3건 breaking(state schema 재구성, plan_decide param rename, history per-cycle schema_version required). pre-v1 정책에 따라 minor bump 유지. nx-car:v0.5.0 마커 + MIGRATIONS/v0_4_to_v0_5.md. Phase 2 전환 시점 재평가 연계. 추가로 §미결 항목 TBD (e)가 v0.5.0에서 schema_version 도입으로 해소됨을 기록.",
+          "acceptance": "evolution.md에 v0.5.0 서브섹션 존재. 기존 v0.2.0/v0.4.0 엔트리와 일관된 서술 톤. §미결 항목 (e) 해소 언급 포함.",
+          "risk": "context/ 수정은 [sync] skill 없이 직접 편집. 다른 context 파일(boundaries.md)의 cross-reference와 일관성 유지 필요.",
+          "status": "completed",
+          "deps": [
+            12
+          ],
+          "plan_issue": 7,
+          "owner": "writer",
+          "created_at": "2026-04-13T13:25:14.656Z"
+        },
+        {
+          "id": 15,
+          "title": "GitHub Issues #8/#9/#10/#11/#12 close 및 commit/tag/publish",
+          "context": "최종 릴리즈 절차. 모든 검증 완료 후 GitHub 이슈 close, git commit, tag, npm publish.",
+          "approach": "(1) 모든 변경을 단일 commit 또는 유의미한 커밋 단위로 묶어 커밋(사용자 확인 후). (2) git tag v0.5.0. (3) GitHub Issue close 코멘트: #8 \"fixed in v0.5.0 (bin entry + scripts shipped)\", #9 \"fixed in v0.5.0 (harness_id/agent_name decomposition)\", #10 \"fixed in v0.5.0 (schema_version optional + history per-cycle required)\", #11 \"fixed in v0.5.0 (same as #8)\", #12 gap-by-gap comment: Gap 1(decision rename fixed), Gap 2(issue shape documented), Gap 3(empty {} docs added), Gap 4(already resolved in v0.4.0, verified), Gap 5(example schema added), Gap 6(typo not present in repo — closed as invalid). #13은 별도 논의로 open 유지. (4) npm publish (또는 사용자 지시 대기).",
+          "acceptance": "5개 이슈 모두 close. 각 이슈에 resolution commit/PR 링크 포함. git tag v0.5.0 생성. npm registry에 0.5.0 publish 완료(사용자 confirm 후).",
+          "risk": "git push, tag, npm publish는 외부 영향 작업 — 사용자 명시 승인 필수. 본 task는 승인 요청까지만 수행 후 대기.",
+          "status": "in_progress",
+          "deps": [
+            12,
+            13,
+            14
+          ],
+          "plan_issue": 7,
+          "owner": "lead",
+          "created_at": "2026-04-13T13:25:28.611Z"
+        }
+      ]
     }
   ]
 }

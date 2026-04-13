@@ -21,6 +21,46 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.5.0] - 2026-04-13 — Consumer experience + harness-neutral refinements
+
+### Added
+
+- `package.json#bin`: `nexus-validate-conformance` entry for direct `bunx`/`npx` invocation
+- `package.json#files`: `scripts/` now shipped with the npm tarball — consumers can invoke the conformance validator without reaching into `node_modules`
+- `conformance/examples/plan.extension.schema.example.json`: non-normative reference example for harness-local state extensions
+- Optional `schema_version` field on `plan`, `tasks`, `runtime`, `history` state schemas (top-level)
+- Required per-cycle `schema_version` field on `history.schema.json` `cycles[]` — migration anchor for long-lived archives
+- `docs/nexus-tools-contract.md` §plan_update: `issue` object shape table (`id`, `title`, `status` with presence conditions)
+- `docs/nexus-outputs-contract.md` §Harness-local State Extension: link to reference example schema
+
+### Changed
+
+- `conformance/state-schemas/runtime.schema.json`: `plugin_version` replaced with `harness_id` + `harness_version` (required)
+- `conformance/state-schemas/agent-tracker.schema.json`: `agent_type` decomposed into `harness_id` + `agent_name` (required)
+- `docs/nexus-tools-contract.md` §plan_decide: parameter renamed `summary` → `decision` (matches state field name)
+- `conformance/tools/plan-decide.json` + `conformance/scenarios/full-plan-cycle.json`: fixtures updated to new param name
+- `conformance/lifecycle/*.json`: 5 event fixtures updated to reference `harness_id`/`harness_version`/`agent_name`
+- `conformance/README.md` + `conformance/schema/fixture.schema.json`: `state_files` empty `{}` semantic documented as "file must exist, content not inspected"
+
+### BREAKING CHANGES
+<!-- nx-car:v0.5.0:start -->
+**Affected consumers**: claude-nexus, opencode-nexus, nexus-code
+
+**Required actions**:
+1. **runtime.json writer** — replace `plugin_version` with `harness_id` (free string matching `^[a-z][a-z0-9-]*$`) and `harness_version` (plugin version string).
+2. **agent-tracker.json writer** — remove `agent_type` prefix composition; record `harness_id` and `agent_name` as separate fields. Remove any parsing code that splits `"<harness>:<agent>"`.
+3. **plan_decide MCP wrapper** — rename input parameter `summary` to `decision`. State field already was `decision`; this aligns the pair.
+4. **history.json writer** — include `"schema_version": "0.5"` on every archived cycle. Optional (recommended) on plan/tasks/runtime top-level writes.
+
+**Migration guide**: [MIGRATIONS/v0_4_to_v0_5.md](./MIGRATIONS/v0_4_to_v0_5.md)
+
+**Upgrade gate**: run `bunx nexus-validate-conformance` after upgrade. All fixtures must pass before deploying the consumer.
+<!-- nx-car:v0.5.0:end -->
+
+### Roadmap
+
+- `schema_version` required promotion is a candidate for the next major bump (v1.0.0, tied to Phase 2 entry per `.nexus/context/evolution.md`).
+
 ## [0.4.0] - 2026-04-13 — Conformance full-coverage
 
 ### Added
@@ -170,7 +210,8 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/moreih29/nexus-core/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/moreih29/nexus-core/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/moreih29/nexus-core/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/moreih29/nexus-core/compare/v0.1.2...v0.2.0

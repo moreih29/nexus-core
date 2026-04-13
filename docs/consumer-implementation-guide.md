@@ -555,7 +555,7 @@ Identify the equivalent events in your harness's plugin system and implement the
 **When it fires:** Lead spawns a subagent to execute a task.
 
 **Expected consumer behavior:**
-- Record the new agent entry in `agent-tracker.json`: `{ agent_type, agent_id, task_id, started_at }`.
+- Record the new agent entry in `agent-tracker.json`: `{ harness_id, agent_name, agent_id, task_id, started_at }`.
 - Inject the knowledge index into the subagent's initial context: the list of files in `.nexus/memory/`, `.nexus/context/`, and `.nexus/rules/` so the agent knows what project knowledge is available.
 - Apply capability restrictions: resolve `effective_capabilities` for this agent type and configure the subagent's tool access accordingly (see §6).
 - Apply the resume evaluation: check `owner_reuse_policy` on the task and the agent's `resume_tier` to determine whether to spawn fresh or resume a prior session (see §10).

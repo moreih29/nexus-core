@@ -7,6 +7,11 @@
   "additionalProperties": false,
   "required": ["id", "topic", "issues", "created_at"],
   "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "nexus-core version that introduced this schema shape (e.g. '0.5'). Optional in v0.5.0 — candidate for required in v1.0.0 (Phase 2 entry)."
+    },
     "id": {
       "type": "number",
       "minimum": 1,

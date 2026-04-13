@@ -4,7 +4,7 @@
     "description": "task_add creates tasks.json with the new task when no tasks.json existed, assigning id=1 and status=pending",
     "covers": {
       "state_schemas": {
-        "tasks.schema.json": ["tasks[].id", "tasks[].title", "tasks[].status", "tasks[].deps", "tasks[].approach", "tasks[].acceptance", "tasks[].risk", "tasks[].context", "tasks[].created_at"]
+        "tasks.schema.json": ["schema_version", "tasks[].id", "tasks[].title", "tasks[].status", "tasks[].deps", "tasks[].approach", "tasks[].acceptance", "tasks[].risk", "tasks[].context", "tasks[].created_at"]
       },
       "return_value": {
         "task_add": ["task"]
