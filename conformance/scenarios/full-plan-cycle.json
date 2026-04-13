@@ -1,6 +1,21 @@
 {
   "test_id": "full_plan_cycle",
   "description": "Verifies the complete plan → decide → task_add → close lifecycle across 5 sequential tool invocations",
+  "covers": {
+    "state_schemas": {
+      "plan.schema.json": ["id", "topic", "issues[].id", "issues[].title", "issues[].status", "issues[].decision", "research_summary", "created_at"],
+      "tasks.schema.json": ["goal", "decisions", "tasks[].id", "tasks[].title", "tasks[].status", "tasks[].plan_issue"],
+      "history.schema.json": ["cycles[].completed_at", "cycles[].plan", "cycles[].plan.issues[].status", "cycles[].tasks[].id"]
+    },
+    "return_value": {
+      "plan_start": ["created", "plan_id", "issueCount"],
+      "plan_decide": ["decided", "allComplete", "remaining"],
+      "task_add": ["task.id", "task.status", "task.plan_issue"],
+      "task_close": ["closed", "archived.plan", "archived.decisions", "archived.tasks", "total_cycles"]
+    },
+    "description": "End-to-end lifecycle scenario: plan/task/history state transitions and each tool's return value across 5 sequential invocations."
+  },
+  "uncovered_params": ["research_summary", "issue_id", "summary", "title", "context", "deps"],
   "precondition": {
     "state_files": {
       ".nexus/state/plan.json": null,

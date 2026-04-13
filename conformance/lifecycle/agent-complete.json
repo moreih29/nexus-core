@@ -1,0 +1,43 @@
+{
+  "test_id": "agent_complete",
+  "description": "Verifies that agent_complete transitions an agent to completed status and records stopped_at, last_message, and files_touched in agent-tracker.json",
+  "precondition": {
+    "state_files": {
+      ".nexus/state/agent-tracker.json": [
+        {
+          "agent_type": "claude-nexus:engineer",
+          "agent_id": "uuid-eng01",
+          "started_at": "2026-04-13T00:00:00.000Z",
+          "resume_count": 0,
+          "status": "running"
+        }
+      ]
+    }
+  },
+  "event": {
+    "type": "agent_complete",
+    "params": {
+      "agent_id": "uuid-eng01",
+      "last_message": "Implementation complete",
+      "files_touched": ["src/foo.ts", "src/bar.ts"]
+    },
+    "description": "Harness records agent completion with output summary and list of modified files"
+  },
+  "postcondition": {
+    "state_files": {
+      ".nexus/state/agent-tracker.json": {
+        "$.length": 1,
+        "$[0].status": "completed",
+        "$[0].stopped_at": { "type": "iso8601" },
+        "$[0].last_message": "Implementation complete",
+        "$[0].files_touched.length": 2,
+        "$[0].files_touched[0]": "src/foo.ts"
+      }
+    }
+  },
+  "covers": {
+    "state_schemas": {
+      "agent-tracker.schema.json": ["status", "stopped_at", "last_message", "files_touched", "files_touched[]"]
+    }
+  }
+}

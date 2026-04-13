@@ -29,6 +29,7 @@ When `@moreih29/nexus-core` version changes in your consumer repo's `package.jso
 3. **WebFetch** `https://github.com/moreih29/nexus-core/blob/v{X.Y.Z}/CHANGELOG.md` — scan for `<!-- nx-car:v{X.Y.Z}:start -->` / `<!-- nx-car:v{X.Y.Z}:end -->` markers for breaking changes since the last seen version
 4. **WebFetch** `https://github.com/moreih29/nexus-core/blob/v{X.Y.Z}/MIGRATIONS/{from}_to_{to}.md` — if listed in a CHANGELOG entry
 5. **WebFetch** `https://github.com/moreih29/nexus-core/blob/v{X.Y.Z}/.nexus/rules/semver-policy.md` — interpretation guide for major/minor/patch bumps
+6. Run `bun run validate:conformance` in the consumer repo to confirm field coverage is preserved. If new state-schema fields were added in the upgrade, extend your fixture set accordingly.
 
 Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 
@@ -55,6 +56,13 @@ Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 | `docs/behavioral-contracts.md` | Behavioral contracts (state machines, resume, permissions) | Verify harness behavioral compliance |
 | `.nexus/rules/semver-policy.md` | 18-case semver interpretation table (git repo only, WebFetch) | Version bump interpretation |
 | `CHANGELOG.md` (root, in node_modules) | Version history with nx-car breaking change markers | Upgrade delta analysis |
+| `conformance/lifecycle/*.json` | Event-based lifecycle conformance fixtures | Validate harness-managed file behavior (runtime.json, agent-tracker.json) |
+| `conformance/lifecycle/README.md` | Lifecycle fixture explanation | Reference for event trigger semantics |
+| `docs/nexus-outputs-contract.md` | Normative contract for harness outputs (tool-produced/harness-produced/agent-produced) | Must-read before implementing state persistence |
+| `scripts/conformance-coverage.ts` | Schema-field × fixture.covers coverage validator | Consumer CI pipeline integration |
+| `.nexus/state/{harness-id}/*` (runtime) | Harness-local state namespace root | Create harness-specific files here (independent or extension) |
+| `.nexus/state/{harness-id}/{base}.extension.json` (runtime) | Extension of a common state file (e.g., plan.extension.json) | Pair writes with the common file; own lifecycle and schema |
+| `state-schemas/{base}.extension.schema.json` (harness repo) | Harness-local JSON Schema for extension files | Validate extension files in harness CI |
 
 ## Conformance Obligation
 
@@ -66,6 +74,47 @@ Consumers MUST pass all conformance fixtures (`conformance/tools/*.json` and `co
 - Add the conformance test runner to your CI pipeline. Conformance failures block release.
 
 See [conformance/README.md](./conformance/README.md) for fixture format and test runner guide.
+
+### Schema Field Coverage Obligation
+
+Consumers MUST pass all fixture behavioral assertions AND achieve 100% state-schema field coverage across their fixture set. The authoritative check is:
+
+```bash
+bun run validate:conformance
+```
+
+(equivalent: `bun run scripts/conformance-coverage.ts`)
+
+This validator enforces two obligations:
+
+1. Every field in every state-schema file (plan/tasks/history/runtime/agent-tracker) must appear in at least one fixture's `covers` declaration.
+2. Every `action.params` key must be asserted in postcondition or declared in the fixture's `uncovered_params` list — this prevents "silent drop" regressions where a tool receives a parameter but silently discards it.
+
+Validator exit code 1 is a release block. The same rules apply to consumer-authored custom fixtures: if you add a state field or a tool parameter, you must extend at least one fixture to cover it.
+
+## Harness-local State Extension
+
+Consumers that need state fields not covered by nexus-core common schemas MUST use the `.extension.json` convention within their harness namespace directory. See [`docs/nexus-outputs-contract.md §Harness-local State Extension`](./docs/nexus-outputs-contract.md) for the full normative specification.
+
+### Quick reference
+
+- **Harness-id**: last segment of your npm package name (`@moreih29/claude-nexus` → `claude-nexus`).
+- **Namespace root**: `.nexus/state/{harness-id}/`.
+- **Extension file naming**: `{common-base}.extension.json` (e.g., `plan.extension.json`).
+- **Extension schema**: own JSON Schema in your harness repo at `state-schemas/{base}.extension.schema.json`, draft 2020-12, `additionalProperties: false`.
+- **Lifecycle**: entirely owned by harness session hooks. nexus-core MCP tools do not read or write extension files.
+- **Archive**: do NOT inject into nexus-core's `history.json`; maintain your own `{harness-id}/history.extension.json` if needed.
+
+### Prohibited
+
+- Adding undeclared fields to the common schemas (`plan.json`, `tasks.json`, `history.json`, `runtime.json`, `agent-tracker.json`).
+- Creating new files at the `.nexus/state/` root.
+- Reusing common schema filenames inside a namespace directory.
+- Writing to another harness's namespace directory.
+
+### Convergence path
+
+If multiple harnesses implement similar extension fields, the convergence protocol is: (1) propose a common schema addition via nexus-core PR with nx-car markers, (2) pass `bun run validate:conformance`, (3) migrate extension fields into the common schema on minor bump, (4) deprecate the local extension.
 
 ## Setup Skill Contract
 
@@ -115,3 +164,5 @@ This one-time setup lets your consumer repo's LLM agents discover the upgrade pr
 - [.nexus/rules/semver-policy.md](./.nexus/rules/semver-policy.md) — version bump interpretation
 - [.nexus/context/evolution.md](./.nexus/context/evolution.md) — Forward-only 완화 정책 근거
 - plan session #2 Issue #8 (2026-04-11) — this protocol's design decisions
+- [docs/nexus-outputs-contract.md](./docs/nexus-outputs-contract.md) — normative outputs contract (tool-produced / harness-produced / agent-produced)
+- [conformance/lifecycle/README.md](./conformance/lifecycle/README.md) — lifecycle fixture reference and event trigger semantics

@@ -1,0 +1,172 @@
+[
+  {
+    "test_id": "context_no_tasks",
+    "description": "context returns activeMode:null and an empty decisions array with a valid branch string when tasks.json does not exist",
+    "covers": {
+      "return_value": {
+        "context": ["activeMode", "branch", "decisions"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/state/tasks.json": null
+      }
+    },
+    "action": {
+      "tool": "context",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.activeMode": null,
+        "$.branch": { "type": "string", "minLength": 1 },
+        "$.decisions.length": 0
+      }
+    }
+  },
+  {
+    "test_id": "context_with_tasks",
+    "description": "context returns activeMode:team, the goal, and a tasksSummary with the correct total when tasks.json exists with a goal and 2 tasks",
+    "covers": {
+      "state_schemas": {
+        "tasks.schema.json": ["goal", "tasks[].id", "tasks[].status"]
+      },
+      "return_value": {
+        "context": ["activeMode", "goal", "tasksSummary.total", "tasksSummary.completed", "tasksSummary.pending"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/state/tasks.json": {
+          "goal": "Deliver conformance fixture suite",
+          "decisions": [],
+          "tasks": [
+            {
+              "id": 1,
+              "title": "Write fixture schema",
+              "context": "Define the JSON Schema",
+              "status": "completed",
+              "deps": [],
+              "created_at": "2026-04-13T00:00:00.000Z"
+            },
+            {
+              "id": 2,
+              "title": "Write tool fixtures",
+              "context": "Create per-tool fixture files",
+              "status": "pending",
+              "deps": [1],
+              "created_at": "2026-04-13T00:00:00.000Z"
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "tool": "context",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.activeMode": "team",
+        "$.goal": "Deliver conformance fixture suite",
+        "$.tasksSummary.total": 2
+      }
+    }
+  },
+  {
+    "test_id": "context_with_decisions",
+    "description": "context returns a decisions array with length 2 when decisions.json contains 2 entries alongside an active tasks.json",
+    "covers": {
+      "return_value": {
+        "context": ["decisions"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/state/tasks.json": {
+          "goal": "Deliver conformance fixture suite",
+          "decisions": [
+            "Use declarative JSONPath assertions for harness neutrality.",
+            "One tool per fixture file to keep scope bounded."
+          ],
+          "tasks": [
+            {
+              "id": 1,
+              "title": "Write fixture schema",
+              "context": "Define the JSON Schema",
+              "status": "completed",
+              "deps": [],
+              "created_at": "2026-04-13T00:00:00.000Z"
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "tool": "context",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.decisions.length": 2
+      }
+    }
+  },
+  {
+    "test_id": "context_tasks_summary_breakdown",
+    "description": "context computes tasksSummary correctly when the task list contains 1 completed, 1 pending, and 1 in_progress task",
+    "covers": {
+      "state_schemas": {
+        "tasks.schema.json": ["tasks[].status"]
+      },
+      "return_value": {
+        "context": ["tasksSummary.total", "tasksSummary.completed", "tasksSummary.pending"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/state/tasks.json": {
+          "goal": "Summary breakdown validation",
+          "decisions": [],
+          "tasks": [
+            {
+              "id": 1,
+              "title": "Done task",
+              "context": "Already finished",
+              "status": "completed",
+              "deps": [],
+              "created_at": "2026-04-13T00:00:00.000Z"
+            },
+            {
+              "id": 2,
+              "title": "Pending task",
+              "context": "Not yet started",
+              "status": "pending",
+              "deps": [],
+              "created_at": "2026-04-13T00:00:00.000Z"
+            },
+            {
+              "id": 3,
+              "title": "Active task",
+              "context": "Currently being worked on",
+              "status": "in_progress",
+              "deps": [],
+              "created_at": "2026-04-13T00:00:00.000Z"
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "tool": "context",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.tasksSummary.total": 3,
+        "$.tasksSummary.completed": 1,
+        "$.tasksSummary.pending": 1
+      }
+    }
+  }
+]

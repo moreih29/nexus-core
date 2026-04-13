@@ -1179,6 +1179,244 @@
           "created_at": "2026-04-12T09:46:19.926Z"
         }
       ]
+    },
+    {
+      "completed_at": "2026-04-13T10:45:59.757Z",
+      "branch": "feat/conformance-full-coverage",
+      "plan": {
+        "id": 1,
+        "topic": "Conformance full-coverage — 모든 state 파일 스키마의 required/optional 필드 100% 테스트 커버리지 및 하네스-중립 산출물 계약 확립",
+        "issues": [
+          {
+            "id": 1,
+            "title": "Nexus '산출물(outputs)' normative 계약을 어떤 형태로 문서화할 것인가 — 어떤 파일이 통제 대상이고 누가(tool vs harness vs agent) 생성·관리하는지 명시",
+            "status": "decided",
+            "decision": "새 문서 docs/nexus-outputs-contract.md를 신설하여 \"하네스가 준수해야 할 산출물 제어 normative 계약\"을 전담시킨다. 기존 docs/nexus-state-overview.md는 기술적 스펙(schema·필드·lifecycle 사실)을 유지하고, outputs-contract는 의무 선언(누가 책임, 언제 생성/삭제, 상호운용 요건)을 분리. 각 산출물을 3 카테고리로 classify — (A) tool-produced: plan.json/tasks.json/history.json (nexus-core가 tool 계약으로 규정), (B) harness-produced: runtime.json/agent-tracker.json (하네스 session hook 관리), (C) agent-produced ephemeral: artifacts/ (artifact_write). 각 카테고리별로 책임 주체/lifecycle 트리거/schema 참조/interop 요건 명시. 기각: (A) nexus-state-overview.md에 consumer contract 섹션 추가 — 기술 설명과 의무 규정 혼재로 가독성 저하 및 목적 불분명. (B) CONSUMING.md만 확장 — CONSUMING.md는 패키지 소비 패턴이 주 목적이며 산출물 normative는 dedicated 문서가 필요. (C) README.md 확장 — human 타겟이라 normative가 아니며 LLM 소비 부적합."
+          },
+          {
+            "id": 2,
+            "title": "모든 schema 필드가 최소 1 fixture에서 검증되도록 강제하는 구조는 어떻게 설계할 것인가 — covers 메타 필드 + validator + anti-pattern(params 전달만 하고 검증 누락) 차단 메커니즘",
+            "status": "decided",
+            "decision": "3-tier 메커니즘 도입: (A) fixture.schema.json에 covers 메타 필드 추가 — 각 fixture가 \"어떤 state-schema field와 tool-return field를 검증하는지\"를 선언형으로 명시. 신규 fixture부터 required. (B) scripts/conformance-coverage.ts validator 신설 — 두 가지 검증 수행: (B-1) state-schemas의 모든 field × union(fixtures.covers)의 교차 검증 — 어떤 field도 미커버면 fail. (B-2) anti-pattern 검출 — action.params의 모든 key가 postcondition.state_files 또는 return_value에서 참조되는지 체크(예외 목록은 fixture에 uncovered_params 필드로 명시). (C) conformance/README.md에 \"Authoring Rules\" 섹션 + validate:conformance npm script + CI 통과 필수 조건 명시. 기각: (A) 수작업 coverage matrix 문서 — drift 위험 크고 auditable하지 않음. (B) inline comments — 기계 처리 불가. (C) covers를 optional로 — \"100% 커버리지\" 원칙 강제력 없음. required로 고정하여 fixture 작성 시 누락을 structural하게 방지.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "schema-level 강제(required covers) + runtime validator + CI gate의 3계층 방어가 drift를 structural하게 차단. fixture.schema.json은 이미 존재하므로 확장만 필요. validator는 scripts/ whitelist에 포함되므로 rule:no-runtime 위반 없음."
+            }
+          },
+          {
+            "id": 3,
+            "title": "미커버 5개 도구(plan_update/plan_status/history_search/context/artifact_write)의 fixture는 어떤 케이스 조합으로 작성할 것인가",
+            "status": "decided",
+            "decision": "5개 미커버 도구 각각에 대해 별도 fixture 파일 생성, 모든 optional parameter 경로 + 모든 error path 커버: (1) conformance/tools/plan-update.json — add/remove/edit/reopen × error (no plan/missing param/not found/unknown action) ≥ 8 fixtures. (2) plan-status.json — active/inactive × research_summary 있음/없음 × how_agents 포함 이슈. (3) history-search.json — empty history/no query/query match/query no-match/last_n limit. (4) context.json — with tasks/without tasks × with decisions/without × team vs solo 모드. (5) artifact-write.json — first write/overwrite/디렉토리 auto-create. 또한 기존 fixture들(plan-decide, task-add)의 postcondition을 보강하여 how_agents/how_summary/how_agent_ids, approach/acceptance/risk, owner/owner_agent_id/owner_reuse_policy, history.cycles[].branch를 명시적으로 assert. 기각: (A) 하나의 파일에 여러 tool 통합 — 파일 당 tool 원칙 깨짐 + 기존 관습과 비일관. (B) happy path만 커버 — error path 미커버로 100% coverage 실패."
+          },
+          {
+            "id": 4,
+            "title": "Harness-managed 파일(runtime.json, agent-tracker.json)의 검증은 tool-based가 아닌데 어떤 conformance 전략을 도입할 것인가 — lifecycle/event-based fixture 도입 여부",
+            "status": "decided",
+            "decision": "conformance/lifecycle/ 새 카테고리 도입. fixture.schema.json을 확장하여 event-based fixture 지원 — action 대신 event 필드(session_start/session_end/agent_spawn/agent_complete)를 허용하고 tool 호출이 아닌 \"하네스 hook 실행\" 후의 state를 검증. 산출 fixture: (1) session-start.json — runtime.json이 생성되고 schema 충족(teams_enabled/session_started_at/plugin_version), agent-tracker.json이 빈 배열로 초기화. (2) session-end.json — runtime.json/agent-tracker.json 삭제. (3) agent-spawn.json — agent-tracker.json에 entry 추가(agent_type/agent_id/started_at/resume_count:0/status:\"running\"). (4) agent-complete.json — status:\"completed\", stopped_at 기록, last_message 선택 검증. (5) agent-resume.json — last_resumed_at 기록, resume_count 증가. 이로써 runtime/agent-tracker schema의 모든 필드(required + optional)가 검증됨. 기각: (A) schema-only validation 예시만 제공 — 하네스의 실제 lifecycle 책임 누락. (B) runtime/agent-tracker를 conformance scope에서 제외 — 사용자의 \"모든 스키마 테스트\" 요구사항 미충족. 주의: rule:no-supervision-logic 준수 — fixture는 산출 파일의 structural 검증만 수행, ApprovalBridge/ProcessSupervisor 등 집행 의미론은 포함하지 않음.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "event-based fixture는 tool-based fixture와 구조적으로 유사하므로 fixture.schema.json을 oneOf로 확장하면 된다. 기존 test runner 구조는 유지되고 event handler만 추가. rule:no-supervision-logic은 '집행 로직'을 금지하는 것이지 '산출 파일의 구조 검증'은 Authoring layer 범위이므로 허용. harness hook 구현 자체는 각 consumer 레포가 담당."
+            }
+          }
+        ],
+        "research_summary": "조사 결과: (1) conformance/tools/ fixture 6개 존재, 11 abstract tool 중 5개 미커버(plan_update, plan_status, history_search, context, artifact_write). (2) 기존 fixture 분석 — plan_decide_happy_path는 how_agents/how_summary/how_agent_ids를 precondition/postcondition 양쪽 모두에서 검증하지 않음. task_add_happy_path는 approach/acceptance/risk를 params로 전달하되 postcondition에서 검증하지 않아 silent drop 회귀 탐지 불가. (3) state-schemas 5개(plan, tasks, history, runtime, agent-tracker) 정의되어 있으나 runtime/agent-tracker는 harness 관리 영역으로 어떤 fixture도 작동하지 않음. (4) history.schema.json의 cycles[].branch는 required이나 어떤 fixture에서도 assert되지 않음. (5) fixture.schema.json 분석 — covers 메타 필드 없음, 즉 schema field × fixture 교차 검증 메커니즘이 존재하지 않아 누락이 체계적으로 발생할 수 있음. (6) docs/nexus-tools-contract.md가 11 tool 계약 normative source로 존재, docs/nexus-state-overview.md가 state file 기술적 스펙으로 존재하나, \"consumer가 지켜야 할 산출물 제어 계약\" 전용 문서는 없음. CONSUMING.md §Conformance Obligation이 \"모든 fixture 통과는 필수\"라 선언하지만 \"모든 schema field 통과\"는 강제하지 않음. (7) rule:no-supervision-logic 제약 — agent-tracker의 필드들이 Supervision-근접 semantics를 가지나 파일 schema 정의는 허용(집행 로직만 금지).",
+        "created_at": "2026-04-13T10:12:32.567Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "fixture.schema.json 확장 — covers required 필드 및 event-based fixture oneOf 지원 도입",
+          "context": "모든 fixture가 \"어떤 schema field를 검증하는지\"를 선언형으로 명시하게 만들기 위해 fixture.schema.json을 확장한다. 현재는 covers 메타가 없어 fixture 작성자가 임의로 필드를 건너뛸 수 있다. 또한 harness-managed 파일(runtime/agent-tracker) 검증을 위해 action 대신 event trigger를 허용하는 oneOf 분기가 필요하다.</context>\n<parameter name=\"approach\">1. conformance/schema/fixture.schema.json 수정. 2. Top-level properties에 covers(required, object) 추가 — keys: state_schemas(object of array), return_value(object of array), description. covers.state_schemas['plan.schema.json'] = ['id', 'topic', 'issues[].status', ...] 형식. 3. uncovered_params 필드(optional, array of string) 추가 — action.params 중 postcondition에서 의도적으로 검증하지 않는 항목 선언. validator의 anti-pattern 검출 예외 허용. 4. $defs에 event 객체 추가 — required: [type] where type enum: session_start/session_end/agent_spawn/agent_complete/agent_resume. 5. top-level에서 action/event/steps를 oneOf로 결합. 6. 변경된 schema는 기존 fixture를 일시적으로 invalid하게 만들지만 Task 2에서 일괄 보강.</approach>\n<parameter name=\"acceptance\">(1) fixture.schema.json이 JSON Schema draft 2020-12로 parse된다. (2) covers 필드가 required로 정의되고 state_schemas/return_value 중 최소 하나는 non-empty array를 가져야 한다. (3) event 타입 fixture가 schema로 validate된다. (4) additionalProperties: false가 전 구조에서 유지된다. (5) 신규 필드에 대한 description이 명확히 기술된다.</acceptance>\n<parameter name=\"risk\">기존 fixture 6개가 일시적으로 schema-invalid 상태가 되어 CI에서 fail 가능. 완화: Task 2(covers 채우기)를 즉시 후속 진행하며 commit은 Task 2 완료 후 일괄. 또는 feature branch 내에서만 작업하고 main 머지 전에 모든 fixture가 valid함을 보장.</risk>\n<parameter name=\"deps\">[]",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-13T10:16:13.631Z"
+        },
+        {
+          "id": 2,
+          "title": "기존 6 fixture 보강 — covers 채우기 및 누락 postcondition 추가",
+          "context": "현재 fixture 6개(plan-start, plan-decide, task-add, task-update, task-list, task-close)는 covers 메타가 없고 일부는 상태 필드 검증이 누락되어 있다. plan-decide는 how_agents/how_summary/how_agent_ids를 전혀 검증하지 않고, task-add는 approach/acceptance/risk를 params로 전달만 하고 postcondition에서 검증하지 않으며 owner/owner_agent_id/owner_reuse_policy는 fixture에 등장조차 하지 않는다. task-close는 history.json.cycles[].branch를 assert하지 않는다.",
+          "approach": "각 fixture 파일에 covers 필드 추가(Task 1 schema에 맞춰) + 미검증 필드를 postcondition에 추가한다. 구체: (1) plan-decide.json에 how_agents=[\"architect\",\"postdoc\"], how_summary={\"architect\":\"...\",\"postdoc\":\"...\"}, how_agent_ids={\"architect\":\"uuid-1\",\"postdoc\":\"uuid-2\"}를 params로 포함한 새 test_id 추가 + postcondition에서 issues[0].how_agents/how_summary/how_agent_ids 검증. (2) task-add.json의 happy_path에 approach/acceptance/risk postcondition 추가 + owner/owner_agent_id/owner_reuse_policy를 포함한 test_id 추가. (3) task-close.json에 cycles[-1].branch type:string,minLength:1 assert 추가. (4) plan-start.json 등 나머지도 covers 필드로 자기 커버 범위 명시.",
+          "acceptance": "(1) 기존 6 fixture 파일 모두 Task 1의 새 fixture.schema.json에 valid. (2) plan-decide fixture에서 how_agents/how_summary/how_agent_ids 3필드 모두 assert. (3) task-add fixture에서 approach/acceptance/risk/owner/owner_agent_id/owner_reuse_policy 6필드 모두 assert. (4) task-close fixture에서 cycles[-1].branch assert. (5) 각 fixture의 covers.state_schemas가 자기 tool이 touch하는 모든 field를 나열.",
+          "risk": "기존 happy-path fixture가 복잡해지면 가독성 저하. 완화: 필드 추가는 별도 test_id로 분리하여 happy-path의 최소주의 유지.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 3,
+          "owner": "engineer",
+          "created_at": "2026-04-13T10:16:56.569Z"
+        },
+        {
+          "id": 3,
+          "title": "5개 신규 tool fixture 작성 — plan-update/plan-status/history-search/context/artifact-write",
+          "context": "nexus-tools-contract.md의 11 tool 중 5개(plan_update, plan_status, history_search, context, artifact_write)가 fixture 없음. 각 tool의 happy path + 모든 error 경로 + optional 파라미터 조합을 covers 함께 작성해야 100% coverage 확립.",
+          "approach": "5개 파일 신설: (1) conformance/tools/plan-update.json — add/remove/edit/reopen 각 happy_path + errors(no_active_plan, missing_issue_id_for_remove, missing_title_for_add, not_found, unknown_action). reopen은 status 초기화 + decision 필드 제거 검증. (2) plan-status.json — no_active returns active:false / active returns summary.total/pending/decided 및 research_summary/how_agents 선택 반환 검증. (3) history-search.json — no_history_file(빈 결과), no_query(최근 N cycles 전체), query_match(case-insensitive 교차 검색), query_no_match, last_n_limit. (4) context.json — no_tasks_file(activeMode:null), with_tasks(activeMode:team + tasksSummary), with/without decisions. (5) artifact-write.json — first_write(디렉토리 auto-create), overwrite(기존 파일 교체), success:true + absolute path 반환. 각 fixture에 covers 채우기.",
+          "acceptance": "(1) 5개 신규 fixture 파일이 Task 1 schema에 valid. (2) plan_update의 4 action × 최소 1 error path 각각 커버. (3) plan_status의 active/inactive 양분기와 optional 반환 필드 커버. (4) history_search의 empty/query/last_n 커버. (5) context의 team/solo 모드 커버. (6) artifact_write의 first/overwrite 커버. (7) covers가 각 tool의 return_value 모든 필드와 state file touch 범위 망라.",
+          "risk": "artifact_write는 실제 파일시스템에 쓰므로 sandbox/cleanup 필요. fixture runner 설계가 file-based postcondition만 지원하는지 확인. 완화: postcondition.state_files에 절대 경로가 아닌 relative path 기록.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 3,
+          "owner": "engineer",
+          "created_at": "2026-04-13T10:17:11.480Z"
+        },
+        {
+          "id": 4,
+          "title": "lifecycle fixture 5종 작성 — session-start/end, agent-spawn/complete/resume",
+          "context": "runtime.json과 agent-tracker.json은 어떤 MCP tool도 직접 쓰지 않고 harness의 session hook이 관리한다. 기존 fixture 구조로는 검증 불가. conformance/lifecycle/ 새 카테고리에 event-based fixture를 두어 \"세션 시작 이벤트 후 runtime.json이 schema에 맞는지\" 같은 검증을 제공한다.",
+          "approach": "conformance/lifecycle/ 디렉토리 신설, 5개 파일: (1) session-start.json — event.type:session_start, postcondition.state_files의 runtime.json이 teams_enabled(bool)/session_started_at(iso8601)/plugin_version(minLength:1) 3필드 모두 present + agent-tracker.json이 [] 빈 배열. (2) session-end.json — event.type:session_end, postcondition에서 runtime.json/agent-tracker.json = null(삭제됨). (3) agent-spawn.json — precondition에 runtime.json teams_enabled:true + agent-tracker.json:[], event.type:agent_spawn, event.params:{agent_type:\"claude-nexus:engineer\",agent_id:\"...\"}, postcondition에서 agent-tracker.json[0]의 agent_type/agent_id/started_at(iso8601)/resume_count:0/status:\"running\" 검증. (4) agent-complete.json — precondition에 running agent, event.type:agent_complete, postcondition에서 status:\"completed\"/stopped_at/last_message/files_touched. (5) agent-resume.json — precondition에 completed agent, event.type:agent_resume, postcondition에서 last_resumed_at/resume_count 증가/status:\"running\". 각 fixture에 covers.state_schemas 명시.",
+          "acceptance": "(1) 5개 lifecycle fixture가 Task 1 schema의 event 분기에 valid. (2) runtime.schema.json의 3 required field 모두 covers. (3) agent-tracker.schema.json의 모든 필드(agent_type/agent_id/started_at/last_resumed_at/resume_count/status/stopped_at/last_message/files_touched) 모두 covers. (4) lifecycle/README.md 간단 설명 추가 — harness hook이 event를 재현하는 방식.",
+          "risk": "event 기반 fixture는 기존 tool runner가 지원하지 않으므로 consumer 구현 부담 증가. rule:no-supervision-logic 준수 필요 — event fixture가 ApprovalBridge/ProcessSupervisor를 기술하지 않도록 structural 검증만 수행.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 4,
+          "owner": "engineer",
+          "created_at": "2026-04-13T10:17:26.823Z"
+        },
+        {
+          "id": 5,
+          "title": "scripts/conformance-coverage.ts validator 구현",
+          "context": "covers 메타가 fixture에 있더라도 schema field × covers 교차 검증 없이는 \"모든 field가 최소 1 fixture에 등장\" 요건을 강제할 수 없다. 또한 task-add_happy_path처럼 params로 전달만 하고 검증 누락되는 anti-pattern도 기계적으로 검출해야 한다.",
+          "approach": "scripts/conformance-coverage.ts 신설 (Bun TypeScript). 단계: (1) conformance/state-schemas/*.json을 모두 로드하여 각 schema의 완전한 field path 집합을 재귀 추출(issues[].how_summary 등 nested 포함). (2) conformance/tools/*.json + conformance/scenarios/*.json + conformance/lifecycle/*.json을 로드하여 각 fixture의 covers.state_schemas와 covers.return_value를 모두 모아 union. (3) schema_fields \\ covered_fields가 비어있어야 pass, 남으면 fail with detail. (4) action.params의 key 집합 vs postcondition.state_files/return_value JSONPath에서 referenced key 집합을 대조 — params에 있으나 postcondition referenced 않는 key가 fixture.uncovered_params에 없으면 fail. (5) CLI — exit 0 if pass, exit 1 if fail with human-readable diff. (6) package.json scripts에 \"validate:conformance\" 추가. (7) README에 사용법 기술.",
+          "acceptance": "(1) bun run scripts/conformance-coverage.ts 실행 가능. (2) 모든 state-schema field가 covers 합집합에 등장하지 않으면 exit 1 + 누락 필드 목록 출력. (3) params key가 postcondition referenced에 없고 uncovered_params에도 없으면 exit 1. (4) 모든 fixture가 조건 만족하면 exit 0. (5) rule:no-runtime 준수 — scripts/ 하위 build-time utility로 분류되어 whitelist 내.",
+          "risk": "JSONPath 파싱 복잡도 — 단순 문자열 매칭으로 처리 가능 여부 확인. deeply nested schema($defs 참조)의 field 추출이 섣불리 구현하면 miss 가능. 완화: 알려진 state-schemas의 구조가 제한적이므로 전용 추출기 작성 + 테스트 케이스로 검증.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-13T10:17:42.189Z"
+        },
+        {
+          "id": 6,
+          "title": "docs/nexus-outputs-contract.md 작성 — 3 카테고리 산출물 normative 계약",
+          "context": "현재 docs/nexus-state-overview.md는 각 state 파일의 기술적 스펙을 다루지만 \"consumer 하네스가 반드시 지켜야 할 산출물 제어 의무\"를 명시하는 normative 문서가 없다. 다른 하네스(opencode-nexus, nexus-code)가 claude-nexus와 동일한 Nexus 산출물을 내도록 의무 선언이 필요하다.",
+          "approach": "docs/nexus-outputs-contract.md 신설. 구조: (1) Preamble — \"이 문서는 nexus-core를 소비하는 하네스가 준수해야 할 산출물 제어 normative 계약이다. nexus-state-overview.md와 역할 분담.\" (2) 3 카테고리 table — Tool-produced(plan/tasks/history: MCP tool 계약이 생성·유지·삭제), Harness-produced(runtime/agent-tracker: session hook이 관리), Agent-produced ephemeral(artifacts/: artifact_write가 생성, 세션 종료 시 정리). (3) 각 산출물별 normative obligation block: 책임 주체/생성 trigger/삭제 trigger/schema reference/interop 요건/conformance fixture reference. (4) Cross-harness interop 원칙 — \"하네스 A가 쓴 plan.json은 하네스 B가 schema 기반 parse·편집·archive 가능해야 한다\". (5) CONSUMING.md §Conformance Obligation의 강화된 요건 참조. (6) 관련 문서 — nexus-state-overview.md, nexus-tools-contract.md, conformance/README.md.",
+          "acceptance": "(1) docs/nexus-outputs-contract.md 파일 생성. (2) 3 카테고리 분류가 명확히 구분된다. (3) 각 산출물이 책임주체/lifecycle/schema/interop 4요소 모두 기재. (4) rule:no-harness-tool 준수 — harness-specific tool 이름 언급 없음. (5) rule:no-supervision-logic 준수 — ApprovalBridge/ProcessSupervisor 참조 없음. (6) harness-neutral 어휘만 사용.",
+          "risk": "docs/nexus-state-overview.md와 내용이 중복될 수 있음. 완화: state-overview는 기술 사실(schema·field·lifecycle facts)만, outputs-contract는 의무 선언(MUST/MUST NOT)만 담아 역할을 명확히 분리하고 상호 참조.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-13T10:17:58.764Z"
+        },
+        {
+          "id": 7,
+          "title": "conformance/README.md 업데이트 — Authoring Rules, covers 필드, lifecycle category, validator 사용법",
+          "context": "fixture.schema.json 확장(Task 1), 신규 fixture(Task 2/3/4), validator(Task 5) 완성 후 conformance/README.md를 업데이트하여 consumer와 기여자가 새 규칙을 알 수 있게 한다. 현재 README는 11 tool coverage를 \"계획\"이라 명시하나 실제는 6개만 커버되어 있으므로 이번 작업 완료 후 \"100% coverage\" 선언으로 업데이트.",
+          "approach": "conformance/README.md 수정: (1) \"Fixture Format\" 섹션에 covers/uncovered_params 필드 설명 추가 — 필수성 + 예시. (2) \"Lifecycle Fixtures\" 신규 섹션 — event 타입 fixture 구조 + 5개 event 종류 + 예시. (3) \"Authoring Rules\" 신규 섹션 — rule 1: 모든 state-schema field는 최소 1 fixture.covers에 등장해야 한다; rule 2: action.params의 모든 key는 postcondition에서 assert되거나 uncovered_params에 명시되어야 한다; rule 3: fixture 추가/수정 시 validator 통과가 CI gate. (4) \"Running the Coverage Validator\" 섹션 — bun run scripts/conformance-coverage.ts 사용법 + exit code 해석. (5) \"Coverage\" 섹션 업데이트 — 11 tool 중 11개 커버 + 5개 lifecycle event 커버 + state-schema 5종 field 100% 커버.",
+          "acceptance": "(1) README의 Fixture Format에 covers/uncovered_params 구조 설명. (2) Lifecycle Fixtures 섹션 존재 + event 타입 목록 + 예시. (3) Authoring Rules 3항목 기술. (4) Coverage 섹션이 실제 커버리지 상태 반영. (5) validator 명령과 exit code 해석 기술. (6) harness-specific tool 이름 없음.",
+          "risk": "README가 과도하게 길어질 수 있음. 완화: 상세 스펙은 fixture.schema.json의 description 필드에 맡기고 README는 개요+link.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "plan_issue": 2,
+          "owner": "writer",
+          "created_at": "2026-04-13T10:18:11.427Z"
+        },
+        {
+          "id": 8,
+          "title": "CONSUMING.md §Conformance Obligation 강화 — schema field 100% coverage 의무 명시",
+          "context": "CONSUMING.md의 §Conformance Obligation은 \"모든 fixture 통과는 필수\"라 명시하지만 \"모든 schema field 통과\" 요건은 없어 consumer가 선별적으로 구현 가능한 loophole이 있다. 이번 gap 분석의 근본 해결을 위해 의무 강화.",
+          "approach": "CONSUMING.md 편집: (1) §Conformance Obligation 내에 \"Schema Field Coverage Obligation\" 하위 섹션 추가 — \"Consumer는 모든 fixture를 통과해야 하며, 추가로 모든 state-schema field가 최소 1 fixture로 검증되었는지를 scripts/conformance-coverage.ts로 검증해야 한다. validator failure는 release block이다.\" (2) §File Contracts table에 conformance/lifecycle/*.json 행 추가. (3) §File Contracts table에 docs/nexus-outputs-contract.md 행 추가 — \"normative contract for harness outputs\". (4) Upgrade Protocol 단계에 \"Run validate:conformance after upgrade to confirm field coverage preserved\" 추가.",
+          "acceptance": "(1) CONSUMING.md에 Schema Field Coverage Obligation 하위 섹션 존재. (2) File Contracts table에 lifecycle/ 및 outputs-contract.md 행 추가. (3) Upgrade Protocol이 validator 실행 단계 포함. (4) 변경이 기존 Consumer Setup 블록과 충돌하지 않음.",
+          "risk": "Consumer harness가 이미 v0.3.0 conformance로 release된 상태이면 이 강화가 breaking change로 인식 가능. 완화: v0.4.0 minor bump + CHANGELOG nx-car 마커로 consumer action 명시.",
+          "status": "completed",
+          "deps": [
+            5,
+            6
+          ],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-13T10:18:22.737Z"
+        },
+        {
+          "id": 9,
+          "title": "Tester — conformance-coverage validator 실행 및 100% 커버리지 최종 확인",
+          "context": "Task 2(기존 보강), Task 3(신규 tool), Task 4(lifecycle), Task 5(validator) 완성 후 실제 validator를 돌려 \"모든 schema field가 커버됨\"과 \"params anti-pattern이 차단됨\"을 확인해야 한다. tasks.json에 acceptance가 있는 task가 3+이므로 tester spawn 조건 만족.",
+          "approach": "Tester agent가 수행: (1) bun run scripts/conformance-coverage.ts 실행. (2) exit code 0 확인. (3) stdout에 \"All state-schema fields covered (X fields)\" 메시지 확인. (4) 수작업 교차 검증 — state-schemas/*.json의 required + optional 필드를 직접 추출하여 covers union과 비교. (5) 임의로 fixture에서 covers 항목 1개 제거하고 validator가 fail하는지 negative test. (6) plan-decide fixture의 how_agents를 params에서만 전달하고 postcondition에서 제거해보고 validator가 anti-pattern으로 잡는지 확인. (7) 실패 시 Step 2 rework로 해당 task 재오픈.",
+          "acceptance": "(1) validator가 exit 0으로 통과. (2) plan/tasks/history/runtime/agent-tracker 5 schema의 모든 field(required+optional)가 커버 선언됨. (3) params anti-pattern negative test에서 validator가 fail을 정확히 검출. (4) 검증 결과를 리포트로 남김(artifact).",
+          "risk": "validator 자체 버그로 false positive/negative 가능. 완화: 수작업 대조와 negative test 병행.",
+          "status": "completed",
+          "deps": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "plan_issue": 2,
+          "owner": "tester",
+          "created_at": "2026-04-13T10:18:34.304Z"
+        },
+        {
+          "id": 10,
+          "title": "Reviewer — outputs-contract/README/CONSUMING 문서 품질 검증",
+          "context": "Writer task 3개(Task 6/7/8)가 완료되면 Reviewer가 mandatory로 검증한다. nx-run rule: Writer → Reviewer는 mandatory pairing.",
+          "approach": "Reviewer agent가 수행: (1) docs/nexus-outputs-contract.md 검증 — 3 카테고리 분류가 nexus-state-overview.md와 일관, 각 산출물의 책임주체/lifecycle이 nexus-tools-contract.md와 일치, harness-neutral 어휘(Bash/Edit/mcp__plugin_* 등 금지), rule:no-supervision-logic/no-harness-tool 준수. (2) conformance/README.md 검증 — Authoring Rules가 fixture.schema.json과 일관, lifecycle 섹션의 event 목록이 Task 4 실제 fixture와 일치, validator 사용법이 Task 5 실제 구현과 일치. (3) CONSUMING.md 검증 — File Contracts table에 신규 path 추가됐는지, Schema Field Coverage Obligation이 명확한지. (4) grammar·format·한국어 자연스러움 체크.",
+          "acceptance": "(1) 3 문서 모두 사실 일관성 PASS. (2) harness-neutral 원칙 위반 없음. (3) nx-core rules 전체 준수. (4) 리뷰 결과 리포트 artifact 생성. (5) 수정 필요 시 구체 line:column 지적.",
+          "risk": "검증 시점에 Task 1의 context 필드 embedded 문제처럼 부차 이슈 발견 시 수정 여파 예측. 완화: review report를 근거로 writer task 재오픈 여부 결정.",
+          "status": "completed",
+          "deps": [
+            6,
+            7,
+            8
+          ],
+          "plan_issue": 1,
+          "owner": "reviewer",
+          "created_at": "2026-04-13T10:18:45.057Z"
+        },
+        {
+          "id": 11,
+          "title": "CHANGELOG 업데이트 + version bump v0.4.0",
+          "context": "fixture.schema.json 확장(covers required)은 기존 fixture 작성자가 covers를 추가해야 하는 consumer-visible change. conformance/lifecycle/ 신설은 additive. scripts/conformance-coverage.ts 도입은 CI gate로 의무화. semver-policy에 따라 pre-v1 minor bump로 처리(Breaking but acceptable via nx-car).",
+          "approach": "(1) package.json version을 0.3.0 → 0.4.0으로 bump. (2) CHANGELOG.md에 ## v0.4.0 섹션 추가: Added(outputs-contract, lifecycle fixtures, conformance-coverage validator), Changed(fixture.schema.json covers required), Consumer Action Required 블록을 nx-car 마커로 감싸서 기존 custom fixture가 있는 consumer의 migration 경로 명시. (3) MIGRATIONS/v0_3_to_v0_4.md 작성 — covers 필드 추가 방법 예시, lifecycle fixture 도입 개요. (4) MIGRATIONS/INDEX.md에 v0.3→v0.4 항목 추가.",
+          "acceptance": "(1) package.json version = \"0.4.0\". (2) CHANGELOG.md에 nx-car:v0.4.0:start/end 마커와 Consumer Action Required 블록 존재. (3) MIGRATIONS/v0_3_to_v0_4.md 존재 및 INDEX.md 업데이트. (4) .nexus/rules/semver-policy.md 기준과 일치.",
+          "risk": "pre-v1 breaking change 해석이 semver-policy와 어긋나지 않는지 확인. 완화: .nexus/rules/semver-policy.md 재확인 후 minor bump 정당성 CHANGELOG에 명시.",
+          "status": "completed",
+          "deps": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "plan_issue": 2,
+          "owner": "writer",
+          "created_at": "2026-04-13T10:18:55.667Z"
+        },
+        {
+          "id": 12,
+          "title": "Conformance fixture 추가 보강 — validator 지적 gap 해소",
+          "context": "Task 5 validator 실행 결과 다음 gap 검출: (A) Schema field 누락 — history.schema의 cycles[].tasks[].{title,context,approach,acceptance,risk,status,deps[],plan_issue,owner,owner_agent_id,owner_reuse_policy,created_at} 12개, plan.schema의 issues[].how_agents[] array element, agent-tracker의 files_touched[] array element, tasks.schema의 decisions[]/tasks[].context/tasks[].deps[]/tasks[].created_at 4개. (B) Params anti-pattern — plan-update/artifact-write/history-search/task-update/plan-decide의 routing params(action/issue_id/filename/query 등)가 postcondition assert 대상이 아님 → uncovered_params 선언 필요. task-add의 context는 실제 저장되므로 assert 누락.",
+          "approach": "(1) conformance/tools/task-close.json 보강 — precondition.tasks.json의 task에 모든 optional 필드 포함, postcondition.history.json.cycles[-1]에 $.cycles[-1].tasks[0].{title,context,approach,acceptance,risk,status,deps,deps[0],plan_issue,owner,owner_agent_id,owner_reuse_policy,created_at} assert 추가. (2) task-add.json에 $.tasks[0].context assert 추가, task_add_happy_path에 deps.length 또는 deps[0] 검증 강화. (3) plan-decide.json plan_decide_with_how_agents에 postcondition에 $.issues[0].how_agents[0] 명시적 assert 추가 (array element). (4) lifecycle/agent-complete.json에 $[0].files_touched[0] assert 추가. (5) uncovered_params 선언 추가: plan-update 모든 fixture에 action(과 선별적으로 issue_id/title), artifact-write 모든 fixture에 filename과 content, history-search query/no-match/last_n fixture에 query와 last_n, task-update error fixture에 id/status, plan-decide에 issue_id/summary, plan-start error에 topic/issues, full-plan-cycle/task-deps-ordering scenario에 해당 routing params. (6) validator 재실행하여 exit 0 확인.</approach>\n<parameter name=\"acceptance\">(1) bun run scripts/conformance-coverage.ts가 exit 0. (2) 누락된 18 schema 필드 모두 커버. (3) 모든 params anti-pattern violation이 uncovered_params 선언 또는 실제 assert로 해소. (4) covers의 state_schemas가 실제 assert하는 필드만 나열 (허위 claim 금지).</acceptance>\n<parameter name=\"risk\">task-close의 precondition 확장으로 fixture가 커짐. 완화: 필요한 필드만 추가. uncovered_params 남발로 anti-pattern 우회 악용 가능성 — 각 선언의 근거를 fixture description에 명시.</parameter>\n<parameter name=\"deps\">[2, 3, 4, 5]",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "engineer",
+          "created_at": "2026-04-13T10:28:52.270Z"
+        }
+      ]
+    },
+    {
+      "completed_at": "2026-04-13T10:47:27.371Z",
+      "branch": "feat/conformance-full-coverage",
+      "plan": null,
+      "tasks": []
     }
   ]
 }

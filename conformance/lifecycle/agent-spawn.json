@@ -1,0 +1,39 @@
+{
+  "test_id": "agent_spawn",
+  "description": "Verifies that agent_spawn appends a new running agent entry to agent-tracker.json with required fields initialized correctly",
+  "precondition": {
+    "state_files": {
+      ".nexus/state/runtime.json": {
+        "teams_enabled": true,
+        "session_started_at": "2026-04-13T00:00:00.000Z",
+        "plugin_version": "0.4.0"
+      },
+      ".nexus/state/agent-tracker.json": []
+    }
+  },
+  "event": {
+    "type": "agent_spawn",
+    "params": {
+      "agent_type": "claude-nexus:engineer",
+      "agent_id": "uuid-eng01"
+    },
+    "description": "Harness spawns an agent instance and records its initial state in the agent registry"
+  },
+  "postcondition": {
+    "state_files": {
+      ".nexus/state/agent-tracker.json": {
+        "$.length": 1,
+        "$[0].agent_type": "claude-nexus:engineer",
+        "$[0].agent_id": "uuid-eng01",
+        "$[0].started_at": { "type": "iso8601" },
+        "$[0].resume_count": 0,
+        "$[0].status": "running"
+      }
+    }
+  },
+  "covers": {
+    "state_schemas": {
+      "agent-tracker.schema.json": ["agent_type", "agent_id", "started_at", "resume_count", "status"]
+    }
+  }
+}

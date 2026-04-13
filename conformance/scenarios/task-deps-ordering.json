@@ -1,6 +1,18 @@
 {
   "test_id": "task_deps_ordering",
   "description": "Verifies that dependency ordering is enforced by task_list: a task with an incomplete dep is not ready, and becomes ready after the dep is completed",
+  "covers": {
+    "state_schemas": {
+      "tasks.schema.json": ["goal", "tasks[].id", "tasks[].title", "tasks[].status", "tasks[].deps"]
+    },
+    "return_value": {
+      "task_add": ["task.id", "task.status", "task.deps"],
+      "task_list": ["summary.total", "summary.ready", "summary.completed"],
+      "task_update": ["task.id", "task.status"]
+    },
+    "description": "Dependency-aware ready set computation: validates that task_list correctly unblocks dependents after prerequisites complete."
+  },
+  "uncovered_params": ["title", "context", "goal"],
   "precondition": {
     "state_files": {
       ".nexus/state/tasks.json": null

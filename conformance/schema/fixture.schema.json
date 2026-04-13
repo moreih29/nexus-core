@@ -2,10 +2,36 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "fixture.schema.json",
   "title": "Nexus Conformance Test Fixture",
-  "description": "Declarative test case for Nexus MCP tool behavioral verification",
+  "description": "Declarative test case for Nexus MCP tool behavioral verification. Each fixture must declare exactly one of: action (single tool invocation), event (single lifecycle event), or steps (multi-step sequence).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["test_id", "description"],
+  "required": ["test_id", "description", "covers"],
+  "oneOf": [
+    {
+      "required": ["action"],
+      "properties": {
+        "action": true,
+        "event": false,
+        "steps": false
+      }
+    },
+    {
+      "required": ["event"],
+      "properties": {
+        "action": false,
+        "event": true,
+        "steps": false
+      }
+    },
+    {
+      "required": ["steps"],
+      "properties": {
+        "action": false,
+        "event": false,
+        "steps": true
+      }
+    }
+  ],
   "properties": {
     "test_id": {
       "type": "string",
@@ -17,6 +43,68 @@
       "minLength": 10,
       "description": "Human-readable description of what behavior this fixture verifies"
     },
+    "covers": {
+      "type": "object",
+      "description": "Declaration of which schema fields and return value paths this fixture verifies. At least one of state_schemas or return_value must be non-empty.",
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "state_schemas": {
+              "minProperties": 1
+            }
+          },
+          "required": ["state_schemas"]
+        },
+        {
+          "properties": {
+            "return_value": {
+              "minProperties": 1
+            }
+          },
+          "required": ["return_value"]
+        }
+      ],
+      "properties": {
+        "state_schemas": {
+          "type": "object",
+          "description": "Map of state-schema filename (e.g. 'plan.schema.json') to array of field paths verified by this fixture's postcondition. Field paths use dot-notation with array index notation (e.g. 'issues[].status').",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[^ ]+$",
+              "description": "Field path within the named schema (e.g. 'id', 'issues[].status', 'issues[].how_agents')"
+            }
+          }
+        },
+        "return_value": {
+          "type": "object",
+          "description": "Map of abstract tool name (e.g. 'plan_start') to array of return-value field paths verified by this fixture's postcondition.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[^ ]+$",
+              "description": "Field path within the tool's return value (e.g. 'created', 'plan_id', 'issueCount')"
+            }
+          }
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional human-readable explanation of coverage rationale or known gaps"
+        }
+      }
+    },
+    "uncovered_params": {
+      "type": "array",
+      "description": "Params intentionally excluded from postcondition verification. Validators treat entries here as explicit exceptions rather than coverage gaps, preventing false anti-pattern warnings.",
+      "items": {
+        "type": "string",
+        "pattern": "^[^ ]+$",
+        "description": "Parameter name from the action or event params that is deliberately not verified"
+      }
+    },
     "precondition": {
       "type": "object",
       "description": "State that must be established before the action or steps are executed",
@@ -24,7 +112,7 @@
       "properties": {
         "state_files": {
           "type": "object",
-          "description": "Map of file path → content object (null means the file must not exist)",
+          "description": "Map of file path to content object (null means the file must not exist)",
           "additionalProperties": {
             "oneOf": [
               { "type": "object" },
@@ -36,11 +124,15 @@
     },
     "action": {
       "$ref": "#/$defs/action",
-      "description": "Single tool invocation — use for single-action fixtures; omit when using steps"
+      "description": "Single tool invocation — use for single-action fixtures; mutually exclusive with event and steps"
+    },
+    "event": {
+      "$ref": "#/$defs/event",
+      "description": "Single lifecycle event — use for event-based fixtures that require no tool call; mutually exclusive with action and steps"
     },
     "steps": {
       "type": "array",
-      "description": "Ordered sequence of tool invocations with per-step assertions — use for multi-step scenarios",
+      "description": "Ordered sequence of tool invocations or lifecycle events with per-step assertions — use for multi-step scenarios; mutually exclusive with action and event",
       "minItems": 1,
       "items": { "$ref": "#/$defs/step" }
     },
@@ -66,6 +158,28 @@
         }
       }
     },
+    "event": {
+      "type": "object",
+      "description": "A lifecycle event that triggers harness-level behavior without a direct tool call. Used for verifying runtime.json and agent-tracker.json state changes.",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["session_start", "session_end", "agent_spawn", "agent_complete", "agent_resume"],
+          "description": "Lifecycle event type. session_start/session_end: harness session lifecycle; agent_spawn/agent_complete/agent_resume: agent instance lifecycle."
+        },
+        "params": {
+          "type": "object",
+          "description": "Optional event-specific parameters (e.g. agent_type and agent_id for agent_spawn)",
+          "additionalProperties": true
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional human-readable explanation of the event and its expected effect"
+        }
+      }
+    },
     "postcondition": {
       "type": "object",
       "description": "Assertions on the state and return value after the action completes",
@@ -73,7 +187,7 @@
       "properties": {
         "state_files": {
           "type": "object",
-          "description": "Map of file path → assertion object (null means the file must not exist after the action)",
+          "description": "Map of file path to assertion object (null means the file must not exist after the action)",
           "additionalProperties": {
             "oneOf": [
               {
@@ -155,15 +269,31 @@
     },
     "step": {
       "type": "object",
-      "description": "One step in a multi-step scenario",
+      "description": "One step in a multi-step scenario. Each step must contain exactly one of: action (tool invocation) or event (lifecycle event).",
       "additionalProperties": false,
-      "required": ["action"],
+      "oneOf": [
+        {
+          "required": ["action"],
+          "properties": {
+            "action": true,
+            "event": false
+          }
+        },
+        {
+          "required": ["event"],
+          "properties": {
+            "action": false,
+            "event": true
+          }
+        }
+      ],
       "properties": {
         "description": {
           "type": "string",
           "description": "Optional human-readable label for this step"
         },
         "action": { "$ref": "#/$defs/action" },
+        "event": { "$ref": "#/$defs/event" },
         "assert_return": {
           "type": "object",
           "description": "JSONPath assertions on the return value of this step's action",
@@ -189,7 +319,7 @@
         },
         "assert_state": {
           "type": "object",
-          "description": "Map of file path → assertions on state files after this step completes. null means file must not exist.",
+          "description": "Map of file path to assertions on state files after this step completes. null means file must not exist.",
           "additionalProperties": {
             "oneOf": [
               {

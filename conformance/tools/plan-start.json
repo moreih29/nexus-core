@@ -2,6 +2,14 @@
   {
     "test_id": "plan_start_happy_path",
     "description": "plan_start creates plan.json with correct structure when given a topic, issues, and research_summary",
+    "covers": {
+      "state_schemas": {
+        "plan.schema.json": ["id", "topic", "issues[].id", "issues[].title", "issues[].status", "research_summary", "created_at"]
+      },
+      "return_value": {
+        "plan_start": ["created", "plan_id", "topic", "issueCount"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/plan.json": null
@@ -45,6 +53,12 @@
   {
     "test_id": "plan_start_missing_research_summary_error",
     "description": "plan_start rejects the invocation when research_summary is omitted — the field is required to enforce that research happened before planning",
+    "covers": {
+      "state_schemas": {
+        "plan.schema.json": []
+      }
+    },
+    "uncovered_params": ["topic", "issues"],
     "precondition": {
       "state_files": {
         ".nexus/state/plan.json": null

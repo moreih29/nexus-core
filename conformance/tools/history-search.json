@@ -1,0 +1,219 @@
+[
+  {
+    "test_id": "history_search_no_history_file",
+    "description": "history_search returns empty results with total:0 and showing:0 when history.json does not exist",
+    "covers": {
+      "return_value": {
+        "history_search": ["total", "showing", "cycles"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/history.json": null
+      }
+    },
+    "action": {
+      "tool": "history_search",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.total": 0,
+        "$.showing": 0,
+        "$.cycles.length": 0
+      }
+    }
+  },
+  {
+    "test_id": "history_search_no_query",
+    "description": "history_search with no query or last_n returns all cycles when history.json contains 3 cycles",
+    "covers": {
+      "return_value": {
+        "history_search": ["total", "showing", "cycles", "cycles[].completed_at", "cycles[].branch", "cycles[].topic", "cycles[].task_count"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/history.json": {
+          "cycles": [
+            {
+              "completed_at": "2026-04-10T10:00:00.000Z",
+              "branch": "main",
+              "plan": { "id": 1, "topic": "Initial setup", "issues": [], "created_at": "2026-04-10T09:00:00.000Z" },
+              "tasks": [
+                { "id": 1, "title": "Bootstrap project", "context": "Setup", "status": "completed", "deps": [] }
+              ]
+            },
+            {
+              "completed_at": "2026-04-11T10:00:00.000Z",
+              "branch": "feature/state",
+              "plan": { "id": 2, "topic": "Refactor state layer", "issues": [], "created_at": "2026-04-11T09:00:00.000Z" },
+              "tasks": [
+                { "id": 1, "title": "Decouple state access", "context": "Refactor", "status": "completed", "deps": [] },
+                { "id": 2, "title": "Add state schema", "context": "Schema", "status": "completed", "deps": [] }
+              ]
+            },
+            {
+              "completed_at": "2026-04-12T10:00:00.000Z",
+              "branch": "feature/conformance",
+              "plan": { "id": 3, "topic": "Conformance fixtures", "issues": [], "created_at": "2026-04-12T09:00:00.000Z" },
+              "tasks": [
+                { "id": 1, "title": "Write fixture schema", "context": "Schema", "status": "completed", "deps": [] }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "tool": "history_search",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.total": 3,
+        "$.showing": 3,
+        "$.cycles.length": 3
+      }
+    }
+  },
+  {
+    "test_id": "history_search_query_match",
+    "description": "history_search matches cycles case-insensitively when the query term appears in the cycle JSON, returning at least one result for query 'STATE'",
+    "covers": {
+      "return_value": {
+        "history_search": ["total", "showing", "cycles", "cycles[].topic"]
+      }
+    },
+    "uncovered_params": ["query"],
+    "precondition": {
+      "state_files": {
+        ".nexus/history.json": {
+          "cycles": [
+            {
+              "completed_at": "2026-04-11T10:00:00.000Z",
+              "branch": "feature/state",
+              "plan": { "id": 2, "topic": "Refactor state layer", "issues": [], "created_at": "2026-04-11T09:00:00.000Z" },
+              "tasks": []
+            },
+            {
+              "completed_at": "2026-04-12T10:00:00.000Z",
+              "branch": "feature/conformance",
+              "plan": { "id": 3, "topic": "Conformance fixtures", "issues": [], "created_at": "2026-04-12T09:00:00.000Z" },
+              "tasks": []
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "tool": "history_search",
+      "params": {
+        "query": "STATE"
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.total": { "type": "number", "min": 1 },
+        "$.cycles.length": { "type": "number", "min": 1 }
+      }
+    }
+  },
+  {
+    "test_id": "history_search_query_no_match",
+    "description": "history_search returns total:0 and an empty cycles array when the query term matches no cycles in history.json",
+    "covers": {
+      "return_value": {
+        "history_search": ["total", "showing", "cycles"]
+      }
+    },
+    "uncovered_params": ["query"],
+    "precondition": {
+      "state_files": {
+        ".nexus/history.json": {
+          "cycles": [
+            {
+              "completed_at": "2026-04-11T10:00:00.000Z",
+              "branch": "feature/state",
+              "plan": { "id": 2, "topic": "Refactor state layer", "issues": [], "created_at": "2026-04-11T09:00:00.000Z" },
+              "tasks": []
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "tool": "history_search",
+      "params": {
+        "query": "nonexistent-xyz"
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.total": 0,
+        "$.cycles.length": 0
+      }
+    }
+  },
+  {
+    "test_id": "history_search_last_n_limit",
+    "description": "history_search with last_n:2 returns only the 2 most recent cycles while reporting the full total of matching cycles",
+    "covers": {
+      "return_value": {
+        "history_search": ["total", "showing", "cycles"]
+      }
+    },
+    "uncovered_params": ["last_n"],
+    "precondition": {
+      "state_files": {
+        ".nexus/history.json": {
+          "cycles": [
+            {
+              "completed_at": "2026-04-08T10:00:00.000Z",
+              "branch": "main",
+              "plan": { "id": 1, "topic": "Cycle 1", "issues": [], "created_at": "2026-04-08T09:00:00.000Z" },
+              "tasks": []
+            },
+            {
+              "completed_at": "2026-04-09T10:00:00.000Z",
+              "branch": "main",
+              "plan": { "id": 2, "topic": "Cycle 2", "issues": [], "created_at": "2026-04-09T09:00:00.000Z" },
+              "tasks": []
+            },
+            {
+              "completed_at": "2026-04-10T10:00:00.000Z",
+              "branch": "main",
+              "plan": { "id": 3, "topic": "Cycle 3", "issues": [], "created_at": "2026-04-10T09:00:00.000Z" },
+              "tasks": []
+            },
+            {
+              "completed_at": "2026-04-11T10:00:00.000Z",
+              "branch": "main",
+              "plan": { "id": 4, "topic": "Cycle 4", "issues": [], "created_at": "2026-04-11T09:00:00.000Z" },
+              "tasks": []
+            },
+            {
+              "completed_at": "2026-04-12T10:00:00.000Z",
+              "branch": "main",
+              "plan": { "id": 5, "topic": "Cycle 5", "issues": [], "created_at": "2026-04-12T09:00:00.000Z" },
+              "tasks": []
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "tool": "history_search",
+      "params": {
+        "last_n": 2
+      }
+    },
+    "postcondition": {
+      "return_value": {
+        "$.total": 5,
+        "$.showing": 2,
+        "$.cycles.length": 2
+      }
+    }
+  }
+]

@@ -1,0 +1,127 @@
+[
+  {
+    "test_id": "plan_status_inactive",
+    "description": "plan_status returns active:false when no plan.json exists, indicating no active planning session",
+    "covers": {
+      "return_value": {
+        "plan_status": ["active"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": null
+      }
+    },
+    "action": {
+      "tool": "plan_status",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.active": false
+      }
+    }
+  },
+  {
+    "test_id": "plan_status_active_full",
+    "description": "plan_status returns the full session snapshot including research_summary, decided issues with how_agents and how_summary, and a correct summary breakdown when a plan is active",
+    "covers": {
+      "state_schemas": {
+        "plan.schema.json": ["id", "topic", "issues[].id", "issues[].status", "issues[].decision", "issues[].how_agents", "issues[].how_summary", "research_summary"]
+      },
+      "return_value": {
+        "plan_status": ["active", "plan_id", "topic", "issues", "research_summary", "summary.total", "summary.pending", "summary.decided", "issues[].how_agents", "issues[].how_summary"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 10,
+          "topic": "Migrate storage to event-sourced model",
+          "issues": [
+            {
+              "id": 1,
+              "title": "Define event schema",
+              "status": "decided",
+              "decision": "Use typed discriminated unions per aggregate.",
+              "how_agents": ["architect"],
+              "how_summary": {
+                "architect": "Recommends sealed event types with version field for forward compatibility."
+              }
+            },
+            {
+              "id": 2,
+              "title": "Plan migration rollout strategy",
+              "status": "pending"
+            }
+          ],
+          "research_summary": "Reviewed CQRS literature and existing state-schema patterns in conformance/.",
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_status",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.active": true,
+        "$.plan_id": 10,
+        "$.topic": "Migrate storage to event-sourced model",
+        "$.research_summary": "Reviewed CQRS literature and existing state-schema patterns in conformance/.",
+        "$.summary.total": 2,
+        "$.summary.pending": 1,
+        "$.summary.decided": 1,
+        "$.issues.length": 2,
+        "$.issues[0].how_agents[0]": "architect",
+        "$.issues[0].how_summary.architect": "Recommends sealed event types with version field for forward compatibility."
+      }
+    }
+  },
+  {
+    "test_id": "plan_status_active_minimal",
+    "description": "plan_status returns a valid active snapshot when the plan has no research_summary and all issues are still pending",
+    "covers": {
+      "state_schemas": {
+        "plan.schema.json": ["id", "topic", "issues[].status"]
+      },
+      "return_value": {
+        "plan_status": ["active", "plan_id", "topic", "summary.total", "summary.pending", "summary.decided"]
+      }
+    },
+    "precondition": {
+      "state_files": {
+        ".nexus/state/plan.json": {
+          "id": 11,
+          "topic": "Minimal plan with no research",
+          "issues": [
+            {
+              "id": 1,
+              "title": "First issue",
+              "status": "pending"
+            },
+            {
+              "id": 2,
+              "title": "Second issue",
+              "status": "pending"
+            }
+          ],
+          "created_at": "2026-04-13T00:00:00.000Z"
+        }
+      }
+    },
+    "action": {
+      "tool": "plan_status",
+      "params": {}
+    },
+    "postcondition": {
+      "return_value": {
+        "$.active": true,
+        "$.summary.total": 2,
+        "$.summary.pending": 2,
+        "$.summary.decided": 0
+      }
+    }
+  }
+]

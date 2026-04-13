@@ -2,6 +2,14 @@
   {
     "test_id": "task_update_status_to_in_progress",
     "description": "task_update transitions a pending task to in_progress and returns the updated task object",
+    "covers": {
+      "state_schemas": {
+        "tasks.schema.json": ["tasks[].id", "tasks[].status"]
+      },
+      "return_value": {
+        "task_update": ["task"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/tasks.json": {
@@ -44,6 +52,14 @@
   {
     "test_id": "task_update_status_to_completed",
     "description": "task_update transitions an in_progress task to completed and persists the change in tasks.json",
+    "covers": {
+      "state_schemas": {
+        "tasks.schema.json": ["tasks[].id", "tasks[].status"]
+      },
+      "return_value": {
+        "task_update": ["task"]
+      }
+    },
     "precondition": {
       "state_files": {
         ".nexus/state/tasks.json": {
@@ -86,6 +102,12 @@
   {
     "test_id": "task_update_not_found_error",
     "description": "task_update returns an error when the referenced task id does not exist in tasks.json",
+    "covers": {
+      "state_schemas": {
+        "tasks.schema.json": []
+      }
+    },
+    "uncovered_params": ["id", "status"],
     "precondition": {
       "state_files": {
         ".nexus/state/tasks.json": {
@@ -119,6 +141,12 @@
   {
     "test_id": "task_update_no_tasks_file_error",
     "description": "task_update returns an error when tasks.json does not exist",
+    "covers": {
+      "state_schemas": {
+        "tasks.schema.json": []
+      }
+    },
+    "uncovered_params": ["id", "status"],
     "precondition": {
       "state_files": {
         ".nexus/state/tasks.json": null

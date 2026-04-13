@@ -1,4 +1,4 @@
-> 이 문서는 plan session #1(2026-04-10) 기반으로 시작, plan session #2(2026-04-11)의 구현 결정이 추가 반영되어 있다, plan session #3(2026-04-12)의 v0.2.0 harness-agnostic 재설계 결정이 추가 반영되어 있다. 8 issues 결정 세부는 `.nexus/history.json` 참조. 원본 논의: `.nexus/memory/` 참조.
+> 이 문서는 plan session #1(2026-04-10) 기반으로 시작, plan session #2(2026-04-11)의 구현 결정이 추가 반영되어 있다, plan session #3(2026-04-12)의 v0.2.0 harness-agnostic 재설계 결정이 추가 반영되어 있다, plan session #4(2026-04-13)의 conformance full-coverage 결정이 추가 반영되어 있다. 8 issues 결정 세부는 `.nexus/history.json` 참조. 원본 논의: `.nexus/memory/` 참조.
 
 # 경계와 vocabulary
 
@@ -46,15 +46,18 @@ nexus-core에 들어가는 것은 다음 경로다.
 - `scripts/import-from-claude-nexus.ts` — claude-nexus에서 nexus-core로 변경을 동기화하는 단방향 추출 스크립트 (Bun 기반 TypeScript).
 - `scripts/validate.ts` — 모든 asset의 schema 검증 및 manifest.json 생성.
 - `scripts/lib/{validate,lint,structure,frontmatter}.ts` — 검증 로직 분리 라이브러리.
+- `scripts/conformance-coverage.ts` — state-schema field × fixture.covers 교차 검증 + params anti-pattern 검출 validator. `validate:conformance` npm script로 실행. exit 0이 CI gate (v0.4.0 신설).
 
 Runtime: Bun (최신 stable). sibling과 일관성. prompt-only 정체성과 무관 (scripts만 dev-only, files whitelist 제외).
 
 **Conformance suite**
 
 - `conformance/state-schemas/*.json` — state file JSON Schema (plan, tasks, history, runtime, agent-tracker). Cross-harness state 호환성 검증 근거.
-- `conformance/tools/*.json` — MCP tool behavioral conformance fixtures. 도구별 input→postcondition 선언적 assertion.
+- `conformance/tools/*.json` — MCP tool behavioral conformance fixtures. 도구별 input→postcondition 선언적 assertion. 11/11 abstract tool 커버 완성 (v0.4.0).
 - `conformance/scenarios/*.json` — lifecycle sequence conformance fixtures. 다단계 시나리오 검증.
-- `conformance/schema/fixture.schema.json` — conformance fixture 포맷 자체의 JSON Schema.
+- `conformance/lifecycle/*.json` — event-based fixture (runtime/agent-tracker 검증용 session/agent lifecycle event). session_start/session_end/agent_spawn/agent_complete/agent_resume 5종 (v0.4.0 신설).
+- `conformance/lifecycle/README.md` — lifecycle fixture 설명 및 harness hook이 event를 재현하는 방식 가이드 (v0.4.0 신설).
+- `conformance/schema/fixture.schema.json` — conformance fixture 포맷 자체의 JSON Schema. covers(required) + uncovered_params(optional) + event oneOf 분기 포함 (v0.4.0 확장).
 - `conformance/README.md` — fixture 형식 설명 및 consumer test runner 작성 가이드.
 
 **문서**
@@ -63,6 +66,7 @@ Runtime: Bun (최신 stable). sibling과 일관성. prompt-only 정체성과 무
 - `docs/nexus-state-overview.md` — state file lifecycle, tool interaction 매핑.
 - `docs/nexus-layout.md` — `.nexus/` canonical 디렉토리 구조.
 - `docs/behavioral-contracts.md` — task/plan state machine, resume tier, permission model, manual_only, NL trigger boundary.
+- `docs/nexus-outputs-contract.md` — 하네스 산출물 normative 계약. Tool-produced(plan/tasks/history)/Harness-produced(runtime/agent-tracker)/Agent-produced(artifacts/) 3 카테고리. 각 산출물의 책임 주체·생성·삭제 트리거·schema·interop 요건 선언 (v0.4.0 신설).
 
 ---
 
@@ -113,6 +117,17 @@ nexus-code의 Supervision 역할(세션 spawn, 관찰, Policy Enforcement, Appro
 nexus-core가 제공하는 것: 에이전트 카탈로그(id, name, alias_ko, category, description, resume_tier, capabilities), vocabulary 4종, 스킬 목록(skills/{id}/meta.yml). nexus-core는 이 데이터의 사용 방식에 관여하지 않는다.
 
 capabilities 설계 주의: plan session #2 Issue #3에서 canonical postdoc의 capabilities 리스트에 no_shell_exec을 추가하지 않는 HOW symmetry 결정은 유효하다. 단, plan session #3 Issue #11에서 vocabulary/capabilities.yml에 no_shell_exec이 4번째 entry로 추가되었다 (vocabulary 존재 ≠ canonical agent 적용). 각 consumer harness가 자기 local capability map에서 opt-in 여부를 독립 결정한다 — nexus-core는 관여하지 않는다.
+
+### plan session #4 결정 요지 (2026-04-13) — conformance full-coverage
+
+**결정**: conformance suite의 state-schema field 100% coverage를 의무화한다.
+
+3계층 방어 구조:
+1. **covers required** — 모든 fixture가 `covers.state_schemas` 또는 `covers.return_value` 중 최소 하나를 non-empty로 선언해야 한다. fixture.schema.json에 required 필드로 명시.
+2. **conformance-coverage.ts validator** — state-schema field 집합 × covers 합집합 교차 검증 + params anti-pattern 검출(params에 있으나 postcondition에서 assert되지 않고 uncovered_params에도 없는 key를 오류로 간주). `validate:conformance` script로 노출.
+3. **CI gate** — validator exit 0이 릴리스 조건. fixture 추가·수정 시 coverage 보존 검증.
+
+이 결정으로 conformance/tools/*.json 11/11 커버 완성, conformance/lifecycle/ 신설(5 event-based fixture), docs/nexus-outputs-contract.md 신설이 함께 실행되었다(v0.4.0).
 
 ---
 
