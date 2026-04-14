@@ -1773,6 +1773,282 @@
           "created_at": "2026-04-13T13:25:28.611Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-14T02:20:14.916Z",
+      "branch": "feat/v0.6.0-remove-runtime-json",
+      "plan": {
+        "id": 2,
+        "topic": "runtime.json 제거 및 v0.6.0 릴리즈 (GH #14, #15 해결)",
+        "issues": [
+          {
+            "id": 1,
+            "title": "Schema/Fixture 제거 방식 (runtime.schema.json 처리)",
+            "status": "decided",
+            "decision": "**Hard delete** 채택. conformance/state-schemas/runtime.schema.json 파일 자체를 삭제한다. Rejected: Deprecated stub (Option B) — pre-1.0 + read consumer 0건 + canonical source 성격상 stub는 leaky abstraction이 됨. stub는 post-1.0 deprecation 패턴이며 이 프로젝트의 schema-only 성격과 맞지 않음. CHANGELOG + MIGRATIONS 문서가 deprecation 채널로 충분.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Option A (hard delete) 권고: (1) 0 readers — stub는 live consumer 보호용인데 없음, (2) pre-1.0 관례가 minor bump + CHANGELOG로 breaking 허용, (3) stub 잔존은 grep 시 허위 계약 표시 → leaky abstraction."
+            },
+            "how_agent_ids": {
+              "architect": "a57e4ee3604a0c973"
+            }
+          },
+          {
+            "id": 2,
+            "title": "Lifecycle fixture 3개 재정의 전략",
+            "status": "decided",
+            "decision": "**Option B** 채택: session-start.json, session-end.json **삭제**, agent-spawn.json **유지**(runtime.json 관련 precondition은 제거). Rejected: (A) 3개 모두 유지 후 agent-tracker 중심 재정의 — session-start/end가 1-assertion trivial이 되어 coverage 노이즈. (C) lifecycle/ 전체 삭제 — \"하네스가 agent-tracker.json을 실제로 생성하는지\"를 증명할 behavioral fixture가 사라지는 interop gap. agent-tracker.schema.json의 required 필드 전부가 agent-spawn fixture로 커버됨.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Option B 권고: agent-spawn은 harness_id/agent_name/agent_id/started_at/resume_count/status init 검증으로 독립 가치 있음. task_add은 owner_agent_id 소비만 하고 tracker에 write하지 않으므로 behavioral fixture가 필요함. session-start/end는 축소 후 single-field assertion만 남아 schema의 required 배열로 이미 암시됨."
+            },
+            "how_agent_ids": {
+              "architect": "a57e4ee3604a0c973"
+            }
+          },
+          {
+            "id": 3,
+            "title": "fixture.schema.json event.type enum 정리",
+            "status": "decided",
+            "decision": "fixture.schema.json event.type enum에서 **\"session_start\", \"session_end\" 값 제거**. \"agent_spawn\" 유지 (필요시 agent_complete, agent_resume 추가 여부는 현 스코프 외). line 163 description에서 \"runtime.json and agent-tracker.json\" → \"agent-tracker.json\"으로 수정. Rejected: enum 전체 유지 — 사용처 없는 값이 남으면 컨슈머가 허위 계약으로 오해 가능."
+          },
+          {
+            "id": 4,
+            "title": "Docs 5개 파일 업데이트 범위 (nexus-outputs-contract, nexus-layout, nexus-state-overview, consumer-implementation-guide, CONSUMING)",
+            "status": "decided",
+            "decision": "5개 docs 전부 **runtime.json 언급을 line/section 단위 정밀 제거**. 구체 타겟: (1) docs/nexus-outputs-contract.md §Harness-produced 섹션의 runtime.json 부분(91-108줄)과 그 외 모든 언급(21, 164, 207, 227, 263줄 등), (2) docs/nexus-layout.md 디렉토리 트리 + state/runtime.json 섹션(14, 76-86), (3) docs/nexus-state-overview.md 해당 섹션 전체, (4) docs/consumer-implementation-guide.md의 초기화 시퀀스·키 테이블·스키마 리스트·디렉토리 트리(100, 162, 185, 195, 203, 229), (5) CONSUMING.md(59, 110). Rejected: Deprecated 섹션으로 이동 — issue #1 결정과 일관성 유지 (hard delete). 수정은 Writer가 일괄 처리, Reviewer가 검증."
+          },
+          {
+            "id": 5,
+            "title": "Rules 업데이트 (.nexus/rules/neutral-principles.md 공통 schema 목록)",
+            "status": "decided",
+            "decision": ".nexus/rules/neutral-principles.md:167 공통 schema 목록에서 \"runtime.json\" 항목만 제거. 콤마/목록 구두점 정리. Rejected: rule 전체 재작성 — 단순 목록 수정으로 충분, 규칙의 의도(하네스가 공통 schema 파일명을 namespace에 재사용 금지)는 변하지 않음."
+          },
+          {
+            "id": 6,
+            "title": "MIGRATIONS/v0_5_to_v0_6.md 작성 구조",
+            "status": "decided",
+            "decision": "MIGRATIONS/v0_5_to_v0_6.md 구조: (1) Overview (breaking change 요약, 영향 consumer), (2) What changed (runtime.schema.json 삭제, lifecycle fixture 2개 삭제, docs/rules 정리), (3) Consumer action checklist (session hook 제거 단계, harness-local runtime namespace 이동 가이드), (4) Harness-local extension 예시(`.nexus/state/{harness-id}/runtime.json` 패턴), (5) Validation 절차(`bun run validate:conformance`), (6) nexus-code pre-consumption 한 줄 언급. 기존 v0_4_to_v0_5.md 패턴 준수. Rejected: 간소한 changelog-only 포맷 — 자체 규칙(CLAUDE.md \"Consumer Action Required\" 섹션 MUST)에 부합하지 않음."
+          },
+          {
+            "id": 7,
+            "title": "CHANGELOG.md v0.6.0 entry 포맷 (nx-car 블록 + Consumer Action Required)",
+            "status": "decided",
+            "decision": "CHANGELOG.md에 v0.6.0 entry 추가: ### Removed (schema + 2 fixtures), ### Changed (docs/rules/meta 정리), ### BREAKING CHANGES + `<!-- nx-car:v0.6.0:start/end -->` 블록 (affected consumers + required actions + migration link). 기존 v0.5.0 entry 패턴 유지. Rejected: nx-car 마크 생략 — consumer LLM이 breaking change 자동 추출하도록 하는 계약이므로 MUST."
+          },
+          {
+            "id": 8,
+            "title": "package.json version bump 0.5.0 → 0.6.0",
+            "status": "decided",
+            "decision": "package.json version \"0.5.0\" → \"0.6.0\". pre-1.0 minor bump (breaking 허용 관례). Rejected: v1.0.0 major bump — 아직 API surface 안정화 진행 중이며 다른 미결 이슈들이 있으므로 1.0.0은 premature."
+          },
+          {
+            "id": 9,
+            "title": "scripts/conformance-coverage.ts 호환성 확인 (event.type enum 변경 영향)",
+            "status": "decided",
+            "decision": "scripts/conformance-coverage.ts를 실제 read하여 (1) event.type enum을 하드코딩하는지, (2) runtime.schema.json을 직접 로드하는지, (3) lifecycle fixture 디렉토리를 glob으로 읽는지 확인. 하드코딩이 있으면 같은 PR에서 수정. engineer 담당. Rejected: 사후 대응 — architect 경고에 따라 선제적 확인 필요."
+          },
+          {
+            "id": 10,
+            "title": "Conformance README 2개 업데이트 (conformance/README.md, conformance/lifecycle/README.md)",
+            "status": "decided",
+            "decision": "conformance/README.md (108, 118-119, 141, 153-154줄)와 conformance/lifecycle/README.md (9-10, 17줄)에서 runtime.json 언급 제거, lifecycle event 테이블을 session-start/end 행 삭제 후 agent-spawn 중심으로 재정의. Rejected: README 유지 — 실제 fixture 개수가 바뀌므로 문서-상태 불일치 방지 위해 동기화 필수."
+          }
+        ],
+        "research_summary": "## Research findings\n\n**Explore 조사 결과 (18개 파일, ~50-80 위치)**:\n- Schema: `conformance/state-schemas/runtime.schema.json` (삭제 대상)\n- Fixtures: `conformance/lifecycle/{session-start, session-end, agent-spawn}.json`\n- Docs: `docs/nexus-{outputs-contract, layout, state-overview}.md`, `docs/consumer-implementation-guide.md`, `CONSUMING.md`\n- Rules: `.nexus/rules/neutral-principles.md:167` (단순 목록 항목 제거)\n- Meta: `conformance/README.md`, `conformance/lifecycle/README.md`, `conformance/schema/fixture.schema.json:163`\n- Release: `CHANGELOG.md`, 신규 `MIGRATIONS/v0_5_to_v0_6.md`, `package.json` (현재 0.5.0)\n- 유지: `MIGRATIONS/v0_3_to_v0_4.md`, `v0_4_to_v0_5.md` (역사 기록), `.nexus/history.json`, `.nexus/context/evolution.md`, `agent-tracker.json` 전체\n\n**Architect 권고**:\n- Judgment 1 (fixture 운명): **Option B** — session-start/session-end 삭제, agent-spawn 유지. 근거: agent-tracker.schema.json required 필드 전부가 agent-* fixture로 커버됨. session-start/end는 축소 후 1-assertion trivial.\n- Judgment 2 (제거 방식): **Option A (hard delete)** — pre-1.0 + 0 readers + canonical source 성격. Stub은 post-1.0 패턴.\n- 경고: `fixture.schema.json` event.type enum 업데이트 필수 (session_start/session_end 값 제거), `scripts/conformance-coverage.ts` 하드코딩 확인 필요.\n- 제안: `MIGRATIONS/v0_5_to_v0_6.md`에 nexus-code pre-consumption 한 줄 언급.\n\n**GitHub 이슈**:\n- #14 (claude-nexus): write-only, read 0건 (env var로 teams_enabled 대체됨)\n- #15 (opencode-nexus): write-only, read 0건 (teams_enabled는 Claude Code-specific)\n- #1 (nexus-code): consuming 시작 전, 영향 없음\n\n**설계 원칙**:\n- pre-1.0 → minor bump 허용, 단 CHANGELOG \"Consumer Action Required\" + nx-car 마크 MUST\n- agent-tracker.json 유지 (task_add.owner_agent_id 연계)\n- forward-only 완화 규칙 (CLAUDE.md)",
+        "created_at": "2026-04-14T02:07:14.373Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "conformance/state-schemas/runtime.schema.json 삭제",
+          "context": "v0.6.0 제거 스코프의 핵심 — runtime.schema.json 파일을 레포지토리에서 완전 삭제한다.",
+          "approach": "git rm conformance/state-schemas/runtime.schema.json. 다른 참조는 별도 태스크에서 제거.",
+          "acceptance": "파일이 작업 디렉토리에 존재하지 않고 git status에 deletion으로 stage됨.",
+          "risk": "schema 파일 로드하는 스크립트가 ENOENT로 깨질 수 있음 — task 4에서 검증.",
+          "status": "pending",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-14T02:08:43.153Z"
+        },
+        {
+          "id": 2,
+          "title": "Lifecycle fixtures 정리: session-start/end 삭제 + agent-spawn precondition 정리",
+          "context": "Architect Option B 구현: session-start.json, session-end.json 2개 fixture 파일을 삭제하고, agent-spawn.json에서 runtime.json precondition 참조를 제거한다. agent-tracker.json 관련 postcondition은 전부 유지.",
+          "approach": "(1) conformance/lifecycle/session-start.json 삭제, (2) conformance/lifecycle/session-end.json 삭제, (3) conformance/lifecycle/agent-spawn.json에서 precondition.state_files[\".nexus/state/runtime.json\"] 블록 및 covers.state_schemas의 runtime.schema.json 참조 제거.",
+          "acceptance": "session-start/session-end.json 두 파일 미존재 + agent-spawn.json에서 \"runtime\" 문자열 0건 + JSON 파싱 유효.",
+          "risk": "agent-spawn.json에서 runtime.json 필드를 assertion에 쓰는 부분이 있다면 의미적으로 바뀌므로 주의. Explore 결과상 precondition에만 있음 확인됨.",
+          "status": "pending",
+          "deps": [
+            1
+          ],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-14T02:08:49.871Z"
+        },
+        {
+          "id": 3,
+          "title": "fixture.schema.json event.type enum 및 description 수정",
+          "context": "event.type enum에서 \"session_start\", \"session_end\" 값을 제거하고 line 163 description을 agent-tracker만 언급하도록 수정.",
+          "approach": "conformance/schema/fixture.schema.json 읽고 event.type enum 정의 찾아 session_start/session_end 제거. line 163 근처 description 문구 수정 (\"runtime.json and agent-tracker.json\" → \"agent-tracker.json\").",
+          "acceptance": "event.type enum에 session_start/session_end 없음 + description에 runtime.json 언급 없음 + JSON schema 자체 유효.",
+          "status": "pending",
+          "deps": [
+            2
+          ],
+          "plan_issue": 3,
+          "owner": "engineer",
+          "created_at": "2026-04-14T02:08:54.093Z"
+        },
+        {
+          "id": 4,
+          "title": "scripts/conformance-coverage.ts 호환성 확인 및 필요시 수정",
+          "context": "Architect 경고에 따라 선제 확인: conformance-coverage.ts가 event.type enum을 하드코딩하거나 runtime.schema.json을 직접 로드하는지 점검. 필요시 수정.",
+          "approach": "scripts/conformance-coverage.ts 파일 전체 읽기. (a) \"session_start\"/\"session_end\" 문자열, (b) \"runtime.schema.json\" 직접 참조, (c) state-schemas/ glob 패턴, (d) lifecycle/ fixture 로딩 로직 확인. 하드코딩 있으면 수정하고 `bun run validate:conformance` 실행으로 검증.",
+          "acceptance": "스크립트 수정 필요성 문서화 + 수정 완료시 `bun run validate:conformance` exit 0 + 누락 경고 없음.",
+          "risk": "script가 event.type을 포괄적으로 처리하면 수정 불필요. 하드코딩이면 같은 PR에서 처리.",
+          "status": "pending",
+          "deps": [
+            1,
+            2,
+            3
+          ],
+          "plan_issue": 9,
+          "owner": "engineer",
+          "created_at": "2026-04-14T02:09:00.307Z"
+        },
+        {
+          "id": 5,
+          "title": "Docs 5개 파일 업데이트 (runtime.json 언급 제거)",
+          "context": "5개 문서에서 runtime.json 관련 line/section을 정밀 제거. docs/nexus-outputs-contract.md §Harness-produced runtime.json 섹션, docs/nexus-layout.md 디렉토리 트리 + state/runtime.json 섹션, docs/nexus-state-overview.md 해당 섹션, docs/consumer-implementation-guide.md (100, 162, 185, 195, 203, 229줄 근처), CONSUMING.md (59, 110줄).",
+          "approach": "각 파일을 읽고 grep \"runtime.json\" + 수동 검증으로 모든 언급 위치 찾아 line/section 제거. 디렉토리 트리의 해당 줄 제거, schema 참조 리스트에서 runtime.json 제거, 섹션 전체는 통째로 삭제 (Harness-produced는 agent-tracker.json 섹션만 남도록). 결과물은 Reviewer가 task 11에서 검증.",
+          "acceptance": "5개 파일에서 grep \"runtime.json\" 결과 0건 + 섹션 번호/링크 정합성 유지 + MIGRATIONS 파일 2개는 건드리지 않음 (역사 기록 유지).",
+          "risk": "docs 간 cross-reference 깨질 가능성. 특히 Anchor link가 섹션 삭제로 404될 수 있음 — 다른 docs에서 해당 anchor 참조 없는지 확인 필요.",
+          "status": "pending",
+          "deps": [],
+          "plan_issue": 4,
+          "owner": "writer",
+          "created_at": "2026-04-14T02:09:09.365Z"
+        },
+        {
+          "id": 6,
+          "title": ".nexus/rules/neutral-principles.md 공통 schema 목록 정리",
+          "context": "rule harness-state-namespace에서 공통 schema 파일명 목록에서 runtime.json만 제거. 단순 라인 수정.",
+          "approach": ":167 라인 근처에서 \"plan.json, tasks.json, history.json, runtime.json, agent-tracker.json\" 목록에서 \"runtime.json\" 제거. 콤마 처리 유의.",
+          "acceptance": "파일에서 runtime.json 참조 0건 + 규칙 의미 보존.",
+          "status": "pending",
+          "deps": [],
+          "plan_issue": 5,
+          "owner": "lead",
+          "created_at": "2026-04-14T02:09:13.106Z"
+        },
+        {
+          "id": 7,
+          "title": "MIGRATIONS/v0_5_to_v0_6.md 신규 작성",
+          "context": "consumer 업그레이드 가이드. 기존 v0_4_to_v0_5.md 패턴 따라 6개 섹션으로 구성.",
+          "approach": "MIGRATIONS/v0_4_to_v0_5.md 구조 참조. 섹션: (1) Overview (breaking change summary, affected consumers: claude-nexus, opencode-nexus, nexus-code), (2) What changed (runtime.schema.json 삭제, session-start/end fixture 삭제, fixture.schema.json enum 정리, docs/rules 정리), (3) Consumer action checklist (session hook에서 runtime.json write/delete 로직 제거, conformance test 재실행), (4) Harness-local extension 예시 (`.nexus/state/{harness-id}/runtime.json` 패턴), (5) Validation (`bun run validate:conformance`), (6) Notes (nexus-code는 아직 consuming 전, 영향 없음).",
+          "acceptance": "파일 생성 + 6개 섹션 모두 포함 + 기존 migration 파일 톤/포맷과 일관 + Reviewer 검증 통과.",
+          "status": "pending",
+          "deps": [
+            1,
+            2,
+            3
+          ],
+          "plan_issue": 6,
+          "owner": "writer",
+          "created_at": "2026-04-14T02:09:20.019Z"
+        },
+        {
+          "id": 8,
+          "title": "CHANGELOG.md v0.6.0 entry 추가",
+          "context": "v0.6.0 릴리즈 노트 작성. nx-car:v0.6.0 블록으로 consumer LLM breaking change 추출 가능하게 함.",
+          "approach": "CHANGELOG.md 최상단에 v0.6.0 entry 추가. 섹션: ### Removed (runtime.schema.json 파일, session-start.json, session-end.json fixture), ### Changed (docs 5개, rules, conformance README 2개, fixture.schema.json enum), ### BREAKING CHANGES + `<!-- nx-car:v0.6.0:start -->`...`<!-- nx-car:v0.6.0:end -->` 블록 (affected consumers, required actions 3가지, migration link MIGRATIONS/v0_5_to_v0_6.md). 기존 v0.5.0 entry 형식 참조.",
+          "acceptance": "v0.6.0 entry 최상단에 추가 + nx-car 마크 블록 포함 + Consumer Action Required 내용 3단계 + Reviewer 검증 통과.",
+          "status": "pending",
+          "deps": [
+            1,
+            2,
+            3,
+            7
+          ],
+          "plan_issue": 7,
+          "owner": "writer",
+          "created_at": "2026-04-14T02:09:26.555Z"
+        },
+        {
+          "id": 9,
+          "title": "package.json version bump 0.5.0 → 0.6.0",
+          "context": "단일 라인 수정. pre-1.0 minor bump.",
+          "approach": "package.json의 \"version\": \"0.5.0\" → \"0.6.0\".",
+          "acceptance": "package.json version 필드가 \"0.6.0\" + JSON 유효.",
+          "status": "pending",
+          "deps": [],
+          "plan_issue": 8,
+          "owner": "lead",
+          "created_at": "2026-04-14T02:09:28.877Z"
+        },
+        {
+          "id": 10,
+          "title": "conformance/README.md + conformance/lifecycle/README.md 동기화",
+          "context": "fixture 삭제 후 두 README의 lifecycle 테이블/설명과 동기화.",
+          "approach": "conformance/README.md (108, 118-119, 141, 153-154줄)에서 session_start/session_end 테이블 행 제거 및 runtime.json 언급 제거. conformance/lifecycle/README.md (9-10, 17줄)에서 session-start/session-end 테이블 행 제거, \"runtime.json과 agent-tracker.json은 harness의 session hook이 관리\" → \"agent-tracker.json은 harness의 session hook이 관리\"로 수정. 예시 fixture가 있다면 agent-spawn 기준으로 업데이트.",
+          "acceptance": "두 README에서 runtime.json 언급 0건 + fixture 목록이 agent-spawn 기준으로 정리 + Reviewer 검증 통과.",
+          "status": "pending",
+          "deps": [
+            2
+          ],
+          "plan_issue": 10,
+          "owner": "writer",
+          "created_at": "2026-04-14T02:09:34.324Z"
+        },
+        {
+          "id": 11,
+          "title": "Conformance validator 실행 및 잔여 runtime.json 참조 검증",
+          "context": "Engineer tasks(1-4)와 모든 변경 완료 후 conformance validator 실행하여 테스트 통과 확인 + 레포 전체 grep으로 잔여 runtime.json 참조 확인.",
+          "approach": "(1) `bun run validate:conformance` 실행, exit 0 확인. (2) 레포 전체에서 `grep -r \"runtime.json\"` 실행 후 잔여 참조가 .nexus/history.json, .nexus/context/evolution.md, MIGRATIONS/v0_3_to_v0_4.md, MIGRATIONS/v0_4_to_v0_5.md (역사 파일) 외에는 없는지 확인. (3) agent-tracker 관련 fixture/schema가 정상 로드되는지 확인.",
+          "acceptance": "`bun run validate:conformance` exit 0 + 잔여 runtime.json 참조는 역사 파일(MIGRATIONS/v0_3/v0_4, .nexus/history, evolution)에만 존재 + JSON schema validation 경고 없음.",
+          "status": "pending",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "plan_issue": 9,
+          "owner": "tester",
+          "created_at": "2026-04-14T02:09:41.217Z"
+        },
+        {
+          "id": 12,
+          "title": "Writer 산출물 검증 (docs + migration + changelog + README)",
+          "context": "Writer가 작성한 docs 5개, MIGRATIONS/v0_5_to_v0_6.md, CHANGELOG.md v0.6.0 entry, conformance README 2개의 내용 정확성/문법/포맷 검증.",
+          "approach": "Reviewer가 각 산출물에 대해 (1) factual accuracy (삭제 대상 파일 나열이 실제와 일치), (2) source consistency (다른 문서와 모순 없음), (3) grammar/format (섹션 구조, 링크 anchor, markdown 문법, 기존 CHANGELOG/MIGRATIONS 톤 일치), (4) nx-car 마크 블록 문법 유효성 확인.",
+          "acceptance": "모든 산출물 PASS + 발견된 이슈는 Writer에게 피드백 후 수정 완료.",
+          "status": "pending",
+          "deps": [
+            5,
+            7,
+            8,
+            10
+          ],
+          "plan_issue": 4,
+          "owner": "reviewer",
+          "created_at": "2026-04-14T02:09:47.364Z"
+        }
+      ]
     }
   ]
 }

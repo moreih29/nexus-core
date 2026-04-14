@@ -3,12 +3,6 @@
   "description": "Verifies that agent_spawn appends a new running agent entry to agent-tracker.json with required fields initialized correctly",
   "precondition": {
     "state_files": {
-      ".nexus/state/runtime.json": {
-        "teams_enabled": true,
-        "session_started_at": "2026-04-13T00:00:00.000Z",
-        "harness_id": "claude-nexus",
-        "harness_version": "0.25.0"
-      },
       ".nexus/state/agent-tracker.json": []
     }
   },

@@ -82,6 +82,22 @@ plan session #5에서 이슈 #8/#9/#10/#11/#12 통합 처리를 결정하고 v0.
 
 pre-v1 정책에 따라 major bump 대신 minor bump + nx-car:v0.5.0 마커 + MIGRATIONS/v0_4_to_v0_5.md(291줄)로 처리. v0.2.0/v0.4.0과 동일 패턴 일관성 확인.
 
+### v0.6.0 — Common schema 축소: runtime.json 제거 + lifecycle fixture 정리 (2026-04-14)
+
+GH #14/#15 해결. surveyed consumer 전원이 `runtime.schema.json`을 write-only로만 사용하고 read가 0건임을 확인한 뒤, canonical source가 소비되지 않는 contract를 유지할 이유가 없다는 판단으로 제거했다.
+
+제거 항목:
+- `conformance/state-schemas/runtime.schema.json` 삭제
+- `conformance/lifecycle/session-start.json`, `session-end.json` 삭제 (runtime.schema.json에 의존하던 event fixture)
+- `fixture.schema.json` event.type enum 5종 → 3종 (`agent_spawn`, `agent_complete`, `agent_resume`만 유지)
+- state schema count 5 → 4 (plan / tasks / history / agent-tracker)
+
+보존 판단: `agent-tracker.json`은 `task_add.owner_agent_id` 연계가 실제로 소비되므로 유지.
+
+이 결정의 설계 철학적 의미: canonical source는 실제 소비되는 contract만 선언해야 한다. 소비 증거 없는 schema 유지는 "false contract" — 소비자에게 구현 의무를 부과하는 착시를 만들 수 있다. runtime.schema.json 제거는 schema 추가보다 드문 방향이므로 진화 기록에 명시한다.
+
+pre-v1 정책에 따라 minor bump + nx-car:v0.6.0 마커로 처리.
+
 ---
 
 ## CHANGELOG Canonical 포맷

@@ -91,25 +91,6 @@ The Nexus state layout is divided into two categories:
 
 ---
 
-### `.nexus/state/runtime.json`
-
-| Attribute | Value |
-|-----------|-------|
-| Scope | Session |
-| Git-tracked | No |
-| Created by | Session start (harness hook) |
-| Deleted by | Session end (harness hook) |
-
-**Purpose.** Holds session-level runtime metadata established when the harness initializes (e.g., session identifiers, harness version, environment properties). This file is managed entirely by the harness layer; no Nexus MCP tool writes to it.
-
-**Creation trigger.** Written by the harness during session initialization before any tool is called.
-
-**Deletion trigger.** Removed by the harness upon session teardown.
-
-**Tool access.** Read-only by the harness infrastructure. No Nexus MCP tool listed in this specification reads or writes this file directly.
-
----
-
 ### `.nexus/state/agent-tracker.json`
 
 | Attribute | Value |

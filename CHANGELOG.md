@@ -21,6 +21,39 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.6.0] - 2026-04-14 — Lifecycle simplification (runtime.json removed)
+
+### Removed
+
+- `conformance/state-schemas/runtime.schema.json`: ephemeral runtime state schema removed. Write-only with 0 read-sites across all surveyed consumers (GH #14 claude-nexus, #15 opencode-nexus); harness session metadata is now a harness-local implementation concern.
+- `conformance/lifecycle/session-start.json` + `conformance/lifecycle/session-end.json`: event fixtures deleted. Remaining assertions were trivial (agent-tracker empty-array init / deletion) and already implied by the schema's `required` array plus the `agent_spawn`/`agent_complete`/`agent_resume` fixtures that cover every `agent-tracker.schema.json` field.
+
+### Changed
+
+- `conformance/lifecycle/agent-spawn.json`: `precondition.state_files[".nexus/state/runtime.json"]` removed. Agent-tracker postconditions unchanged.
+- `conformance/schema/fixture.schema.json`: `event.type` enum reduced from 5 values to 3 (`agent_spawn`, `agent_complete`, `agent_resume`). Description updated to reference `agent-tracker.json` only.
+- `docs/nexus-outputs-contract.md`, `docs/nexus-layout.md`, `docs/nexus-state-overview.md`, `docs/consumer-implementation-guide.md`, `CONSUMING.md`: runtime.json references removed (sections, directory trees, schema lists, session_start hook description).
+- `.nexus/rules/neutral-principles.md` §`rule:harness-state-namespace`: `runtime.json` removed from common-schema filename list.
+- `conformance/README.md`, `conformance/lifecycle/README.md`: lifecycle event tables updated (3 events instead of 5); example fixture snippet re-based on `agent-tracker.schema.json`.
+
+### BREAKING CHANGES
+<!-- nx-car:v0.6.0:start -->
+**Affected consumers**: claude-nexus, opencode-nexus, nexus-code
+
+**Required actions**:
+1. **`session_start` hook** — remove code that writes `.nexus/state/runtime.json`. Retain `agent-tracker.json` initialization (empty array).
+2. **`session_end` hook** — remove code that deletes `.nexus/state/runtime.json`. Retain `agent-tracker.json` deletion.
+3. **Conformance test runner** — remove any references to `lifecycle/session-start.json` or `lifecycle/session-end.json`; drop `session_start`/`session_end` from any hardcoded `event.type` enum your runner may cache. Re-run `bun run validate:conformance` (or `bunx nexus-validate-conformance`) and confirm exit 0.
+
+If your harness stored runtime-like configuration in `runtime.json`, move it to a harness-local namespace file (e.g. `.nexus/state/{harness-id}/session-config.json`) with its own schema. Reusing the common filename `runtime.json` inside the namespace directory is forbidden by `rule:harness-state-namespace`.
+
+**Migration guide**: [MIGRATIONS/v0_5_to_v0_6.md](./MIGRATIONS/v0_5_to_v0_6.md)
+
+**Upgrade gate**: run `bunx nexus-validate-conformance` after upgrade. All fixtures must pass before deploying the consumer.
+
+**Notes**: nexus-code is not yet consuming nexus-core and is not impacted by this release.
+<!-- nx-car:v0.6.0:end -->
+
 ## [0.5.0] - 2026-04-13 — Consumer experience + harness-neutral refinements
 
 ### Added
