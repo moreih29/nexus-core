@@ -52,12 +52,12 @@ Runtime: Bun (최신 stable). sibling과 일관성. prompt-only 정체성과 무
 
 **Conformance suite**
 
-- `conformance/state-schemas/*.json` — state file JSON Schema (plan, tasks, history, runtime, agent-tracker). Cross-harness state 호환성 검증 근거.
+- `conformance/state-schemas/*.json` — state file JSON Schema (plan, tasks, history, agent-tracker). Cross-harness state 호환성 검증 근거. 4종 유지 (v0.6.0에서 runtime.schema.json 제거 — 소비 0건 확인 후 false contract 제거).
 - `conformance/tools/*.json` — MCP tool behavioral conformance fixtures. 도구별 input→postcondition 선언적 assertion. 11/11 abstract tool 커버 완성 (v0.4.0).
 - `conformance/scenarios/*.json` — lifecycle sequence conformance fixtures. 다단계 시나리오 검증.
-- `conformance/lifecycle/*.json` — event-based fixture (runtime/agent-tracker 검증용 session/agent lifecycle event). session_start/session_end/agent_spawn/agent_complete/agent_resume 5종 (v0.4.0 신설).
+- `conformance/lifecycle/*.json` — event-based fixture (agent lifecycle event). agent_spawn/agent_complete/agent_resume 3종 (v0.4.0 신설, v0.6.0에서 session_start/session_end 삭제 — runtime.schema.json 의존 fixture 정리).
 - `conformance/lifecycle/README.md` — lifecycle fixture 설명 및 harness hook이 event를 재현하는 방식 가이드 (v0.4.0 신설).
-- `conformance/schema/fixture.schema.json` — conformance fixture 포맷 자체의 JSON Schema. covers(required) + uncovered_params(optional) + event oneOf 분기 포함 (v0.4.0 확장).
+- `conformance/schema/fixture.schema.json` — conformance fixture 포맷 자체의 JSON Schema. covers(required) + uncovered_params(optional) + event oneOf 분기 포함 (v0.4.0 확장). event.type enum v0.6.0에서 5종 → 3종으로 축소.
 - `conformance/README.md` — fixture 형식 설명 및 consumer test runner 작성 가이드.
 
 **문서**

@@ -160,14 +160,14 @@
     },
     "event": {
       "type": "object",
-      "description": "A lifecycle event that triggers harness-level behavior without a direct tool call. Used for verifying runtime.json and agent-tracker.json state changes.",
+      "description": "A lifecycle event that triggers harness-level behavior without a direct tool call. Used for verifying agent-tracker.json state changes.",
       "additionalProperties": false,
       "required": ["type"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["session_start", "session_end", "agent_spawn", "agent_complete", "agent_resume"],
-          "description": "Lifecycle event type. session_start/session_end: harness session lifecycle; agent_spawn/agent_complete/agent_resume: agent instance lifecycle."
+          "enum": ["agent_spawn", "agent_complete", "agent_resume"],
+          "description": "Lifecycle event type. agent_spawn/agent_complete/agent_resume: agent instance lifecycle."
         },
         "params": {
           "type": "object",

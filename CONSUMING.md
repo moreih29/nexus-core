@@ -46,7 +46,7 @@ Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 | `vocabulary/resume-tiers.yml` | persistent/bounded/ephemeral tier definitions | Session persistence decisions |
 | `vocabulary/tags.yml` | Canonical tag trigger definitions | Tag dispatcher |
 | `schema/*.json` | JSON Schema (draft 2020-12) files | Optional runtime validation |
-| `conformance/state-schemas/*.json` | State file structural validation schemas | Validate plan/tasks/history/runtime/agent-tracker files |
+| `conformance/state-schemas/*.json` | State file structural validation schemas | Validate plan/tasks/history/agent-tracker files |
 | `conformance/tools/*.json` | Tool behavioral conformance fixtures | Assert tool implementation compatibility |
 | `conformance/scenarios/*.json` | Lifecycle scenario conformance fixtures | Validate end-to-end scenario behavior |
 | `conformance/schema/fixture.schema.json` | Conformance fixture format schema | Validate fixture files themselves |
@@ -56,7 +56,7 @@ Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 | `docs/behavioral-contracts.md` | Behavioral contracts (state machines, resume, permissions) | Verify harness behavioral compliance |
 | `.nexus/rules/semver-policy.md` | 18-case semver interpretation table (git repo only, WebFetch) | Version bump interpretation |
 | `CHANGELOG.md` (root, in node_modules) | Version history with nx-car breaking change markers | Upgrade delta analysis |
-| `conformance/lifecycle/*.json` | Event-based lifecycle conformance fixtures | Validate harness-managed file behavior (runtime.json, agent-tracker.json) |
+| `conformance/lifecycle/*.json` | Event-based lifecycle conformance fixtures | Validate harness-managed file behavior (agent-tracker.json) |
 | `conformance/lifecycle/README.md` | Lifecycle fixture explanation | Reference for event trigger semantics |
 | `docs/nexus-outputs-contract.md` | Normative contract for harness outputs (tool-produced/harness-produced/agent-produced) | Must-read before implementing state persistence |
 | `scripts/conformance-coverage.ts` | Schema-field × fixture.covers coverage validator | Consumer CI pipeline integration |
@@ -87,7 +87,7 @@ bun run validate:conformance
 
 This validator enforces two obligations:
 
-1. Every field in every state-schema file (plan/tasks/history/runtime/agent-tracker) must appear in at least one fixture's `covers` declaration.
+1. Every field in every state-schema file (plan/tasks/history/agent-tracker) must appear in at least one fixture's `covers` declaration.
 2. Every `action.params` key must be asserted in postcondition or declared in the fixture's `uncovered_params` list — this prevents "silent drop" regressions where a tool receives a parameter but silently discards it.
 
 Validator exit code 1 is a release block. The same rules apply to consumer-authored custom fixtures: if you add a state field or a tool parameter, you must extend at least one fixture to cover it.
@@ -107,7 +107,7 @@ Consumers that need state fields not covered by nexus-core common schemas MUST u
 
 ### Prohibited
 
-- Adding undeclared fields to the common schemas (`plan.json`, `tasks.json`, `history.json`, `runtime.json`, `agent-tracker.json`).
+- Adding undeclared fields to the common schemas (`plan.json`, `tasks.json`, `history.json`, `agent-tracker.json`).
 - Creating new files at the `.nexus/state/` root.
 - Reusing common schema filenames inside a namespace directory.
 - Writing to another harness's namespace directory.

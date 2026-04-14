@@ -164,9 +164,9 @@
 **금지 대상**:
 
 1. 하네스가 `.nexus/state/` 루트에 신규 파일을 생성하는 행위
-2. `{harness-id}/` namespace 하위에 공통 schema 파일명(`plan.json`, `tasks.json`, `history.json`, `runtime.json`, `agent-tracker.json`)을 재사용하는 행위
+2. `{harness-id}/` namespace 하위에 공통 schema 파일명(`plan.json`, `tasks.json`, `history.json`, `agent-tracker.json`)을 재사용하는 행위
 3. 다른 하네스의 namespace 디렉토리에 쓰거나 읽는 행위
-4. 공통 state 파일(plan/tasks/history/runtime/agent-tracker)의 schema에 undeclared 필드를 추가하는 행위 (schema `additionalProperties: false` 위반)
+4. 공통 state 파일(plan/tasks/history/agent-tracker)의 schema에 undeclared 필드를 추가하는 행위 (schema `additionalProperties: false` 위반)
 
 **허용 패턴**:
 

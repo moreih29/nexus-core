@@ -97,7 +97,7 @@ A complete Nexus consumer comprises nine components. They have hard dependencies
 | # | Component | Description |
 |---|-----------|-------------|
 | 1 | `.nexus/` Directory Initialization | Create the required directory tree and `.gitignore` at session start |
-| 2 | State File Management | Read/write plan.json, tasks.json, history.json, runtime.json, agent-tracker.json |
+| 2 | State File Management | Read/write plan.json, tasks.json, history.json, agent-tracker.json |
 | 3 | MCP Tool Implementation | Concrete implementations of the 11 abstract Nexus tools |
 | 4 | Capability Mapping | Local file translating abstract capability IDs to concrete disallowed tools |
 | 5 | Agent Catalog | Load nexus-core agents, apply capability-map, register with harness |
@@ -159,7 +159,6 @@ Nexus state is split into two categories with different scopes, persistence, and
 ├── state/                    ← session-scoped (not git-tracked)
 │   ├── plan.json
 │   ├── tasks.json
-│   ├── runtime.json
 │   ├── agent-tracker.json
 │   ├── tool-log.jsonl
 │   ├── edit-tracker.json
@@ -182,9 +181,8 @@ At session start, your harness must:
 1. Create `.nexus/` if it does not exist.
 2. Create `.nexus/state/` if it does not exist.
 3. Write `.nexus/.gitignore` with content `state/` if the file does not exist.
-4. Write `.nexus/state/runtime.json` with session metadata (session ID, harness version, start timestamp).
-5. Initialize `.nexus/state/agent-tracker.json` as an empty array `[]`.
-6. Check for stale state files from a prior crashed session. If `plan.json` or `tasks.json` exist without a running session, warn the user that a previous session may not have closed cleanly.
+4. Initialize `.nexus/state/agent-tracker.json` as an empty array `[]`.
+5. Check for stale state files from a prior crashed session. If `plan.json` or `tasks.json` exist without a running session, warn the user that a previous session may not have closed cleanly.
 
 ### Key state files
 
@@ -192,7 +190,6 @@ At session start, your harness must:
 |------|-------|------------|------------|------------|
 | `state/plan.json` | Session | No | `plan_start` tool | `task_close` tool |
 | `state/tasks.json` | Session | No | `task_add` tool (first call) | `task_close` tool |
-| `state/runtime.json` | Session | No | session_start hook | session_end hook |
 | `state/agent-tracker.json` | Session | No | session_start hook | session_end hook |
 | `state/tool-log.jsonl` | Session | No | post_tool_use hook | session_end hook |
 | `state/edit-tracker.json` | Session | No | post_tool_use hook (first edit) | task_close / session_end |
@@ -200,7 +197,7 @@ At session start, your harness must:
 
 ### Schema validation
 
-JSON Schema definitions for all state files are available in `conformance/state-schemas/`. The schemas cover `plan.json`, `tasks.json`, `history.json`, `runtime.json`, and `agent-tracker.json`. Validate state files against these schemas in your test suite.
+JSON Schema definitions for all state files are available in `conformance/state-schemas/`. The schemas cover `plan.json`, `tasks.json`, `history.json`, and `agent-tracker.json`. Validate state files against these schemas in your test suite.
 
 For full lifecycle and tool access details, see [nexus-state-overview.md](./nexus-state-overview.md) and [nexus-layout.md](./nexus-layout.md).
 
@@ -526,7 +523,6 @@ Identify the equivalent events in your harness's plugin system and implement the
 **Expected consumer behavior:**
 - Create `.nexus/` and `.nexus/state/` directories if they do not exist.
 - Write `.nexus/.gitignore` with `state/` if it does not exist.
-- Write `.nexus/state/runtime.json` with session metadata: session ID, harness version, start timestamp, and any environment properties your harness tracks.
 - Initialize `.nexus/state/agent-tracker.json` as `[]`.
 - Check for stale state from a prior crashed session: if `plan.json` or `tasks.json` exist, warn the user that these may be leftover from an unclean shutdown.
 - Load the knowledge index: list files in `.nexus/memory/`, `.nexus/context/`, and `.nexus/rules/` to build the reference index that will be injected into subagent spawns.
@@ -607,7 +603,7 @@ Read-only tools (query tools, status reads) are never blocked by capability gate
 **Expected consumer behavior:**
 - Check for pending tasks: if `tasks.json` exists and contains incomplete tasks (status `pending` or `in_progress`), warn the user that the session is ending with unfinished work and suggest calling `task_close` to archive before exiting.
 - Check for an active plan: if `plan.json` exists, warn that the plan session will be lost if not archived.
-- Delete `runtime.json` and `agent-tracker.json` (session-scoped files that have no value beyond the session).
+- Delete `agent-tracker.json` (a session-scoped file that has no value beyond the session).
 - Optionally rotate or archive `tool-log.jsonl` if your harness supports log retention.
 - Do not delete `history.json`, `memory/`, `context/`, or `rules/` — these are project-scoped and must persist.
 
@@ -807,7 +803,7 @@ Implement tag detection in your `user_message` hook. When `[plan]` is detected, 
 
 | Event | Minimum required behavior |
 |-------|--------------------------|
-| `session_start` | Create `.nexus/state/` directory; write `runtime.json`; initialize `agent-tracker.json` as `[]` |
+| `session_start` | Create `.nexus/state/` directory; initialize `agent-tracker.json` as `[]` |
 | `user_message` | Detect `[plan]` tag; load `skills/nx-plan/body.md`; inject into Lead's context |
 | `session_end` | Check for `tasks.json`; if present with incomplete tasks, warn the user |
 

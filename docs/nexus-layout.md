@@ -11,7 +11,6 @@ This document is the canonical reference for the `.nexus/` directory structure u
 ├── state/                    ← session/branch-scoped (ephemeral)
 │   ├── plan.json
 │   ├── tasks.json
-│   ├── runtime.json
 │   ├── agent-tracker.json
 │   ├── tool-log.jsonl
 │   ├── edit-tracker.json
@@ -70,20 +69,6 @@ This document is the canonical reference for the `.nexus/` directory structure u
 **Lifecycle.** Created alongside `plan.json` at cycle start. Archived to `history.json` at `task_close`.
 
 **Owner.** `nx-run` skill; updated by task lifecycle tools.
-
----
-
-#### `state/runtime.json`
-
-**Purpose.** Harness-internal session state that does not belong in plan or task records (e.g., active agent registrations, session-level flags).
-
-**Scope.** Session-scoped.
-
-**Git tracking.** Ignored.
-
-**Lifecycle.** Created at session start. Discarded at session end.
-
-**Owner.** Harness runtime.
 
 ---
 
