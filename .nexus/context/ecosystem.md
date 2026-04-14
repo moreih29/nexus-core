@@ -1,6 +1,6 @@
 # nexus-core — Nexus Authoring layer
 
-> 이 문서는 plan session #1 (2026-04-10)의 결정을 재구성한 것이다. 원본 논의: `.nexus/memory/` 참조.
+> 이 문서는 plan session #1 (2026-04-10)의 결정을 재구성한 것이다. plan session #5 (2026-04-14)의 invocation abstraction 결정(Option A + Spec γ)이 추가 반영되어 있다. 원본 논의: `.nexus/memory/` 참조.
 
 ---
 
@@ -118,13 +118,25 @@ Supervisor는 이중 성격을 가진다.
 
 ### capability abstraction
 
-nexus-core가 harness-neutral한 공유 자산이 될 수 있는 핵심 메커니즘이다.
+nexus-core가 harness-neutral한 공유 자산이 될 수 있는 핵심 메커니즘이다. **denial 방향** — 무엇을 막느냐 — 을 다룬다.
 
 추상 capability 문자열(예: `no_file_edit`, `no_task_create`, `no_task_update`, `no_shell_exec`)을 각 하네스가 자기 tool namespace로 resolve한다. body.md나 meta.yml에 하네스별 도구 이름을 직접 쓰지 않는다. 이 추상화 덕분에 동일한 에이전트 정의가 claude-nexus와 opencode-nexus 양쪽에서 유효하다.
 
 v0.2.0부터 resolve 방향이 변경되었다: nexus-core는 각 capability의 의미를 semantic prose(intent + blocks_semantic_classes + prose_guidance)로 기술하고, concrete tool 매핑은 consumer의 local capability map에서 수행한다. nexus-core에서 harness_mapping(concrete tool 이름 열거)은 삭제되었다.
 
 에이전트가 특정 도구에 접근할 수 없다는 사실(제약)은 nexus-core에서 선언하고, 그 제약을 어떤 도구 차단으로 구현하는지는 각 하네스가 결정한다. 추상과 구현의 이 분리가 capability abstraction의 핵심이다.
+
+### invocation abstraction
+
+nexus-core가 body.md를 "transform source"로 제공하면서 하네스 중립성을 유지하는 메커니즘이다 (v0.8.0). **positive invocation 방향** — 무엇을 호출하느냐 — 을 다룬다.
+
+capability abstraction이 denial 방향("무엇을 막느냐")을 다룬다면, invocation abstraction은 positive invocation 방향("무엇을 호출하느냐")을 다룬다. body.md에서 구체 tool 호출(`Skill({...})`, `Agent({...})`, `TaskCreate` 등)을 하드코딩하지 않고, 추상 매크로 토큰 `{{primitive_id key=val}}`로 표현한다.
+
+각 consumer harness는 local `invocation-map.yml`에서 semantic primitive(skill_activation / subagent_spawn / task_register / user_question)를 자신의 concrete tool 호출 문법으로 매핑한다. claude-nexus는 `Skill()`, `Agent()`, `TaskCreate`, `AskUserQuestion` 같은 Claude Code 하네스 tool로, opencode-nexus는 tag re-emit, hooks 기반 routing, prose fallback 등 자기 생태계 mechanisms로 resolve한다.
+
+`fallback_behavior` 필드는 하네스 비대칭(예: `AskUserQuestion`이 opencode-nexus에 native tool 없음)을 invocations.yml 수준에서 선언적으로 표현한다. 이 필드는 v0.8.0 vocabulary 설계의 핵심 기여로, v0.2.0의 capabilities.yml semantic prose가 denial 방향 비대칭을 흡수한 방식과 쌍대적이다.
+
+추상과 구현의 분리: invocation 의미(primitive_id + semantic_params + prose_guidance)는 nexus-core에서 canonical하게 선언하고, 그 의미를 어떤 concrete tool 호출로 구현할지는 각 consumer가 자기 repo의 invocation-map.yml에서 결정한다. 매크로 문법(Spec γ)의 세부 규격은 `.nexus/state/history.json`의 plan session #5 Issue #2 결정 및 MIGRATIONS/v0_7_to_v0_8.md 참조.
 
 ### sibling
 

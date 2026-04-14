@@ -16,9 +16,9 @@ Scans the project and builds Nexus knowledge in the flat .nexus/ structure. On f
 
 ## Trigger
 
-- `/claude-nexus:nx-init` — full onboarding (or resume)
-- `/claude-nexus:nx-init --reset` — back up existing `.nexus/` knowledge and re-onboard
-- `/claude-nexus:nx-init --reset --cleanup` — show backup list + selective deletion
+- Manual trigger — full onboarding (or resume). See harness docs: slash_command_display.
+- Manual trigger with `--reset` flag — back up existing `.nexus/` knowledge and re-onboard. See harness docs: slash_command_display.
+- Manual trigger with `--reset --cleanup` flags — show backup list + selective deletion. See harness docs: slash_command_display.
 
 ---
 
@@ -51,9 +51,7 @@ Show backup directory list, let user select backups to delete.
 ```
 IF --reset --cleanup flag:
   Show list of .nexus/bak.*/ directories
-  Prompt user with options (using the harness's interactive prompt mechanism):
-    question: "Select a backup to delete (or cancel)"
-    options: [...backup list..., { label: "Cancel", description: "Exit without changes" }]
+  Prompt user with options via `{{user_question question="Select a backup to delete (or cancel)" options=[<backup list...>, {label: Cancel, description: "Exit without changes"}]}}`.
   Delete selected backup and exit
 
 ELSE IF --reset flag:
@@ -162,15 +160,7 @@ On completion: "context knowledge N files generated"
 Check whether team custom rules are needed.
 
 ```
-prompt_user({
-  questions: [{
-    question: "Do you want to set up development rules now?",
-    options: [
-      { label: "Set up", description: "Coding conventions, test policy, commit rules, etc." },
-      { label: "Skip", description: "Can be added later via [rule] tag" }
-    ]
-  }]
-})
+{{user_question question="Do you want to set up development rules now?" options=[{label: "Set up", description: "Coding conventions, test policy, commit rules, etc."}, {label: Skip, description: "Can be added later via [rule] tag"}]}}
 ```
 
 If "Set up": present a draft based on scan results → user confirms → save via the harness's file-creation primitive to `.nexus/rules/{topic}.md`.
@@ -192,5 +182,5 @@ Output a summary of the onboarding results.
 ### Next Steps
 - [plan] — research, analyze, and plan before execution
 - [run] — execute from a plan
-- /claude-nexus:nx-init --reset — re-run onboarding (existing knowledge will be backed up)
+- Manual re-run trigger with `--reset` flag — re-run onboarding (existing knowledge will be backed up). See harness docs: slash_command_display.
 ```

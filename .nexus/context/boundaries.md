@@ -1,4 +1,4 @@
-> 이 문서는 plan session #1(2026-04-10) 기반으로 시작, plan session #2(2026-04-11)의 구현 결정이 추가 반영되어 있다, plan session #3(2026-04-12)의 v0.2.0 harness-agnostic 재설계 결정이 추가 반영되어 있다, plan session #4(2026-04-13)의 conformance full-coverage 결정이 추가 반영되어 있다. 8 issues 결정 세부는 `.nexus/history.json` 참조. 원본 논의: `.nexus/memory/` 참조.
+> 이 문서는 plan session #1(2026-04-10) 기반으로 시작, plan session #2(2026-04-11)의 구현 결정이 추가 반영되어 있다, plan session #3(2026-04-12)의 v0.2.0 harness-agnostic 재설계 결정이 추가 반영되어 있다, plan session #4(2026-04-13)의 conformance full-coverage 결정이 추가 반영되어 있다, plan session #5(2026-04-14)의 invocation abstraction 결정(Option A + Spec γ)이 추가 반영되어 있다. 8 issues 결정 세부는 `.nexus/history.json` 참조. 원본 논의: `.nexus/memory/` 참조.
 
 # 경계와 vocabulary
 
@@ -26,6 +26,7 @@ nexus-core에 들어가는 것은 다음 경로다.
 - `vocabulary/categories.yml` — HOW/DO/CHECK 카테고리 정의.
 - `vocabulary/resume-tiers.yml` — persistent/bounded/ephemeral 티어 정의.
 - `vocabulary/tags.yml` — skill 태그와 inline 액션 태그의 canonical 정의 (Issue #4 신규).
+- `vocabulary/invocations.yml` — positive invocation semantic (skill_activation, subagent_spawn, task_register, user_question) 정의. 각 entry는 id/description/intent/semantic_params/prose_guidance/fallback_behavior 필드. consumer가 local invocation-map.yml로 concrete harness syntax 치환 (v0.8.0 신규).
 
 **루트 메타**
 
@@ -158,6 +159,8 @@ bridge §2.1과 §3.3이 명시하듯, `meta.yml`에 구체 model 이름(`opus`,
 `body.md`나 `meta.yml`에 하네스별 도구 이름(예: Claude Code의 `mcp__plugin_claude-nexus_nx__nx_task_add`, OpenCode의 `nx_task_add`)을 직접 포함하는 것은 금지다.
 
 bridge §2.2의 capability abstraction이 이 문제를 해결하는 이유: nexus-core가 Claude Code의 tool 이름을 저장하면 OpenCode는 그 이름을 사용할 수 없고, 반대도 마찬가지다. 추상 capability 문자열(`no_task_create` 등)을 저장하면 각 하네스의 빌드 프로세스가 자신의 tool namespace로 resolve한다. 하네스별 tool 이름은 하네스 구현의 내부 사항이며 Authoring layer가 알아야 할 이유가 없다. v0.2.0에서 harness_mapping(concrete tool 이름 열거)이 capabilities.yml에서 완전 삭제되고 semantic prose(intent + blocks_semantic_classes + prose_guidance)로 대체됨으로써, 이 harness-specific tool 이름 금지 원칙은 예외 없이 전면 적용된다 — carve-out 없음.
+
+v0.8.0에서 positive invocation 방향도 carve-out 없이 동일 원칙 적용 — body.md의 구체 tool 호출은 Spec γ 매크로 `{{primitive_id key=val}}` 토큰으로 추상화. concrete syntax resolve는 consumer의 local `invocation-map.yml`에서 수행하며, nexus-core는 semantic vocabulary만 canonical하게 유지한다.
 
 ### 거절 5 — UI hint 필드 추가 금지
 

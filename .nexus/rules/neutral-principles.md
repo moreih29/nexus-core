@@ -82,13 +82,39 @@
 
 ### rule:no-harness-tool — harness-specific 도구 이름 포함 금지
 
-**금지 대상**: `agents/**/body.md` 및 `agents/**/meta.yml`, `skills/**/body.md` 및 `skills/**/meta.yml` 내에 하네스별 고유 tool 이름 직접 참조 금지. 주석 포함.
+**금지 대상**: `agents/**/body.md` 및 `agents/**/meta.yml`, `skills/**/body.md` 및 `skills/**/meta.yml`, `vocabulary/*.yml` 내에 하네스별 고유 tool 이름 직접 참조 금지. 주석 포함.
 
-금지 패턴 — Claude Code 고유:
-`mcp__plugin_*`, `Bash`, `Edit`, `Write`, `Read`, `Glob`, `Grep`, `NotebookEdit`, `TodoWrite`, `WebFetch`, `WebSearch`, `Task`, `BashOutput`, `KillShell`
+lint G6 구현(`scripts/lib/lint.ts`)의 5 카테고리 중 Category 1–3이 이 rule의 기계적 판단 범위다.
 
-금지 패턴 — OpenCode 고유:
-`bash`, `edit`, `write`, `patch`, `multiedit`, `read`, `glob`, `grep`, `list`, `webfetch`
+**Category 1 — Distinctive** (word boundary, 모든 대상 파일)
+
+아래 정규식에 매칭되는 토큰은 즉시 error:
+
+```
+\b(NotebookEdit|BashOutput|KillShell|Glob|Grep|WebFetch|WebSearch|TodoWrite|SendMessage|TeamCreate|AskUserQuestion|mcp__plugin_[a-z0-9_]+|TaskCreate|TaskUpdate|TaskList|TaskGet|TaskStop|TaskOutput|subagent_type|prompt_user)\b
+```
+
+v0.8.0 신규 추가: `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`, `TaskStop`, `TaskOutput`, `subagent_type`, `prompt_user`.
+
+**Category 2 — Call-pattern only** (모든 대상 파일, 매크로·heredoc 마스킹 후)
+
+아래 정규식에 매칭되는 토큰은 즉시 error:
+
+```
+\b(Skill|Agent)\s*\(
+```
+
+`Skill`, `Agent` 두 단어는 prose에서도 등장하므로 호출 형태(괄호 수반)일 때만 catch한다. `Agent SDK`, `Domain-Agent mapping`, `skill activation` 등 괄호 없는 용례는 무해하다.
+
+**Category 3 — Namespace patterns** (모든 대상 파일)
+
+아래 정규식에 매칭되는 패턴은 즉시 error:
+
+```
+/(?:claude-nexus|opencode-nexus):
+```
+
+예: `/claude-nexus:`, `/opencode-nexus:`. 하네스 id + 콜론 형태의 slash-command 참조를 금지한다.
 
 **허용**: capability abstraction 문자열만. 예: `no_file_edit`, `no_task_create`, `no_task_update`, `no_shell_exec`. 이 문자열은 `vocabulary/capabilities.yml`에 정의되고 각 하네스가 자기 tool namespace로 resolve한다.
 
@@ -97,10 +123,42 @@
 - `body.md`에 "<!-- Use Bash to run commands -->" 주석
 - `meta.yml`에 `disallowedTools: [Bash, Edit]` 필드
 - `meta.yml`에 `tools: [mcp__plugin_claude-nexus_nx__nx_task_add]` 필드
+- `body.md`에 `/claude-nexus:nx-run` 참조
+- `body.md`에 `Agent(` 또는 `Skill(` 호출 구문
 
 **예외**: 없음. 참고용 주석으로도 harness tool 이름을 쓰지 않는다.
 
 **위반 시 동작**: Lead는 즉시 작업을 중단하고 사용자에게 확인을 요청한다.
+
+근거: `.nexus/context/boundaries.md` 참조.
+
+---
+
+### rule:use-invocation-vocabulary — body.md invocation은 등록 primitive만 허용
+
+**Rule intent**: `body.md`에서 invocation 매크로를 쓸 때는 `vocabulary/invocations.yml`에 등록된 primitive id만 사용한다. 미등록 id는 consumer expander가 해석 불가이므로 런타임에 동작이 보장되지 않는다.
+
+**Severity**: **warning** — 실제 block은 §rule:no-harness-tool (Category 1–3)이 lint G6에서 담당한다. 본 rule은 positive gate로서 "등록된 primitive를 쓰라"는 규범을 정의한다.
+
+**매크로 구문**: `{{primitive_id key=val}}` — 이중 중괄호 형식. `primitive_id`는 아래 현재 등록 목록 내여야 한다. 미등록 id는 warning을 발생시킨다 (error가 아님).
+
+**현재 등록 primitive** (`vocabulary/invocations.yml`):
+- `skill_activation` — 다른 skill을 현재 세션 내에서 활성화
+- `subagent_spawn` — 특정 role로 새 subagent 세션 생성
+- `task_register` — 사용자 가시 progress 추적을 위한 task 등록
+- `user_question` — 선택지를 포함한 사용자 질문 제시
+
+**허용 예외**:
+- 매크로 구문 `{{primitive_id key=val}}` — `primitive_id`가 위 등록 목록에 있을 때
+- `harness_docs_refs` prose 참조 — 예: "see harness docs: slash_command_display" 형태의 산문 언급
+
+**heredoc opaque 규약**: `>>LABEL ... <<LABEL` 쌍의 내부 본문은 opaque 마스킹되어 Category 1–3 스캔에서 제외된다. heredoc 내부의 `{{...}}`는 literal로 처리되며 중첩 매크로는 금지된다. heredoc 외부의 scope는 정상 스캔한다.
+
+**위반 예시**:
+- `{{my_custom_tool agent=writer}}` — `my_custom_tool`이 `invocations.yml`에 미등록
+- `{{bash_exec cmd="ls"}}` — harness tool을 직접 매크로로 호출
+
+**위반 시 동작**: warning 발생. Lead는 사용자에게 알리고 등록 primitive로 교체를 권고한다.
 
 근거: `.nexus/context/boundaries.md` 참조.
 
@@ -205,3 +263,12 @@
 **위반 시 동작**: Lead는 즉시 작업을 중단하고 사용자에게 확인을 요청한다.
 
 근거: `.nexus/context/boundaries.md` (포함/제외 범위 원칙), `docs/nexus-outputs-contract.md §Shared filename convention`, `docs/nexus-outputs-contract.md §Harness-local State Extension` 참조.
+
+---
+
+## 동기화 유지 (maintainer 주의)
+
+본 문서의 §rule:no-harness-tool / §rule:use-invocation-vocabulary 금지 패턴 enum은
+`scripts/lib/lint.ts`의 G6 구현과 drift가 없어야 한다.
+lint.ts 수정 시 본 문서의 해당 섹션도 함께 업데이트하고, 그 반대도 동일.
+단일 진실 원천은 lint.ts이며, 본 문서는 그 의도의 서술 버전이다.

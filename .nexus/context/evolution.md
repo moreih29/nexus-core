@@ -122,6 +122,30 @@ v0.7.0 이후 추가 breaking change 배제 commitment는 제외한다. pre-v1 P
 
 pre-v1 정책에 따라 major bump 대신 minor bump + nx-car:v0.7.0 마커로 처리. v0.2.0/v0.4.0/v0.5.0/v0.6.0과 동일 패턴.
 
+### v0.8.0 — Invocation abstraction: Option A + Spec γ (2026-04-15)
+
+plan session #5 내부 발의 (GH 이슈 별도 없음). body.md의 하네스 특화 tool 호출 13건 (`Skill()`, `Agent()`, `TaskCreate`, `prompt_user()`, `/claude-nexus:` slash namespace 등)을 Spec γ 매크로 토큰으로 추상화하고, positive invocation 방향 vocabulary 공백을 해소한다.
+
+plan session #5 2 decisions (2026-04-15) 반영 내용:
+
+- #1: Option A (Placeholder tokenization) 채택. nexus-core body.md를 "transform source"로 정의. consumer가 매크로를 concrete harness syntax로 expansion. Option E(append) 및 E'(inline substitution)는 정보 거리/복잡성 trade-off로 기각.
+- #2: Spec γ (Pragmatic hybrid) 채택. 토큰 `{{primitive_id key=val}}` + multiline heredoc `>>IDENT ... <<IDENT`. 중첩 금지. slash_command_display는 `harness_docs_refs` 우회. 기존 prose primitive 관용구 유지(Spec γ §5). α(flat-only) 및 β(JSON+중첩)는 multiline prompt 부족 / YAGNI 위반으로 기각.
+
+구현 완료:
+- `vocabulary/invocations.yml` 신설 — 4 primitive(skill_activation, subagent_spawn, task_register, user_question), 각 entry에 id/description/intent/semantic_params/prose_guidance/fallback_behavior. `fallback_behavior` required 필드는 `AskUserQuestion`이 opencode-nexus에 native 부재한 하네스 비대칭 대응의 설계 anchor.
+- `schema/vocabulary.schema.json` + `schema/manifest.schema.json` 확장.
+- `scripts/lib/validate.ts`에 `checkInvocationEntryIntegrity` gate 추가.
+- `skills/*/body.md` 13건 Spec γ 매크로 rewrite.
+- `skills/nx-init/meta.yml` `harness_docs_refs: [instruction_file, slash_command_display]`.
+- `scripts/lib/lint.ts` G6 blindspot 해소 — 5 카테고리(Distinctive word boundary, Skill/Agent call-pattern only, namespace prefix, macro whitelist with primitive_id enum cross-check, heredoc opaque).
+- `.nexus/rules/neutral-principles.md` §rule:no-harness-tool 3-subsection 재구조화 + §rule:use-invocation-vocabulary 신설(warning level, positive gate).
+
+설계 철학적 의미: v0.2.0의 capability abstraction이 denial 방향 vocabulary를 확립했다면, v0.8.0의 invocation abstraction은 positive invocation 방향 vocabulary를 확립한다. Neutral Authoring layer가 두 방향을 쌍대로 커버하게 됨으로써, body.md의 harness-specific pollution 경로를 구조적으로 차단한다. opencode-nexus 산출물의 `claude-nexus:` namespace 오염 이슈는 v0.7.x까지 silent failure로 남아 있었으며 본 릴리스로 근본 해소된다.
+
+Consumer Action Required: claude-nexus, opencode-nexus 두 consumer 모두 자기 repo에 `invocation-map.yml` 작성 + 매크로 expander 구현 + `harness-content/slash_command_display.md` 신설 + 산출물 재빌드 필수. 상세는 MIGRATIONS/v0_7_to_v0_8.md 참조.
+
+pre-v1 정책에 따라 major bump 대신 minor bump + nx-car:v0.8.0 마커로 처리. v0.2.0/v0.4.0/v0.5.0/v0.6.0/v0.7.0과 동일 패턴.
+
 ---
 
 ## CHANGELOG Canonical 포맷

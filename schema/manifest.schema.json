@@ -34,27 +34,42 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "description", "triggers", "body_hash"],
+        "required": ["id", "name", "description", "body_hash"],
         "properties": {
           "id": { "$ref": "common.schema.json#/$defs/id" },
           "name": { "type": "string" },
           "description": { "type": "string" },
+          "summary": { "type": "string", "minLength": 10, "maxLength": 120 },
           "triggers": { "type": "array", "items": { "type": "string" } },
+          "harness_docs_refs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
           "alias_ko": { "type": "string" },
           "manual_only": { "type": "boolean" },
           "body_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "manual_only": { "const": true } },
+              "required": ["manual_only"]
+            },
+            "then": {},
+            "else": {
+              "required": ["triggers"]
+            }
+          }
+        ]
       }
     },
     "vocabulary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["capabilities", "categories", "resume_tiers", "tags"],
+      "required": ["capabilities", "categories", "resume_tiers", "tags", "invocations"],
       "properties": {
         "capabilities": { "type": "array" },
         "categories": { "type": "array" },
         "resume_tiers": { "type": "array" },
-        "tags": { "type": "array" }
+        "tags": { "type": "array" },
+        "invocations": { "type": "array" }
       }
     }
   }
