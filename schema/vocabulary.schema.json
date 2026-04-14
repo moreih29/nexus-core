@@ -92,6 +92,51 @@
       "properties": {
         "tags": { "type": "array", "items": { "$ref": "#/$defs/tagEntry" } }
       }
+    },
+    "invocationParam": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "required"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "pattern": "^[a-z][a-z0-9_]*$" },
+        "description": { "$ref": "common.schema.json#/$defs/description" },
+        "required": { "type": "boolean" },
+        "value_type": { "type": "string", "minLength": 1 }
+      }
+    },
+    "invocationEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "intent", "semantic_params", "prose_guidance", "fallback_behavior"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/id" },
+        "description": { "$ref": "common.schema.json#/$defs/description" },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "semantic_params": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/invocationParam" }
+        },
+        "prose_guidance": {
+          "type": "string",
+          "minLength": 40
+        },
+        "fallback_behavior": {
+          "type": "string",
+          "minLength": 20
+        }
+      }
+    },
+    "invocationFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invocations"],
+      "properties": {
+        "invocations": { "type": "array", "items": { "$ref": "#/$defs/invocationEntry" } }
+      }
     }
   }
 }

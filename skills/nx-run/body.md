@@ -24,16 +24,16 @@ Execution norm that Lead follows when the user invokes the [run] tag. Composes s
 - **Branch Guard**: if on main/master, create a branch appropriate to the task type before proceeding (prefix: `feat/`, `fix/`, `chore/`, `research/`, etc. — Lead's judgment). Auto-create without user confirmation.
 - Check for `tasks.json`:
   - **Exists** → read it and proceed to Step 2.
-  - **Absent** → auto-invoke `Skill({ skill: "claude-nexus:nx-plan", args: "auto" })` to generate tasks.json. Do NOT ask — `[run]` implies execution intent. After plan generation, proceed to Step 2.
+  - **Absent** → auto-invoke `{{skill_activation skill=nx-plan mode=auto}}` to generate tasks.json. Do NOT ask — `[run]` implies execution intent. After plan generation, proceed to Step 2.
 - If tasks.json exists, check prior decisions with `nx_plan_status`.
 
 ### Step 1.5: TUI Progress
 
 Register tasks for visual progress tracking (Ctrl+T):
 
-- **≤ 10 tasks**: `TaskCreate` per task
-- **> 10 tasks**: group by `plan_issue`, `TaskCreate` per group
-- Use `TaskUpdate` to reflect progress (`in_progress` / `completed`) as execution proceeds
+- **≤ 10 tasks**: `{{task_register label="<per-task label>" state=pending}}` per task
+- **> 10 tasks**: group by `plan_issue`, `{{task_register label="<group label>" state=pending}}` per group
+- Update the registered entry via `{{task_register label="<label>" state=in_progress}}` / `{{task_register label="<label>" state=completed}}` as execution proceeds
 - **Skip only if**: non-TTY environment (VSCode, headless)
 - **Known issue**: TUI may freeze during auto-compact (#27919) — task data on disk remains correct
 
@@ -90,7 +90,7 @@ For each task, Lead chooses between fresh spawn and resume based on the `owner`'
 
 Execute in order:
 
-1. **nx-sync**: invoke `Skill({ skill: "claude-nexus:nx-sync" })` if code changes were made in this cycle. Best effort — failure does not block cycle completion.
+1. **nx-sync**: invoke `{{skill_activation skill=nx-sync}}` if code changes were made in this cycle. Best effort — failure does not block cycle completion.
 2. **nx_task_close**: call to archive plan+tasks to history.json. This updates `.nexus/history.json`.
 3. **git commit**: stage and commit source changes, build artifacts (`bridge/`, `scripts/`), `.nexus/history.json`, and any modified `.nexus/memory/` or `.nexus/context/`. Use explicit `git add` with paths (not `git add -A`) and a HEREDOC commit message with `Co-Authored-By`. This ensures the cycle's history archive lands in the same commit as the code changes, giving a 1:1 cycle-commit mapping.
 4. **Report**: summarize to user — changed files, key decisions applied, and suggested next steps. Merge/push is the user's decision and outside this skill's scope.

@@ -21,6 +21,46 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.8.0] - 2026-04-15 — Invocation vocabulary + Spec γ macro rewrite + G6 lint hardening
+
+This release introduces `vocabulary/invocations.yml` as the 5th canonical vocabulary, rewrites 13 harness-specific tool call sites in `skills/*/body.md` to Spec γ macro tokens, and hardens G6 lint to enforce the macro/namespace contract. All changes are additive to the vocabulary layer; the breaking surface is the prompt drift in `skills/*/body.md` — consumers that expand macro tokens at build time must integrate a macro expander.
+
+### BREAKING CHANGES
+<!-- nx-car:v0.8.0:start -->
+- **Impact**: claude-nexus, opencode-nexus — body.md 13건의 하네스 특화 tool 호출이 Spec γ 매크로 토큰으로 전환됨. 기존 `Skill()`/`Agent()`/`TaskCreate` 등 직접 호출 문법이 consumer 산출물에 남아 있으면 런타임 미작동 가능.
+- **Action required (claude-nexus, opencode-nexus 공통)**:
+  1. `@moreih29/nexus-core` devDependency를 `^0.8.0`으로 업데이트.
+  2. consumer repo에 `invocation-map.yml` 신설 (4 primitive × concrete syntax 매핑).
+  3. `harness-content/slash_command_display.md` (또는 각 하네스의 동등 경로) 신설. `nx-init`의 `harness_docs_refs: [instruction_file, slash_command_display]` append 대상.
+  4. `generate-from-nexus-core.lib.mjs`(또는 동등)에 매크로 expander 통합 (heredoc 마스킹 + 매크로 스캔 + expansion).
+  5. 전체 재빌드 후 `grep -rn "claude-nexus:" src/skills/generated/` (opencode-nexus) 또는 동등 grep으로 cross-harness namespace 오염 0건 확인.
+- **Migration guide**: [MIGRATIONS/v0_7_to_v0_8.md](./MIGRATIONS/v0_7_to_v0_8.md) (Spec γ 매크로 규격 + consumer parser pseudo-code + invocation-map 템플릿 + rebuild procedure + pitfalls 포함).
+- **Rationale (semver)**: pre-v1 minor + nx-car marker — v0.2.0/v0.4.0/v0.5.0/v0.6.0/v0.7.0 선례 일관. API shape 변경이 아닌 prompt drift + lint gate 성격.
+<!-- nx-car:v0.8.0:end -->
+
+### Added
+
+- `vocabulary/invocations.yml`: 5번째 canonical vocabulary, 4 primitive entry (skill_activation, subagent_spawn, task_register, user_question). 각 entry에 id / description / intent / semantic_params / prose_guidance / fallback_behavior 필드 포함.
+- `schema/vocabulary.schema.json`: `invocationParam`, `invocationEntry`, `invocationFile` 정의 추가.
+- `schema/manifest.schema.json`: `vocabulary.invocations` 필드 required.
+- `scripts/lib/validate.ts`: `checkInvocationEntryIntegrity` 게이트, invocations.yml load 로직, manifest에 invocations 요약 emission.
+- `scripts/lib/lint.ts`: G6 확장 5 카테고리 — Category 1 distinctive word boundary, Category 2 call-pattern only, Category 3 namespace prefix, Category 4 macro whitelist with primitive_id enum cross-check, Category 5 heredoc opaque.
+- `.nexus/rules/neutral-principles.md`: §rule:use-invocation-vocabulary 신설 (warning level, positive gate).
+- `MIGRATIONS/v0_7_to_v0_8.md`: consumer 업그레이드 완전 가이드 (Spec γ 매크로 규격 + consumer parser pseudo-code + invocation-map 템플릿 + rebuild procedure + pitfalls 포함).
+
+### Changed
+
+- `skills/*/body.md` (4 파일): 하네스 특화 tool 호출 13건 → Spec γ 매크로 토큰 (`{{primitive_id key=val}}` + heredoc).
+- `skills/nx-init/meta.yml`: `harness_docs_refs`에 `slash_command_display` 추가.
+- `.nexus/rules/neutral-principles.md`: §rule:no-harness-tool 3-subsection 재구조화 (Category 1-3 정규식 그대로 기재), 동기화 유지 메모 추가.
+- `.nexus/context/boundaries.md`: §포함 범위 vocabulary 5종으로 확장, §거절 4 하단에 positive invocation carve-out 없음 명기.
+- `.nexus/context/ecosystem.md`: §invocation abstraction 신설 (capability abstraction 병렬 구조).
+- `.nexus/context/evolution.md`: §v0.8.0 서브섹션 신설.
+
+### Removed
+
+- (해당 없음 — v0.8.0은 additive + prompt drift 성격)
+
 ## [0.7.1] - 2026-04-14 — Documentation cleanup: nexus-code archived
 
 `nexus-code` 프로젝트가 archived됨에 따라 nexus-core의 철학·내부·consumer-facing 문서에서 `nexus-code` specific 참조를 제거. Spec API 변경 없음 — narrative와 consumer 목록 update만.
@@ -314,7 +354,8 @@ If your harness stored runtime-like configuration in `runtime.json`, move it to 
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/moreih29/nexus-core/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/moreih29/nexus-core/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/moreih29/nexus-core/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/moreih29/nexus-core/compare/v0.5.0...v0.6.0

@@ -2397,6 +2397,235 @@
           "created_at": "2026-04-14T07:44:03.727Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-14T15:45:57.828Z",
+      "branch": "feat/v0.8.0-invocation-abstraction",
+      "plan": {
+        "id": 4,
+        "topic": "body.md 하네스 특화 호출의 harness-neutral 추상화 전략",
+        "issues": [
+          {
+            "id": 1,
+            "title": "body.md 내 하네스 특화 invocation(Skill()/Agent()/TaskCreate/subagent_type/prompt_user/slash namespace)을 harness-neutral하게 추상화하는 접근 방식 결정",
+            "status": "decided",
+            "decision": "Option A (Placeholder tokenization) 채택. body.md에 `{{skill_activation skill=nx-plan mode=auto}}` 형태의 매크로 토큰을 심고, 각 consumer의 generate script가 매크로를 local harness concrete syntax로 expansion한다.\n\n근거:\n- nexus-core body.md를 \"읽기 자산\"이 아닌 \"transform source/중간 산출물\"로 정의. 실제 읽기 주체는 LLM의 rendered 결과이므로 body.md prose 가독성보다 consumer parser 단순성이 우선.\n- 매크로 토큰 경계(`{{...}}`)가 명확해 consumer parser 구현 부담 최소화.\n- 정보 거리 제로(inline expansion) 보장 — user의 원 우려 해소.\n- boundaries.md §거절4 부합 — 매크로 토큰 자체는 하네스 중립.\n\n다른 옵션 기각:\n- E (append only): LLM 정보 거리 문제 (user 지적) — body가 길어질수록 primitive 어구와 concrete syntax 연결 신뢰도 저하.\n- E' (inline substitution): body.md authoring 가독성 이점이 있으나, nexus-core를 transform source로 정의하는 본 결정과 충돌. parser도 microformat 감지 + prose 흐름 처리로 A보다 복잡.\n- D (consumer regex 치환): nexus-core 파일 자체가 harness-specific 상태 유지 — §거절4 carve-out 없음 원칙 위반.\n\n구현 로드맵 (v0.8.0 minor + nx-car marker):\nPhase 1: vocabulary/invocations.yml 신설 (5 entry: skill_activation, subagent_spawn, task_register, user_question, slash_command_display), fallback_behavior 필드 required\nPhase 2: skills/*/body.md 13건을 매크로 토큰으로 rewrite\nPhase 3: 각 consumer(claude-nexus, opencode-nexus)의 generate-from-nexus-core.lib.mjs에 매크로 expander 구현 + invocation-map.yml 작성\nPhase 4: scripts/lib/lint.ts G6 enum에 Skill|Agent|TaskCreate|TaskUpdate|Explore|subagent_type|prompt_user|/claude-nexus:|/opencode-nexus: 추가 + rule:no-harness-tool 금지 패턴 확장\nPhase 5: CHANGELOG nx-car:v0.8.0 marker + MIGRATIONS/v0_7_to_v0_8.md (Consumer Action Required: 산출물 재빌드 필수)",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "5개 resolution option 비교 분석. 구조적 위반 13건 + lint G6 blindspot 발견 (Skill/Agent/TaskCreate 누락). opencode-nexus 산출물에 'claude-nexus:' namespace 오염은 buglet이 아닌 구조적 문제 판정 (silent runtime failure 위험). invocations.yml X3 schema + fallback_behavior 필드 설계, harness 비대칭(AskUserQuestion opencode 부재) 대응 필수. v0.8.0 minor + nx-car marker 권고. 초기 추천은 Option E였으나 Lead-user 대화에서 A로 pivot: user의 정보 거리 우려 + consumer parser 단순성 우위 근거."
+            },
+            "how_agent_ids": {
+              "architect": "aa11773c84b2a24ee"
+            }
+          },
+          {
+            "id": 2,
+            "title": "매크로 문법 상세 설계 (토큰 경계, param 포맷, 중첩 처리, slash_command_display 매핑, 기존 prose 어구 공존 방침)",
+            "status": "decided",
+            "decision": "Spec γ (Pragmatic hybrid) 채택.\n\n## 매크로 문법 규격\n\n**1. 토큰 경계**: `{{primitive_id key=val}}` 이중 중괄호. primitive_id는 snake_case, invocations.yml에 등록된 id만 허용. HTML comment(`<!--`) 및 shell expansion(`${}`)과 구별.\n\n**2. param 포맷**: \n- 단순: `key=val` flat, 공백·특수문자 포함 시 `key=\"val with spaces\"` 큰따옴표\n- multiline: Ruby-style heredoc `prompt=>>PROMPT ... <<PROMPT`. IDENT는 uppercase snake_case, body.md 내 유일성 권장(parser는 가장 가까운 match로 종료).\n\n**3. 중첩 금지**: heredoc prompt 내부의 `{{...}}`는 literal text 처리. 새 primitive 호출 아님. 필요 시 target agent에게 prose로 지시.\n\n**4. slash_command_display**: invocations.yml entry에서 **제외**. meta.yml `harness_docs_refs: [slash_command_display]` 우회. body.md는 \"the manual trigger for this skill (see harness docs)\" prose. 각 consumer의 harness-content/slash_command_display.md에 실 표기 기술 (`instruction_file`, `resume_invocation` 선례와 동일).\n\n**5. 기존 prose primitive 어구 공존**: \"the harness's file-reading primitive\", \"subagent spawn primitive\", \"resume mechanism\" 등 유지. 매크로는 **구체 호출이 필요한 지점**(현 위반 13건 scope)에만 적용. invocations.yml의 prose_guidance 필드가 관용구를 canonical하게 기록. 원칙: \"매크로는 concrete call 자리에만, prose는 semantic discussion 자리에\".\n\n## 기각 근거\n- Spec α (flat only): subagent_spawn.prompt의 multiline 현실(nx-sync:47-49) 반영 못 함. flat key=value에서 escape 지옥.\n- Spec β (JSON + 중첩): YAGNI 위반 — 현 13건에 중첩·JSON 불필요. parser 복잡도 증가 + authoring layer 의미론 명료성 훼손(중첩 expansion 순서 결정 필요).\n\nγ 선택 근거: heredoc은 Bash/Ruby/Markdown에 익숙한 패턴으로 LLM·사람 모두 이해 용이. parser는 `{{...}}` 감지 + heredoc marker 감지 2단계 — consumer 부담 최소. slash_command_display는 UX 표기이지 invocation 아님 → 의미론 올바른 분리."
+          }
+        ],
+        "research_summary": "## 문제 증거\n\nnexus-core/skills/*/body.md에 Claude Code 하네스 특화 tool 호출이 13건 하드코딩됨 (boundaries.md §거절4 \"carve-out 없음\" 직접 위반):\n- Skill activation: `Skill({ skill: \"claude-nexus:nx-plan\", args: \"auto\" })` (nx-run:27,93 / nx-plan:38)\n- Subagent spawn: `Agent({ subagent_type: \"claude-nexus:writer\", ... })`, `subagent_type: \"Explore\"` (nx-sync:47, nx-plan:96-97)\n- Task pipeline(TUI): `TaskCreate`, `TaskUpdate` (nx-run:34-36)\n- Structured question: `prompt_user({ questions: [...] })` (nx-init:54-56, 166-173)\n- Slash namespace: `/claude-nexus:nx-init` (nx-init:19-21, 195)\n\n## 파급\n\n`generate-from-nexus-core.mjs`는 body를 sha256 검증 후 그대로 복사 — opencode-nexus/src/skills/generated/nx-run.ts:31,97, nx-sync.ts:51, nx-plan.ts:42,100-101에 `claude-nexus:` namespace + Claude Code 전용 tool 이름이 유입. 런타임 silent failure 위험 (opencode LLM이 존재하지 않는 Skill/Agent tool 시도 → 에러 or 무시 → 기능 chain 절단).\n\n## 근본 원인 — 이중 정책 공백\n\n1. capability abstraction (vocabulary/capabilities.yml)은 denial 방향(\"무엇을 차단\")만 정의. positive invocation 방향(무엇을 호출) 정책 공백.\n2. scripts/lib/lint.ts G6 `CLAUDE_CODE_TOOLS_DISTINCTIVE` enum에 Skill|Agent|TaskCreate|TaskUpdate|Explore|subagent_type|prompt_user 누락. 13건 위반이 CI를 통과한 직접 원인.\n\n## 하네스 대조 (Explore 보고)\n\n| Primitive | Claude Code | OpenCode |\n|---|---|---|\n| Skill 활성화 | `Skill({skill, args})` built-in | 별도 MCP tool 함수 |\n| Subagent 스폰 | `Agent({subagent_type, prompt})` | hooks 기반 implicit routing |\n| Task 등록 | `TaskCreate/Update` | `nx_task_add/update` |\n| 구조화 질문 | `AskUserQuestion` | **native tool 부재** → prose fallback |\n\n## 5가지 resolution option (architect 분석)\n\n- A: Placeholder tokenization (`{{invoke_skill:X}}`)\n- B: invocations.yml vocabulary + prose\n- C: Prose-only\n- D: Consumer transform script 치환\n- E: Hybrid (B+C+lint+harness_docs_refs append) — **architect 추천**\n\n## architect 추천: Option E\n\nPhase 1: vocabulary/invocations.yml 신설 (5 entry: skill_activation, subagent_spawn, task_register, user_question, slash_command_display), fallback_behavior 필드 required\nPhase 2: body.md 13건 prose rewrite (\"the harness's X primitive\" 관용구)\nPhase 3: 각 consumer harness-content/에 concrete 예시 (기존 harness_docs_refs append 메커니즘 재활용, 코드 추가 없음)\nPhase 4: lint G6 + rule:no-harness-tool 패턴 enum 확장 (재발 방지)\nPhase 5: v0.8.0 minor + nx-car marker + MIGRATIONS/v0_7_to_v0_8.md\n\n근거: boundaries.md §거절4 \"carve-out 없음\" + 기존 capabilities.yml X3 schema 재사용 패턴 + harness_docs_refs append 메커니즘이 이미 작동(resume_invocation, instruction_file).\n\n## 핵심 세부 쟁점\n\n- fallback_behavior 필드 필요성: user_question은 opencode에 native tool 없음 → fallback prose 규약 필수\n- slash command 표기(`/claude-nexus:nx-init`)는 invocation이 아닌 UX 문구 → harness_docs_refs: [slash_command_display]로 우회 가능 (이미 nx-init에 `harness_docs_refs: [instruction_file]` 선례)\n- tags.yml handler와 invocations.yml semantic_id는 방향이 다른 호출 체계 → 파일 분리, naming convention 공유 (snake_case + intent)",
+        "created_at": "2026-04-14T14:44:58.275Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "vocabulary/invocations.yml 신설 + schema 확장 + validate/manifest 통합",
+          "context": "Phase 1 — Option A 매크로 체계의 canonical vocabulary 확립. 4 entry (skill_activation, subagent_spawn, task_register, user_question). slash_command_display는 invocations.yml에서 제외 (Spec γ §4). 각 entry는 intent, semantic_params, prose_guidance, fallback_behavior(required) 필드.",
+          "approach": "1) vocabulary/invocations.yml 작성 — capabilities.yml X3 schema 패턴 재사용. 2) schema/vocabulary.schema.json에 invocationEntry/invocationFile 정의 추가. 3) scripts/lib/validate.ts에서 invocations.yml load+validate 로직 추가. 4) scripts/validate.ts의 manifest 생성 로직에 invocations 배열 노출 (capabilities/categories/resume-tiers/tags와 동등 위상).",
+          "acceptance": "invocations.yml 4 entry 존재, 각 fallback_behavior 포함. schema/vocabulary.schema.json이 invocationEntry required field 엄격 검증. `bun run validate:all` pass. manifest.json에 invocations 배열 노출 확인.",
+          "risk": "capabilities.yml의 blocks_semantic_classes 필드 재사용 여부가 invocation 의미론에 맞는지 검토 필요 — denial은 '무엇을 막느냐', invocation은 '무엇을 호출하느냐'로 방향이 다름. semantic_params 필드 신설이 적절할지 설계 검토.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-14T15:01:24.054Z"
+        },
+        {
+          "id": 2,
+          "title": "skills/nx-init/meta.yml harness_docs_refs에 slash_command_display 추가",
+          "context": "Spec γ §4 결정에 따라 /claude-nexus:nx-init 슬래시 표기를 harness_docs_refs로 우회. 기존 [instruction_file] 항목 선례와 동일 패턴.",
+          "approach": "skills/nx-init/meta.yml의 harness_docs_refs 배열에 'slash_command_display' 추가. schema/skill.schema.json에 harness_docs_refs enum/규약 검증이 있다면 그대로 통과되는지 확인.",
+          "acceptance": "meta.yml harness_docs_refs 리스트에 slash_command_display 포함. schema validation pass. manifest.json의 nx-init.harness_docs_refs 업데이트 반영.",
+          "risk": "각 consumer 레포에 harness-content/slash_command_display.md 실존해야 append 작동 — 본 task는 nexus-core만 변경. consumer action required로 migration guide(Task 5)에서 명기.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-14T15:01:30.922Z"
+        },
+        {
+          "id": 3,
+          "title": "skills/*/body.md 위반 13건 Spec γ 매크로 rewrite",
+          "context": "Issue #1 근본 해소. 4 skill body 파일(nx-plan, nx-run, nx-sync, nx-init)의 하네스 특화 invocation 13건을 {{primitive_id key=val}} 매크로로 치환. slash command 표기(nx-init:19-21,195)는 harness_docs_refs 경유 prose로 대체.",
+          "approach": "1) nx-run/body.md:27,34-36,93 — skill_activation, task_register 매크로. 2) nx-plan/body.md:38,96-97 — skill_activation, subagent_spawn 매크로. 3) nx-sync/body.md:47 — subagent_spawn heredoc 매크로(multiline prompt). 4) nx-init/body.md:19-21,54-56,166-173,195 — user_question 매크로 + slash command는 'see harness docs: slash_command_display' prose. heredoc IDENT 유일성 + Spec γ §2 규칙 준수.",
+          "acceptance": "현 위반 13건 모두 매크로 또는 harness_docs_refs prose로 교체. `bun run lint` pass (Task 4 확장 lint 통과). sha256 body_hash 재계산 후 manifest 갱신. 기존 prose primitive 관용구('the harness's X primitive') 유지.",
+          "risk": "subagent_spawn prompt의 multiline heredoc 경계가 body.md 내 다른 code block과 충돌할 가능성 — IDENT를 body.md 내 유일하게 선택. 기존 neutral prose 어구 매크로 전환 유혹 억제 (Spec γ §5).",
+          "status": "completed",
+          "deps": [
+            1,
+            2
+          ],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-14T15:01:42.111Z"
+        },
+        {
+          "id": 4,
+          "title": "scripts/lib/lint.ts G6 enum 확장 + 매크로 whitelist",
+          "context": "architect 발견 — 현 G6 CLAUDE_CODE_TOOLS_DISTINCTIVE에 Skill|Agent|TaskCreate|TaskUpdate|Explore|subagent_type|prompt_user 누락이 위반 13건 CI 통과의 직접 원인. 재발 방지 기계적 gate 필수.",
+          "approach": "scripts/lib/lint.ts:49의 G6 정규식에 Skill|Agent|TaskCreate|TaskUpdate|TaskList|TaskGet|TaskStop|TaskOutput|Explore|subagent_type|prompt_user 추가. 별도 패턴으로 namespace 참조 `/claude-nexus:|/opencode-nexus:` 금지. body.md 매크로 구문 `{{primitive_id ...}}` whitelist, primitive_id가 invocations.yml enum 내 여부 cross-check.",
+          "acceptance": "확장 lint가 Task 3 rewrite 전 13건 위반 모두 catch. rewrite 후 0건. 기존 prose primitive 어구 false-positive 0건. 매크로 토큰의 primitive_id invocations.yml enum 일치 확인.",
+          "risk": "매크로 whitelist 처리 오류 시 실제 하네스 tool 문자열이 매크로로 위장 통과 가능성 — primitive_id enum cross-check로 방지.",
+          "status": "completed",
+          "deps": [
+            1,
+            3
+          ],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-14T15:01:51.279Z"
+        },
+        {
+          "id": 5,
+          "title": "MIGRATIONS/v0_7_to_v0_8.md 마이그레이션 가이드 작성",
+          "context": "pre-v1 minor + nx-car marker 정책에 따라 breaking 변경에 migration 가이드 필수. consumer(claude-nexus, opencode-nexus)에 매크로 expander 구현 + invocation-map.yml 작성 + 산출물 재빌드 지침 제공.",
+          "approach": "v0_2/v0_4/v0_5 포맷 참조. 6 섹션: (1) Summary — v0.8.0 변경 요약, (2) Macro grammar reference — Spec γ 규격 요약 + 4 primitive 각 예시, (3) Consumer parser implementation template — pseudo-code, (4) invocation-map.yml 템플릿 — 4 primitive × consumer 별 concrete syntax, (5) Rebuild procedure — `bun run generate` + verify, (6) Pitfalls — claude-nexus namespace pollution 제거, heredoc IDENT 충돌, slash_command_display harness-content 파일 생성.",
+          "acceptance": "MIGRATIONS/v0_7_to_v0_8.md 파일 존재. CHANGELOG v0.8.0 entry에서 링크. claude-nexus, opencode-nexus 개발자가 본 문서만으로 업그레이드 가능. Spec γ 매크로 예시 4종 + invocation-map 템플릿 + pseudo-code parser 포함.",
+          "risk": "각 consumer의 generate-from-nexus-core.lib.mjs 실구현 repo별 상이 — template은 pseudo-code 수준 유지. consumer가 자기 언어/빌드 환경에 맞게 adapt.",
+          "status": "completed",
+          "deps": [
+            1,
+            3
+          ],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-14T15:02:02.165Z"
+        },
+        {
+          "id": 6,
+          "title": ".nexus/rules/neutral-principles.md §rule:no-harness-tool 패턴 업데이트 + §rule:use-invocation-vocabulary 신설",
+          "context": "architect 발견 — rule과 lint가 이원화된 진실 원천으로 drift. rule을 lint G6과 동일 범위로 확장. 긍정 gate 신설로 매크로 사용 규약 명문화.",
+          "approach": "§rule:no-harness-tool 금지 패턴 enum에 Skill|Agent|TaskCreate|TaskUpdate|Explore|subagent_type|prompt_user|/claude-nexus:|/opencode-nexus: 추가. §rule:use-invocation-vocabulary 신설 — body.md 내 invocation은 invocations.yml 등록 primitive만 허용, warning level. 매크로 구문 {{primitive_id key=val}} + harness_docs_refs prose 참조 허용 예외 명기. rule 문서 끝에 'lint G6과 동기화 유지 필요' 메모 추가.",
+          "acceptance": "rule 업데이트가 Task 4 lint와 enum 완전 정합. rule 문서 self-consistent. §use-invocation-vocabulary가 warning level로 명시(실제 block은 lint G6 담당).",
+          "risk": "rule(서술) + lint(기계 집행) 이원화 유지는 future maintainer 부담 — 두 지점에 각각 동기화 메모 추가로 mitigation.",
+          "status": "completed",
+          "deps": [
+            4
+          ],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-14T15:02:11.354Z"
+        },
+        {
+          "id": 7,
+          "title": ".nexus/context/{boundaries,ecosystem,evolution}.md v0.8.0 반영",
+          "context": "v0.8.0의 설계 철학 변화 반영. boundaries §포함 범위에 invocations.yml 추가, ecosystem §capability abstraction 옆에 §invocation abstraction 신설, evolution §v0.8.0 서브섹션 신설.",
+          "approach": "1) boundaries.md §포함 범위 vocabulary 4종→5종 수정, invocations.yml 설명 추가. §거절4 carve-out 없음 원칙에 positive invocation 방향 명기. 2) ecosystem.md §capability abstraction 옆에 §invocation abstraction 신설 — 매크로 tokenization + consumer expander resolve 방식 기술. 3) evolution.md §v0.8.0 서브섹션 — Option A+Spec γ 결정 요지, lint G6 blindspot 해소 기록, v0.2/v0.4/v0.5/v0.6/v0.7 패턴 일관 명시.",
+          "acceptance": "3 context 파일에 v0.8.0 결정 반영. 본 plan session #5 참조 header 추가. capabilities vocabulary 설명과 invocation vocabulary 설명이 병렬 구조.",
+          "risk": "context 편집은 plan session decision 기반 — 본 session Issue #1, #2 결정 요지만 반영. 개인 해석 추가 금지.",
+          "status": "completed",
+          "deps": [
+            1,
+            3,
+            4,
+            5
+          ],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-14T15:02:20.664Z"
+        },
+        {
+          "id": 8,
+          "title": "CHANGELOG.md v0.8.0 entry + nx-car marker + VERSION/package.json bump",
+          "context": "v0.2/v0.4/v0.5/v0.6/v0.7 패턴 일관 유지. pre-v1 minor + nx-car marker 정책. consumer(claude-nexus, opencode-nexus) 재빌드 필수 공지.",
+          "approach": "CHANGELOG.md 상단에 [0.8.0] entry. 섹션: Consumer Action Required(nx-car:v0.8.0:start/:end marker) → Added(invocations.yml, schema 확장, lint G6 확장, rule:use-invocation-vocabulary) → Changed(body.md 13건 rewrite, context 업데이트) → Removed(N/A). Consumer Action Required에 claude-nexus, opencode-nexus 명시 + MIGRATIONS/v0_7_to_v0_8.md 링크 + semver rationale 1줄. VERSION 파일 0.8.0. package.json version 0.8.0.",
+          "acceptance": "CHANGELOG에 nx-car regex 매칭 가능. VERSION = 0.8.0. package.json version = 0.8.0. Keep a Changelog 포맷 준수. 기존 nx-car marker 중첩 0건.",
+          "risk": "consumer node_modules 캐시 문제 가능 — Consumer Action Required에 cache clean + reinstall 절차 명기.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-14T15:02:29.576Z"
+        },
+        {
+          "id": 9,
+          "title": "engineer 산출물 검증 (schema, lint, manifest)",
+          "context": "Task 1/2/4 엔지니어링 산출물의 정상 동작 검증. schema validation, lint G6 확장의 catch 정확도, manifest 노출 확인.",
+          "approach": "1) `bun run validate:all` 실행, error 0. 2) `bun run validate:conformance` coverage 유지. 3) lint G6 단위 테스트 — 가짜 위반 샘플 feed해서 catch + 매크로 false-positive 0 확인. 4) manifest.json에 invocations 배열 + 4 entry 확인. 5) nx-init meta.yml의 harness_docs_refs에 slash_command_display 포함 확인.",
+          "acceptance": "모든 validation script pass. lint 가짜 위반 샘플 100% catch, 매크로 false-positive 0. manifest invocations 필드 노출 확인.",
+          "risk": "기존 fixture가 lint G6 변경으로 unintended catch 가능 — 기존 fixture 별도 검토 필요.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "plan_issue": 1,
+          "owner": "tester",
+          "created_at": "2026-04-14T15:02:35.925Z"
+        },
+        {
+          "id": 10,
+          "title": "body.md rewrite neutral principle compliance review",
+          "context": "Task 3의 Spec γ 매크로 체계 실제 적용 품질 + boundaries.md §거절4 부합 여부 + 기존 prose primitive 관용구 보존 여부 검증.",
+          "approach": "4 파일(nx-plan, nx-run, nx-sync, nx-init body.md) 전수 read-through. 체크리스트: (1) 매크로 토큰 문법 Spec γ §1-3 준수, (2) primitive_id가 invocations.yml 등록된 4종 중 하나, (3) heredoc IDENT 유일성 + marker consistency, (4) '/claude-nexus:' 등 하네스 네임스페이스 문자열 0건, (5) 기존 \"harness's X primitive\" 관용구 유지 확인.",
+          "acceptance": "5 체크리스트 전부 pass. 위반·애매함은 revision 피드백으로 writer에 전달.",
+          "risk": "subagent_spawn 매크로의 heredoc prompt가 길어 가독성 저하 가능성 — 필요 시 구분선/섹션 주석 제안.",
+          "status": "completed",
+          "deps": [
+            3
+          ],
+          "plan_issue": 1,
+          "owner": "reviewer",
+          "created_at": "2026-04-14T15:02:43.595Z"
+        },
+        {
+          "id": 11,
+          "title": "MIGRATIONS + CHANGELOG v0.8.0 정확성·형식 review",
+          "context": "consumer 업그레이드 단일 관문 문서. 정확성·완결성·포맷 이슈는 consumer 업그레이드 실패로 직결.",
+          "approach": "1) MIGRATIONS 문서 6 섹션 완결성 체크. 2) CHANGELOG nx-car marker regex 매칭 verification. 3) Consumer Action Required 대상 목록에 claude-nexus, opencode-nexus 명시. 4) Spec γ 매크로 예시 4종 + invocation-map 템플릿 문법 정확. 5) 기존 v0_4/v0_5 migration 스타일 일관. 6) VERSION·package.json bump 확인.",
+          "acceptance": "6 체크 전부 pass. nx-car regex match. Spec γ 예시 syntactic correctness. 스타일 일관.",
+          "risk": "consumer 실구현과 template 호환성 — pseudo-code 이상 구체화 시 consumer repo별 drift.",
+          "status": "completed",
+          "deps": [
+            5,
+            8
+          ],
+          "plan_issue": 1,
+          "owner": "reviewer",
+          "created_at": "2026-04-14T15:02:50.503Z"
+        },
+        {
+          "id": 12,
+          "title": "rules + context 문서 일관성 review",
+          "context": "rule + context 문서는 설계 철학의 source of truth. drift는 future maintainer 판단 오류로 이어짐.",
+          "approach": "1) rule §no-harness-tool 패턴 enum이 Task 4 lint G6 패턴과 완전 동일. 2) §use-invocation-vocabulary 신설 warning level 명시. 3) boundaries.md §포함 범위 vocabulary 5종으로 업데이트. 4) ecosystem.md §invocation abstraction이 §capability abstraction과 병렬 설명 구조. 5) evolution.md v0.8.0 서브섹션이 v0.7.0 서브섹션 패턴 일관. 6) 문서 간 cross-reference 정확.",
+          "acceptance": "6 체크 pass. rule·lint·context 3자 drift 0. cross-reference 정확.",
+          "risk": "context는 장문 — 다른 섹션과 unintended impact 간과 가능. diff-focused review 권장.",
+          "status": "completed",
+          "deps": [
+            6,
+            7
+          ],
+          "plan_issue": 1,
+          "owner": "reviewer",
+          "created_at": "2026-04-14T15:02:56.807Z"
+        }
+      ]
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
-  "nexus_core_version": "0.7.1",
-  "nexus_core_commit": "ea8c194",
+  "nexus_core_version": "0.8.0",
+  "nexus_core_commit": "d2da7de",
   "schema_contract_version": "2.0",
   "agents": [
     {
@@ -20,67 +20,6 @@
       "body_hash": "sha256:0254b4144a22c66209bd68119553d9057a4fb7f9b1ff7ebb9878687d99583465"
     },
     {
-      "name": "designer",
-      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
-      "task": "UI/UX design, interaction patterns, user experience",
-      "alias_ko": "디자이너",
-      "category": "how",
-      "resume_tier": "persistent",
-      "model_tier": "high",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create",
-        "no_task_update"
-      ],
-      "id": "designer",
-      "body_hash": "sha256:88ac56147d0e5bdf23fa591ce570a9c2d0eb1338df4ec2219f6238ddfcb65df4"
-    },
-    {
-      "name": "engineer",
-      "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
-      "task": "Code implementation, edits, debugging",
-      "alias_ko": "엔지니어",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "engineer",
-      "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
-    },
-    {
-      "name": "researcher",
-      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
-      "task": "Web search, independent investigation",
-      "alias_ko": "리서처",
-      "category": "do",
-      "resume_tier": "persistent",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "researcher",
-      "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
-    },
-    {
-      "name": "postdoc",
-      "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
-      "task": "Research methodology, evidence synthesis",
-      "alias_ko": "포닥",
-      "category": "how",
-      "resume_tier": "persistent",
-      "model_tier": "high",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create",
-        "no_task_update"
-      ],
-      "id": "postdoc",
-      "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
-    },
-    {
       "name": "tester",
       "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
       "task": "Testing, verification, security review",
@@ -94,21 +33,6 @@
       ],
       "id": "tester",
       "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
-    },
-    {
-      "name": "reviewer",
-      "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
-      "task": "Content verification, fact-checking, grammar review",
-      "alias_ko": "리뷰어",
-      "category": "check",
-      "resume_tier": "ephemeral",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "reviewer",
-      "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
     },
     {
       "name": "architect",
@@ -139,6 +63,82 @@
       ],
       "id": "writer",
       "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
+    },
+    {
+      "name": "designer",
+      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
+      "task": "UI/UX design, interaction patterns, user experience",
+      "alias_ko": "디자이너",
+      "category": "how",
+      "resume_tier": "persistent",
+      "model_tier": "high",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create",
+        "no_task_update"
+      ],
+      "id": "designer",
+      "body_hash": "sha256:88ac56147d0e5bdf23fa591ce570a9c2d0eb1338df4ec2219f6238ddfcb65df4"
+    },
+    {
+      "name": "reviewer",
+      "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
+      "task": "Content verification, fact-checking, grammar review",
+      "alias_ko": "리뷰어",
+      "category": "check",
+      "resume_tier": "ephemeral",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "reviewer",
+      "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
+    },
+    {
+      "name": "postdoc",
+      "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
+      "task": "Research methodology, evidence synthesis",
+      "alias_ko": "포닥",
+      "category": "how",
+      "resume_tier": "persistent",
+      "model_tier": "high",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create",
+        "no_task_update"
+      ],
+      "id": "postdoc",
+      "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
+    },
+    {
+      "name": "engineer",
+      "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
+      "task": "Code implementation, edits, debugging",
+      "alias_ko": "엔지니어",
+      "category": "do",
+      "resume_tier": "bounded",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_task_create"
+      ],
+      "id": "engineer",
+      "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
+    },
+    {
+      "name": "researcher",
+      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
+      "task": "Web search, independent investigation",
+      "alias_ko": "리서처",
+      "category": "do",
+      "resume_tier": "persistent",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "researcher",
+      "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
     }
   ],
   "skills": [
@@ -150,7 +150,7 @@
         "sync"
       ],
       "id": "nx-sync",
-      "body_hash": "sha256:a7b0ae8f13ebcd10e52361d0ada1570ff0c47933f731deec07e95539c63e6946"
+      "body_hash": "sha256:3ee8dd780d53f2e04472de6c701e16bc1fbde7f2ce9ed4e680b7cd2010530a22"
     },
     {
       "name": "nx-run",
@@ -163,7 +163,7 @@
         "resume_invocation"
       ],
       "id": "nx-run",
-      "body_hash": "sha256:6c8d1a36626d4034209ff83780dec6238297ec4710612441b2ef09daac714ca8"
+      "body_hash": "sha256:0e2c443efceeab4621709a85cd4e2ba50471d2e850680c655d776cbb62814549"
     },
     {
       "name": "nx-init",
@@ -171,10 +171,11 @@
       "summary": "Project onboarding — scan, mission, essentials, context generation",
       "manual_only": true,
       "harness_docs_refs": [
-        "instruction_file"
+        "instruction_file",
+        "slash_command_display"
       ],
       "id": "nx-init",
-      "body_hash": "sha256:3c8230ecc0f87c541ec0ff80492a28f28bf173d0b9781901adadfae69a54b8ed"
+      "body_hash": "sha256:b828a974ab4722dd7f1d15a4338d1380fdae47cd42c1bd4a5539277075efb6fc"
     },
     {
       "name": "nx-plan",
@@ -187,7 +188,7 @@
         "resume_invocation"
       ],
       "id": "nx-plan",
-      "body_hash": "sha256:85b858089bd3dc276be61baa3f5265bc107a85470f169983e710fecb404bb4b1"
+      "body_hash": "sha256:cd7a5fd1815530be6ffad18358a1295d1f74ef8a24132e75b73522c106eb6ae5"
     }
   ],
   "vocabulary": {
@@ -319,6 +320,32 @@
         "variants": [
           "*"
         ]
+      }
+    ],
+    "invocations": [
+      {
+        "id": "skill_activation",
+        "description": "Activate another skill within the current conversation.",
+        "intent": "skill_entry_dispatch",
+        "fallback_behavior": "If the harness lacks a live skill activation primitive, re-emit the\nskill's trigger tag (e.g., '[plan:auto]') as a self-dispatch signal,\nrelying on tag detection to re-enter the skill. The skill id must be\nmapped to its canonical trigger tag by the harness's own docs.\n"
+      },
+      {
+        "id": "subagent_spawn",
+        "description": "Spawn a new subagent session with a specific role and prompt.",
+        "intent": "subagent_session_create",
+        "fallback_behavior": "If the harness lacks an explicit subagent spawn primitive (e.g.,\nhooks-based implicit routing), inject the target_role as a routing\nhint and structure the prompt so the harness's own delegation rules\ncatch it. A harness that cannot spawn agents must document this\nlimitation and treat the invocation as a no-op with a warning.\n"
+      },
+      {
+        "id": "task_register",
+        "description": "Register a task for user-visible progress tracking.",
+        "intent": "execution_visibility_register",
+        "fallback_behavior": "If the harness has no TUI task tracker, omit the call entirely. This\nprimitive is best-effort — failure or absence must not block\nexecution. Logging the label and state to the conversation transcript\nis acceptable as a degraded fallback for auditability.\n"
+      },
+      {
+        "id": "user_question",
+        "description": "Ask the user a structured question with selectable options.",
+        "intent": "structured_user_prompt",
+        "fallback_behavior": "If the harness lacks a structured question tool (e.g., opencode-nexus),\npresent the question as prose followed by the options enumerated as a\nnumbered list, then await the user's free-form reply. The LLM is\nexpected to map the reply to the most appropriate option or treat it\nas a free-form answer if no options were given.\n"
       }
     ]
   }

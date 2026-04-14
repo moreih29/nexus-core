@@ -65,11 +65,28 @@ interface TagEntry {
   variants?: string[];
 }
 
+interface InvocationParam {
+  name: string;
+  description: string;
+  required: boolean;
+  value_type?: string;
+}
+
+interface InvocationEntry {
+  id: string;
+  description: string;
+  intent: string;
+  semantic_params: InvocationParam[];
+  prose_guidance: string;
+  fallback_behavior: string;
+}
+
 interface Vocab {
   capabilities: CapabilityEntry[];
   categories: SimpleEntry[];
   resume_tiers: SimpleEntry[];
   tags: TagEntry[];
+  invocations: InvocationEntry[];
 }
 
 interface ManifestAgent extends AgentMeta {
@@ -78,6 +95,13 @@ interface ManifestAgent extends AgentMeta {
 
 interface ManifestSkill extends SkillMeta {
   body_hash: string;
+}
+
+interface ManifestInvocationEntry {
+  id: string;
+  description: string;
+  intent: string;
+  fallback_behavior: string;
 }
 
 interface Manifest {
@@ -91,6 +115,7 @@ interface Manifest {
     categories: SimpleEntry[];
     resume_tiers: SimpleEntry[];
     tags: TagEntry[];
+    invocations: ManifestInvocationEntry[];
   };
 }
 
@@ -173,11 +198,18 @@ export async function loadSchemas(root: string): Promise<void> {
     $id: 'vocabulary-tag-file',
     $defs: vocabDefs,
   };
+  const invocationFileSchema = {
+    ...vocabDefs['invocationFile'],
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'vocabulary-invocation-file',
+    $defs: vocabDefs,
+  };
 
   const capabilityValidator = await ajv.compileAsync(capabilityFileSchema);
   const categoryValidator = await ajv.compileAsync(categoryFileSchema);
   const resumeTierValidator = await ajv.compileAsync(resumeTierFileSchema);
   const tagValidator = await ajv.compileAsync(tagFileSchema);
+  const invocationValidator = await ajv.compileAsync(invocationFileSchema);
 
   const manifestAjv = new Ajv2020({
     strict: false,
@@ -204,7 +236,7 @@ export async function loadSchemas(root: string): Promise<void> {
   };
 
   // Store all vocab validators for internal use
-  _vocabValidators = { capabilityValidator, categoryValidator, resumeTierValidator, tagValidator };
+  _vocabValidators = { capabilityValidator, categoryValidator, resumeTierValidator, tagValidator, invocationValidator };
 }
 
 interface VocabValidators {
@@ -212,6 +244,7 @@ interface VocabValidators {
   categoryValidator: ValidateFunction;
   resumeTierValidator: ValidateFunction;
   tagValidator: ValidateFunction;
+  invocationValidator: ValidateFunction;
 }
 
 let _vocabValidators: VocabValidators | null = null;
@@ -440,6 +473,49 @@ export function checkCapabilityEntryIntegrity(capabilities: CapabilityEntry[]): 
   return results;
 }
 
+// ─── G6': Invocation entry integrity ─────────────────────────────────────────
+
+export function checkInvocationEntryIntegrity(invocations: InvocationEntry[]): ValidationResult[] {
+  const results: ValidationResult[] = [];
+  for (const inv of invocations) {
+    if (!SNAKE_CASE_RE.test(inv.intent)) {
+      results.push({
+        file: 'vocabulary/invocations.yml',
+        gate: 'G6-invocation-integrity',
+        severity: 'error',
+        message: `Invocation '${inv.id}': 'intent' must match snake_case /^[a-z][a-z0-9_]*$/, got '${inv.intent}'`,
+      });
+    }
+    if (!inv.prose_guidance || inv.prose_guidance.trim().length < 40) {
+      results.push({
+        file: 'vocabulary/invocations.yml',
+        gate: 'G6-invocation-integrity',
+        severity: 'error',
+        message: `Invocation '${inv.id}': 'prose_guidance' must be at least 40 characters`,
+      });
+    }
+    if (!inv.fallback_behavior || inv.fallback_behavior.trim().length < 20) {
+      results.push({
+        file: 'vocabulary/invocations.yml',
+        gate: 'G6-invocation-integrity',
+        severity: 'error',
+        message: `Invocation '${inv.id}': 'fallback_behavior' must be at least 20 characters`,
+      });
+    }
+    for (const param of inv.semantic_params ?? []) {
+      if (!SNAKE_CASE_RE.test(param.name)) {
+        results.push({
+          file: 'vocabulary/invocations.yml',
+          gate: 'G6-invocation-integrity',
+          severity: 'error',
+          message: `Invocation '${inv.id}': param name '${param.name}' must match snake_case /^[a-z][a-z0-9_]*$/`,
+        });
+      }
+    }
+  }
+  return results;
+}
+
 // ─── Vocabulary loading ───────────────────────────────────────────────────────
 
 async function loadVocab(root: string): Promise<{ vocab: Vocab | null; results: ValidationResult[] }> {
@@ -483,14 +559,15 @@ async function loadVocab(root: string): Promise<{ vocab: Vocab | null; results: 
     return data as T;
   }
 
-  const [capData, catData, resumeData, tagData] = await Promise.all([
+  const [capData, catData, resumeData, tagData, invocationData] = await Promise.all([
     loadYaml<{ capabilities: CapabilityEntry[] }>('capabilities.yml', _vocabValidators.capabilityValidator),
     loadYaml<{ categories: SimpleEntry[] }>('categories.yml', _vocabValidators.categoryValidator),
     loadYaml<{ resume_tiers: SimpleEntry[] }>('resume-tiers.yml', _vocabValidators.resumeTierValidator),
     loadYaml<{ tags: TagEntry[] }>('tags.yml', _vocabValidators.tagValidator),
+    loadYaml<{ invocations: InvocationEntry[] }>('invocations.yml', _vocabValidators.invocationValidator),
   ]);
 
-  if (!capData || !catData || !resumeData || !tagData) {
+  if (!capData || !catData || !resumeData || !tagData || !invocationData) {
     return { vocab: null, results };
   }
 
@@ -500,6 +577,7 @@ async function loadVocab(root: string): Promise<{ vocab: Vocab | null; results: 
       categories: catData.categories,
       resume_tiers: resumeData.resume_tiers,
       tags: tagData.tags,
+      invocations: invocationData.invocations,
     },
     results,
   };
@@ -539,6 +617,13 @@ export async function generateManifest(
     })
   );
 
+  const invocationSummaries: ManifestInvocationEntry[] = vocab.invocations.map((inv) => ({
+    id: inv.id,
+    description: inv.description,
+    intent: inv.intent,
+    fallback_behavior: inv.fallback_behavior,
+  }));
+
   return {
     nexus_core_version: version,
     nexus_core_commit: commit,
@@ -550,6 +635,7 @@ export async function generateManifest(
       categories: vocab.categories,
       resume_tiers: vocab.resume_tiers,
       tags: vocab.tags,
+      invocations: invocationSummaries,
     },
   };
 }
@@ -624,6 +710,8 @@ export async function runAll(root: string): Promise<ValidationResult[]> {
     allResults.push(...checkTagIntegrity(validSkills, tags));
     // G5': capability entry field integrity
     allResults.push(...checkCapabilityEntryIntegrity(vocab.capabilities));
+    // G6': invocation entry field integrity
+    allResults.push(...checkInvocationEntryIntegrity(vocab.invocations));
   }
 
   // Manifest generation — only on full success (no errors)
