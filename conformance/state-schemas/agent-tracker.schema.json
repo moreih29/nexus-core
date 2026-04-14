@@ -7,7 +7,7 @@
   "items": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["harness_id", "agent_name", "agent_id", "started_at", "resume_count", "status"],
+    "required": ["harness_id", "started_at"],
     "properties": {
       "harness_id": {
         "type": "string",
@@ -22,7 +22,7 @@
       "agent_id": {
         "type": "string",
         "minLength": 1,
-        "description": "Unique agent instance identifier (UUID)"
+        "description": "Harness-specific opaque agent instance identifier. Format is defined by the writing harness (UUID, composite string, etc.). Consumers MUST treat the value as opaque — do not parse or infer agent identity across harness namespaces."
       },
       "started_at": {
         "type": "string",

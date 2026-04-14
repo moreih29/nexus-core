@@ -161,17 +161,20 @@
 
 ### rule:harness-state-namespace — 하네스 고유 state는 namespace 디렉토리에 격리
 
+**원칙**: silent schema divergence를 방지한다. 같은 파일명에 다른 schema가 암묵적으로 혼재하는 상황을 금지한다. `docs/nexus-outputs-contract.md §Shared filename convention`에 contract가 명시된 경우에만 공통 파일명을 namespace 하위에서 사용할 수 있다.
+
 **금지 대상**:
 
 1. 하네스가 `.nexus/state/` 루트에 신규 파일을 생성하는 행위
-2. `{harness-id}/` namespace 하위에 공통 schema 파일명(`plan.json`, `tasks.json`, `history.json`, `agent-tracker.json`)을 재사용하는 행위
+2. `{harness-id}/` namespace 하위에서 `docs/nexus-outputs-contract.md §Shared filename convention`에 contract 명시되지 않은 공통 파일명(`plan.json`, `tasks.json`, `history.json`)을 재사용하는 행위
 3. 다른 하네스의 namespace 디렉토리에 쓰거나 읽는 행위
-4. 공통 state 파일(plan/tasks/history/agent-tracker)의 schema에 undeclared 필드를 추가하는 행위 (schema `additionalProperties: false` 위반)
+4. 공통 state 파일(plan/tasks/history)의 schema에 undeclared 필드를 추가하는 행위 (schema `additionalProperties: false` 위반)
 
 **허용 패턴**:
 
 - `.nexus/state/{harness-id}/{any-name}.json` — 하네스 독립 파일
 - `.nexus/state/{harness-id}/{common-base}.extension.json` — 공통 파일의 확장
+- `.nexus/state/{harness-id}/{shared-name}.json` — `docs/nexus-outputs-contract.md §Shared filename convention`에 contract 명시된 shared-purpose file
 
 **Extension 파일 요건**:
 
@@ -184,7 +187,7 @@
 **위반 예시**:
 
 - `.nexus/state/my-tracker.json` 생성 (루트에 신규 파일)
-- `.nexus/state/claude-nexus/plan.json` (namespace 하위에 공통 이름 재사용)
+- `.nexus/state/claude-nexus/plan.json` (contract 없음, namespace 하위에 공통 이름 재사용)
 - `opencode-nexus` 하네스가 `.nexus/state/claude-nexus/*` 읽기/쓰기
 - `plan.json`의 `issues[]`에 `priority: "high"` 필드 직접 추가
 
@@ -193,9 +196,12 @@
 - `.nexus/state/claude-nexus/edit-tracker.json` ✓
 - `.nexus/state/claude-nexus/plan.extension.json` ✓ (extends: plan.schema.json)
 - `.nexus/state/opencode-nexus/permission-log.json` ✓
+- `.nexus/state/claude-nexus/agent-tracker.json` ✓ (shared-purpose file, `docs/nexus-outputs-contract.md §Shared filename convention`에 contract 명시)
 
-**예외**: v0.3.x 이하에 루트 경로로 등록된 legacy 2종(`edit-tracker.json`, `reopen-tracker.json`)은 `task_close` tool 계약에 명시되어 backward-compat으로 유지. 신규 파일은 이 예외에 편승하지 않는다.
+**예외**:
+
+- v0.3.x 이하에 루트 경로로 등록된 legacy 2종(`edit-tracker.json`, `reopen-tracker.json`)은 `task_close` tool 계약에 명시되어 backward-compat으로 유지. 신규 파일은 이 예외에 편승하지 않는다.
 
 **위반 시 동작**: Lead는 즉시 작업을 중단하고 사용자에게 확인을 요청한다.
 
-근거: `.nexus/context/boundaries.md` (포함/제외 범위 원칙), `docs/nexus-outputs-contract.md §Harness-local State Extension` 참조.
+근거: `.nexus/context/boundaries.md` (포함/제외 범위 원칙), `docs/nexus-outputs-contract.md §Shared filename convention`, `docs/nexus-outputs-contract.md §Harness-local State Extension` 참조.

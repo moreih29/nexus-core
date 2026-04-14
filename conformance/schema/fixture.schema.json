@@ -112,7 +112,7 @@
       "properties": {
         "state_files": {
           "type": "object",
-          "description": "Map of file path to content object. null = file must not exist; empty object {} = file must exist but content is not inspected (use for non-JSON artifacts like .md, .txt, binary files); non-empty object = precondition content written as-is (typically JSON).",
+          "description": "Map of file path to content object. File path keys may contain placeholder tokens that a conformance runner must expand before resolving paths. Allowed tokens: {STATE_ROOT} (the root directory for all harness state, e.g. '.nexus/state') and {HARNESS_ID} (the harness identifier, resolved from event.params.harness_id or equivalent context). No other arbitrary tokens are permitted. Example key: '{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json'. null value = file must not exist; empty object {} = file must exist but content is not inspected (use for non-JSON artifacts like .md, .txt, binary files); non-empty object = precondition content written as-is (typically JSON).",
           "additionalProperties": {
             "oneOf": [
               { "type": "object" },
@@ -187,7 +187,7 @@
       "properties": {
         "state_files": {
           "type": "object",
-          "description": "Map of file path to assertion object. null = file must not exist after the action; empty object {} = file must exist but content is not inspected (use for non-JSON artifacts like .md, .txt, binary files); non-empty object = JSONPath assertions on parsed JSON content.",
+          "description": "Map of file path to assertion object. File path keys may contain placeholder tokens that a conformance runner must expand before resolving paths. Allowed tokens: {STATE_ROOT} and {HARNESS_ID} only — no other arbitrary tokens are permitted. See precondition.state_files for token semantics. null = file must not exist after the action; empty object {} = file must exist but content is not inspected (use for non-JSON artifacts like .md, .txt, binary files); non-empty object = JSONPath assertions on parsed JSON content.",
           "additionalProperties": {
             "oneOf": [
               {

@@ -1,6 +1,6 @@
 {
-  "nexus_core_version": "0.6.0",
-  "nexus_core_commit": "e807388",
+  "nexus_core_version": "0.7.0",
+  "nexus_core_commit": "bcde383",
   "schema_contract_version": "2.0",
   "agents": [
     {
@@ -20,10 +20,10 @@
       "body_hash": "sha256:0254b4144a22c66209bd68119553d9057a4fb7f9b1ff7ebb9878687d99583465"
     },
     {
-      "name": "designer",
-      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
-      "task": "UI/UX design, interaction patterns, user experience",
-      "alias_ko": "디자이너",
+      "name": "postdoc",
+      "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
+      "task": "Research methodology, evidence synthesis",
+      "alias_ko": "포닥",
       "category": "how",
       "resume_tier": "persistent",
       "model_tier": "high",
@@ -32,8 +32,8 @@
         "no_task_create",
         "no_task_update"
       ],
-      "id": "designer",
-      "body_hash": "sha256:88ac56147d0e5bdf23fa591ce570a9c2d0eb1338df4ec2219f6238ddfcb65df4"
+      "id": "postdoc",
+      "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
     },
     {
       "name": "researcher",
@@ -49,6 +49,64 @@
       ],
       "id": "researcher",
       "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
+    },
+    {
+      "name": "engineer",
+      "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
+      "task": "Code implementation, edits, debugging",
+      "alias_ko": "엔지니어",
+      "category": "do",
+      "resume_tier": "bounded",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_task_create"
+      ],
+      "id": "engineer",
+      "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
+    },
+    {
+      "name": "tester",
+      "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
+      "task": "Testing, verification, security review",
+      "alias_ko": "테스터",
+      "category": "check",
+      "resume_tier": "ephemeral",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "tester",
+      "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
+    },
+    {
+      "name": "writer",
+      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
+      "task": "Technical writing, documentation, presentations",
+      "alias_ko": "라이터",
+      "category": "do",
+      "resume_tier": "bounded",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_task_create"
+      ],
+      "id": "writer",
+      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
+    },
+    {
+      "name": "reviewer",
+      "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
+      "task": "Content verification, fact-checking, grammar review",
+      "alias_ko": "리뷰어",
+      "category": "check",
+      "resume_tier": "ephemeral",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "reviewer",
+      "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
     },
     {
       "name": "architect",
@@ -67,24 +125,10 @@
       "body_hash": "sha256:85f9a3de419f32cdae284436eb1d902bff19a2230c50fe3068ffc642949a63b7"
     },
     {
-      "name": "engineer",
-      "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
-      "task": "Code implementation, edits, debugging",
-      "alias_ko": "엔지니어",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "engineer",
-      "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
-    },
-    {
-      "name": "postdoc",
-      "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
-      "task": "Research methodology, evidence synthesis",
-      "alias_ko": "포닥",
+      "name": "designer",
+      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
+      "task": "UI/UX design, interaction patterns, user experience",
+      "alias_ko": "디자이너",
       "category": "how",
       "resume_tier": "persistent",
       "model_tier": "high",
@@ -93,52 +137,8 @@
         "no_task_create",
         "no_task_update"
       ],
-      "id": "postdoc",
-      "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
-    },
-    {
-      "name": "writer",
-      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
-      "task": "Technical writing, documentation, presentations",
-      "alias_ko": "라이터",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "writer",
-      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
-    },
-    {
-      "name": "tester",
-      "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
-      "task": "Testing, verification, security review",
-      "alias_ko": "테스터",
-      "category": "check",
-      "resume_tier": "ephemeral",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "tester",
-      "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
-    },
-    {
-      "name": "reviewer",
-      "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
-      "task": "Content verification, fact-checking, grammar review",
-      "alias_ko": "리뷰어",
-      "category": "check",
-      "resume_tier": "ephemeral",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "reviewer",
-      "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
+      "id": "designer",
+      "body_hash": "sha256:88ac56147d0e5bdf23fa591ce570a9c2d0eb1338df4ec2219f6238ddfcb65df4"
     }
   ],
   "skills": [
@@ -151,6 +151,17 @@
       ],
       "id": "nx-sync",
       "body_hash": "sha256:a7b0ae8f13ebcd10e52361d0ada1570ff0c47933f731deec07e95539c63e6946"
+    },
+    {
+      "name": "nx-init",
+      "description": "Project onboarding — scan, mission, essentials, context generation",
+      "summary": "Project onboarding — scan, mission, essentials, context generation",
+      "manual_only": true,
+      "harness_docs_refs": [
+        "instruction_file"
+      ],
+      "id": "nx-init",
+      "body_hash": "sha256:3c8230ecc0f87c541ec0ff80492a28f28bf173d0b9781901adadfae69a54b8ed"
     },
     {
       "name": "nx-run",
@@ -177,17 +188,6 @@
       ],
       "id": "nx-plan",
       "body_hash": "sha256:85b858089bd3dc276be61baa3f5265bc107a85470f169983e710fecb404bb4b1"
-    },
-    {
-      "name": "nx-init",
-      "description": "Project onboarding — scan, mission, essentials, context generation",
-      "summary": "Project onboarding — scan, mission, essentials, context generation",
-      "manual_only": true,
-      "harness_docs_refs": [
-        "instruction_file"
-      ],
-      "id": "nx-init",
-      "body_hash": "sha256:3c8230ecc0f87c541ec0ff80492a28f28bf173d0b9781901adadfae69a54b8ed"
     }
   ],
   "vocabulary": {

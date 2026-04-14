@@ -3,7 +3,7 @@
   "description": "Verifies that agent_resume transitions a completed agent back to running status and increments resume_count and sets last_resumed_at",
   "precondition": {
     "state_files": {
-      ".nexus/state/agent-tracker.json": [
+      "{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json": [
         {
           "harness_id": "claude-nexus",
           "agent_name": "architect",
@@ -27,7 +27,7 @@
   },
   "postcondition": {
     "state_files": {
-      ".nexus/state/agent-tracker.json": {
+      "{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json": {
         "$.length": 1,
         "$[0].status": "running",
         "$[0].resume_count": 1,

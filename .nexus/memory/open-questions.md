@@ -112,4 +112,23 @@ Issue #3에서 Forward-only schema 원칙이 완화되어 breaking change가 sem
 
 ---
 
+## (f) co-run 빈도·harness 수 증가 시 harness_id registry 도입 판단 기준
+
+### 무엇을 논의해야 하는가
+
+Plan session #3 Issue #8 (2026-04-14)에서 co-run scenario를 ecosystem.md §Co-run scenarios로 first-class citizen화하면서, `harness_id`를 free-string + pattern(`^[a-z][a-z0-9-]*$`)만으로 유지하기로 결정했다. 향후 harness 수가 증가하거나 co-run 빈도가 높아지면 nexus-core가 harness_id registry(명시적 enum 또는 등록 체계)를 도입해야 할 수 있다.
+
+질문: 어느 시점에 registry를 도입할 것인가? 도입 형태는? — enum / `vocabulary/harnesses.yml` / pattern만 유지하되 conformance만 강화 / 다른 대안.
+
+### 현재 정보 부족분
+
+- 실제 co-run 발생 빈도 데이터 (v0.7.0 이후 field feedback).
+- nexus-code Supervision의 cross-harness aggregation 실제 구현 시 요구사항.
+- harness 수 증가 시나리오 — 3 consumer 외 추가 harness 등장 가능성.
+- harness_id 충돌(두 하네스가 동일 id 사용) 사례 발생 여부.
+
+v1.0.0 roadmap 재평가 시점에 판단한다 (`evolution.md §v0.7.0 서브섹션` + `§90일 재평가 윈도우` 연동).
+
+---
+
 *이 파일은 plan session #1, 2026-04-10 기준이다. 각 항목은 [plan] 세션에서 재논의한다. 임의로 결정하지 말 것.*

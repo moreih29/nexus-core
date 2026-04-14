@@ -60,6 +60,20 @@ claude-nexus와 opencode-nexus는 sibling이다. 어느 쪽도 다른 쪽의 par
 
 flip의 실질적 의미는 "prompt 소유권의 이동"이다. 작성자가 어느 하네스에서 작업하든 동일한 에이전트 정의와 vocabulary를 사용할 수 있는 것은 nexus-core가 canonical source로 중재하기 때문이다. flip은 Execution layer 내부에서만 발생한다.
 
+### Co-run scenarios
+
+두 Execution layer 하네스(claude-nexus, opencode-nexus)가 동일 프로젝트 디렉토리에서 동시에 실행되는 상태를 co-run이라 부른다. flip이 시간 축에서 주력 하네스를 전환하는 현상인 것과 달리, co-run은 공간 축에서 두 하네스가 병존하는 현상이다. 둘은 orthogonal한 개념이며 co-run이 flip을 대체하지 않는다.
+
+**Primary vs fallback 관계.** flip은 여전히 primary pattern이다. co-run은 "두 하네스를 동시에 사용하도록 권장하는 패턴"이 아니다. co-run은 작성자가 의도치 않게 또는 과도기적으로 두 하네스를 동시에 활성화했을 때 state가 파괴되지 않도록 막는 fallback 수준의 지원이다.
+
+**nexus-core 보장 범위.** nexus-core는 state-layer 호환성만 보장한다. 두 하네스가 동일 디렉토리를 읽더라도 공유 state file의 schema가 충돌하지 않는다는 것이 보장 범위다. MCP server port 경합, hook 실행 순서, tool invocation 충돌 등 runtime-level 경합은 각 하네스의 runtime responsibility이며 nexus-core 관할 밖이다(`boundaries.md §제외 범위` 참조).
+
+**파일 분리 기준.** genuinely shared schema(plan, tasks, history)는 루트 경로를 유지한다. harness-specific lifecycle 또는 의미를 가진 파일(예: agent-tracker)은 `.nexus/state/{harness-id}/` 하위에 격리한다. 공통 파일명 재사용 convention은 `docs/nexus-outputs-contract.md §Shared filename convention`에서 관리한다.
+
+**Supervision implication.** cross-harness aggregation이 구현될 경우, `.nexus/state/*/agent-tracker.json` glob 모델을 전제로 설계한다. 단일 공통 파일 모델은 co-run 시 두 하네스가 동일 파일을 경합 기록하게 되므로 채택하지 않는다.
+
+**미결 유보.** harness 수 증가 또는 co-run 빈도 증가 시 `harness_id` registry가 필요해질 수 있다. 현재는 free-string + pattern(glob)으로 유지하며, v1.0 roadmap에서 재평가한다.
+
 ### Supervision은 flip 외부
 
 nexus-code는 flip 모델의 당사자가 아니다. claude-nexus와 opencode-nexus 중 어느 쪽이 주력 하네스가 되든 nexus-code는 그 세션을 동일하게 감독한다. Supervision layer는 Execution layer의 flip에 무관하게 독립적으로 위치한다.
@@ -193,4 +207,4 @@ Authoring layer가 집행 semantics를 포함하는 순간, 특정 하네스나 
 
 ---
 
-*이 문서의 범위: 3층위 모델, 고정 관계, 용어 정의, consumer 관계, Authoring layer 경계. 거절 목록·Issue 결정 상세 → `boundaries.md`. Forward-only 완화·Phase 전환·CHANGELOG 포맷 → `evolution.md`.*
+*이 문서의 범위: 3층위 모델, 고정 관계, 용어 정의, consumer 관계, Authoring layer 경계. 거절 목록·Issue 결정 상세 → `boundaries.md`. Forward-only 완화·Phase 전환·CHANGELOG 포맷 → `evolution.md`. 공유 파일명 convention → `docs/nexus-outputs-contract.md §Shared filename convention`.*

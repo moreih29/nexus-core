@@ -3,7 +3,7 @@
   "description": "Verifies that agent_spawn appends a new running agent entry to agent-tracker.json with required fields initialized correctly",
   "precondition": {
     "state_files": {
-      ".nexus/state/agent-tracker.json": []
+      "{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json": []
     }
   },
   "event": {
@@ -17,7 +17,7 @@
   },
   "postcondition": {
     "state_files": {
-      ".nexus/state/agent-tracker.json": {
+      "{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json": {
         "$.length": 1,
         "$[0].harness_id": "claude-nexus",
         "$[0].agent_name": "architect",
