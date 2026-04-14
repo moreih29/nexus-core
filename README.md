@@ -9,26 +9,25 @@
 Nexus 생태계는 세 층위로 나뉩니다. `nexus-core`는 가장 아래, **Authoring layer**에 위치합니다.
 
 ```
-Supervision   nexus-code
+Supervision   (reserved)
                 │  read-only
 Execution     claude-nexus ↔ opencode-nexus
                 │  read-only
 Authoring     nexus-core   ← 이 저장소
 ```
 
-세 소비자 모두 `nexus-core`를 **read-only**로 참조합니다. 어느 하네스도 이 저장소에 직접 쓰지 않습니다.
+현재 active 소비자는 두 Execution layer 하네스(`claude-nexus`, `opencode-nexus`)이며, 모두 `nexus-core`를 **read-only**로 참조합니다. Supervision layer는 외부 감독자 consumer를 위해 예약된 자리입니다(과거 nexus-code 프로젝트가 이 layer를 구현했으나 2026-04-14 archived).
 
 | Consumer | Layer | 하는 일 |
 |---|---|---|
 | [`claude-nexus`](https://github.com/moreih29/claude-nexus) | Execution | Claude Code 하네스 위에서 에이전트 조립·디스패치 |
 | [`opencode-nexus`](https://github.com/moreih29/opencode-nexus) | Execution | OpenCode 하네스 위에서 에이전트 조립·디스패치 |
-| `nexus-code` | Supervision | Execution 세션 감독·Policy Enforcement·시각화 |
 
 ## For Consumer Repositories
 
 > 이 저장소는 **외부 사용자가 직접 설치하는 플러그인이 아닙니다**. Nexus 하네스(`claude-nexus`, `opencode-nexus`)를 사용하려면 해당 저장소의 안내를 따르세요.
 
-Consumer 저장소(`claude-nexus`, `opencode-nexus`, `nexus-code`)의 LLM 에이전트가 `@moreih29/nexus-core` 버전 업그레이드를 처리해야 하는 경우, **[CONSUMING.md](./CONSUMING.md)**의 Upgrade Protocol을 참조하세요.
+Consumer 저장소(`claude-nexus`, `opencode-nexus`)의 LLM 에이전트가 `@moreih29/nexus-core` 버전 업그레이드를 처리해야 하는 경우, **[CONSUMING.md](./CONSUMING.md)**의 Upgrade Protocol을 참조하세요.
 
 CONSUMING.md는 LLM 에이전트 전용 문서입니다. 사람 독자는 이 README가 더 유용합니다.
 
@@ -56,7 +55,7 @@ CONSUMING.md는 LLM 에이전트 전용 문서입니다. 사람 독자는 이 RE
 - MCP server 구현 — 각 하네스 내부
 - TypeScript 런타임 타입 — 각 하네스 내부
 - 런타임 I/O 로직 — 각 하네스 내부
-- Supervision 집행 로직 (`ApprovalBridge` 등) — `nexus-code` 내부
+- Supervision 집행 로직 (`ApprovalBridge` 등) — 외부 Supervision consumer 내부 (현재 active consumer 없음)
 - UI hint 필드 (`icon`, `color` 등) — 특정 소비자 결합 금지
 
 ## 원칙
@@ -70,7 +69,7 @@ CONSUMING.md는 LLM 에이전트 전용 문서입니다. 사람 독자는 이 RE
 
 ## Status
 
-v0.2.0 (2026-04-12). Plan sessions #1–#4 결정 완료. Harness-agnostic capabilities redesign, conformance test suite, consumer implementation guide 포함. 상세 변경 이력은 [CHANGELOG.md](./CHANGELOG.md) 참조.
+v0.7.1 (2026-04-14). 최신 release: agent-tracker namespace isolation (v0.7.0, GH #16) + nexus-code archived cleanup (v0.7.1). 상세 변경 이력은 [CHANGELOG.md](./CHANGELOG.md) 참조.
 
 ## References
 

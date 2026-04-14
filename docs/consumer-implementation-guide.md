@@ -382,7 +382,7 @@ For each agent in `manifest.json`:
 
 ### Neutral body + harness context synthesis
 
-`body.md` is deliberately harness-neutral. It says things like "report to Lead" without specifying the concrete mechanism. This is intentional: the same body works across claude-nexus, opencode-nexus, and nexus-code because each harness injects the mechanism alongside the body.
+`body.md` is deliberately harness-neutral. It says things like "report to Lead" without specifying the concrete mechanism. This is intentional: the same body works across claude-nexus and opencode-nexus because each harness injects the mechanism alongside the body.
 
 Your harness must inject harness-specific tool awareness when activating an agent. Concretely:
 

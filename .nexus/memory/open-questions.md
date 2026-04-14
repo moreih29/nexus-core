@@ -1,12 +1,14 @@
 # 04-OPEN_QUESTIONS.md — nexus-core 미결 질문 목록
 
+> **Note (2026-04-14)**: nexus-code 프로젝트가 archived됨에 따라 일부 항목 ((a), (b))이 자연 closure 상태가 되었다. 해당 항목에 resolution 표기를 추가하고 본문은 역사적 맥락 보존을 위해 유지한다.
+
 > 이 파일의 항목들은 향후 `[plan]` 세션에서 재논의가 필요한 것들이다.
 > 각 항목에 "무엇을 논의해야 하는가"와 "현재 정보 부족분"을 명시한다.
 > 현재 상태에서 임의로 결정하지 말고, 작성자(사용자)의 판단을 기다릴 것.
 
 ---
 
-## (a) meta.yml에 "에이전트 아이콘/색상" UI hint 필드 추가 여부
+## (a) meta.yml에 "에이전트 아이콘/색상" UI hint 필드 추가 여부 [resolved — nexus-code archived 2026-04-14]
 
 ### 무엇을 논의해야 하는가
 
@@ -25,9 +27,11 @@ nexus-code가 3번째 read-only consumer로 합류하면서(Issue #2), nexus-cod
 - neutral metadata에 UI hint를 포함하는 것이 다른 소비자(opencode-nexus, claude-nexus)에 어떤 영향을 미치는지 평가되지 않았다.
 - nexus-code의 UI 설계(Plan #5, T3~)가 완성된 후에 이 질문에 답할 수 있다.
 
+**Resolution (2026-04-14)**: nexus-code가 archived되면서 Supervision UI 요구 자체가 소멸. UI hint 필드 도입 논의는 해당 UI 환경이 재등장할 때까지 보류. nexus-core는 현재 neutral 원칙(UI hint 필드 제외)을 유지한다. rule:no-ui-hint 유효성 변화 없음.
+
 ---
 
-## (b) capability → concrete tool 역매핑(ref 방향) 필요 여부
+## (b) capability → concrete tool 역매핑(ref 방향) 필요 여부 [resolved — nexus-code archived 2026-04-14]
 
 ### 무엇을 논의해야 하는가
 
@@ -46,6 +50,8 @@ nexus-code가 3번째 read-only consumer로 합류하면서(Issue #2), nexus-cod
 
 - nexus-code가 실제로 tool 이름 → capability 역매핑을 언제 필요로 하는지 사용 사례가 명확하지 않다.
 - nexus-code가 AgentHost 어댑터에서 권한 요청을 관찰할 때 어떤 정보를 가지고 결정을 내리는지(bridge Plan #5의 상세 설계) 아직 미확정이다.
+
+**Resolution (2026-04-14)**: nexus-code가 archived되면서 역매핑 use case가 소멸. consumer harness(claude-nexus, opencode-nexus)들은 각자 local capability map으로 정방향 매핑만 유지하는 v0.2.0 결정이 현재도 유효.
 
 ---
 
@@ -102,7 +108,7 @@ Issue #3에서 Forward-only schema 원칙이 완화되어 breaking change가 sem
 추가 시 고려 사항:
 - `schema_version`을 각 파일 header에 넣는 방식 vs. `package.json`의 version만으로 소비자가 호환성을 관리하는 방식 중 어느 것이 더 실용적인가?
 - Phase 1에서 소비자가 opencode-nexus 하나뿐인 동안에는 package.json의 semver만으로 충분할 수 있다.
-- Phase 2에서 claude-nexus가 합류하고 nexus-code도 읽기 시작하면, 각 소비자의 버전 범위 관리가 복잡해질 수 있다. 이 시점에 schema_version이 더 가치 있을 수 있다.
+- Phase 2에서 claude-nexus가 합류하면, 각 소비자의 버전 범위 관리가 복잡해질 수 있다. 이 시점에 schema_version이 더 가치 있을 수 있다.
 
 ### 현재 정보 부족분
 
@@ -123,7 +129,7 @@ Plan session #3 Issue #8 (2026-04-14)에서 co-run scenario를 ecosystem.md §Co
 ### 현재 정보 부족분
 
 - 실제 co-run 발생 빈도 데이터 (v0.7.0 이후 field feedback).
-- nexus-code Supervision의 cross-harness aggregation 실제 구현 시 요구사항.
+- 향후 Supervision consumer의 cross-harness aggregation 실제 구현 시 요구사항.
 - harness 수 증가 시나리오 — 3 consumer 외 추가 harness 등장 가능성.
 - harness_id 충돌(두 하네스가 동일 id 사용) 사례 발생 여부.
 
