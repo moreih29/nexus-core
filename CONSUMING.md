@@ -1,6 +1,6 @@
 # Consuming nexus-core
 
-> **Audience**: LLM agents in consumer repositories (claude-nexus, opencode-nexus, nexus-code).
+> **Audience**: LLM agents in consumer repositories (claude-nexus, opencode-nexus).
 > Human readers should start with [README.md](./README.md).
 
 ## Internet Access Assumption

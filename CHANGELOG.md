@@ -21,6 +21,27 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.7.1] - 2026-04-14 — Documentation cleanup: nexus-code archived
+
+`nexus-code` 프로젝트가 archived됨에 따라 nexus-core의 철학·내부·consumer-facing 문서에서 `nexus-code` specific 참조를 제거. Spec API 변경 없음 — narrative와 consumer 목록 update만.
+
+### Changed
+
+- 3 consumer 목록(claude-nexus, opencode-nexus, nexus-code) → 2 consumer (claude-nexus, opencode-nexus). `CLAUDE.md`, `CONSUMING.md`, `README.md`, `vocabulary/capabilities.yml` top comment, `.nexus/rules/semver-policy.md`, `docs/nexus-outputs-contract.md`, `docs/nexus-tools-contract.md`, `docs/consumer-implementation-guide.md` 전역 일관.
+- 3층위 모델: `README.md` + `.nexus/context/ecosystem.md`에서 Supervision layer를 `(reserved)` 상태로 reframe — 개념 자체는 보존(rule:no-supervision-logic 유효), nexus-code specific 참조 제거.
+- `rule:no-supervision-logic`: wording을 "외부 Supervision consumer의 내부 구현"으로 generic화. 금지 개념·식별자(ApprovalBridge, ProcessSupervisor, AgentHost) 목록 유지.
+- `docs/nexus-outputs-contract.md` §Supervision aggregation 전제 (reserved): "향후 Supervision consumer"로 generic consumer wording.
+- `.nexus/context/ecosystem.md`, `.nexus/context/boundaries.md`, `.nexus/context/evolution.md`: 현재 상태 narrative update. Published release 서브섹션(§v0.2.0~§v0.7.0)은 historical record로 미수정.
+- `.nexus/memory/open-questions.md`: (a) UI hint, (b) capability 역매핑 항목에 `[resolved — nexus-code archived 2026-04-14]` 표기 + Resolution 단락 추가. (e)/(f) generic wording 교체.
+- `.nexus/memory/agent-sdk-constraint.md`, `.nexus/memory/bridge-quotes.md`: 상단에 Archive note 추가, 본문 historical record로 보존.
+- `README.md` Status section: v0.2.0 → v0.7.1 갱신.
+
+### Notes
+
+- Schema·Tool API·Conformance fixture 변경 없음 — patch level.
+- MIGRATIONS file 불요 (no breaking change, nx-car marker 없음).
+- Historical record (CHANGELOG v0.5.0~v0.7.0, MIGRATIONS/v0_*, `.nexus/history.json`)는 append-only 원칙으로 보존.
+
 ## [0.7.0] - 2026-04-14 — Correctness fix: cross-harness state namespace isolation
 
 This release corrects specification errors that accumulated during the design-focused v0.2–v0.6 series. No new design concepts are introduced. All changes narrow, clarify, or make consistent existing contracts — consumers whose implementations already respected the intent of the namespace isolation principle are unaffected at runtime, but schema and path changes require explicit migration.
@@ -293,7 +314,8 @@ If your harness stored runtime-like configuration in `runtime.json`, move it to 
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/moreih29/nexus-core/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/moreih29/nexus-core/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/moreih29/nexus-core/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/moreih29/nexus-core/compare/v0.4.0...v0.5.0

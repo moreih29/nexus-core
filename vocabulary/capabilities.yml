@@ -1,6 +1,6 @@
 # Harness-neutral capability definitions.
 # Each entry describes WHAT is denied in semantic terms.
-# Consumers (claude-nexus, opencode-nexus, nexus-code) maintain their own
+# Consumers (claude-nexus, opencode-nexus) maintain their own
 # local map from these ids/classes to concrete tool names in their own repo.
 # nexus-core does not and must not know those tool names.
 

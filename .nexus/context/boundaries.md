@@ -94,9 +94,9 @@ nexus-core는 Nexus 생태계의 Authoring layer다. 프롬프트 본문, neutra
 
 ### Issue #2 — 3 consumer single source of truth, ACP vocabulary 편입 거부
 
-nexus-core는 세 소비자(opencode-nexus, claude-nexus, nexus-code)의 single source of truth다. 세 소비자 모두 read-only로 소비한다. ACP(Agent Client Protocol) vocabulary는 nexus-core에 편입하지 않는다.
+nexus-core는 두 active consumer(claude-nexus, opencode-nexus)의 single source of truth다. 소비자 모두 read-only로 소비한다. ACP(Agent Client Protocol) vocabulary는 nexus-core에 편입하지 않는다.
 
-nexus-code는 이번 세션에서 3번째 read-only consumer로 명시적으로 추가되었다. nexus-code가 Supervision UI를 구성할 때 필요한 neutral 데이터(에이전트 카탈로그, vocabulary)를 nexus-core에서 읽는다. ACP 편입 거부 근거는 §거절 근거 1 참조.
+Plan session #1 Issue #2에서 nexus-code가 3번째 read-only consumer로 명시적으로 추가되었으나, 2026-04-14 해당 프로젝트가 archived되어 현재는 2 active consumer 상태다. ACP 편입 거부 근거는 §거절 근거 1 참조.
 
 ### Issue #3 — 독립 레포 유지 + Forward-only 완화
 
@@ -110,9 +110,9 @@ Forward-only schema 원칙은 완화한다. breaking change 발생 시 semver ma
 
 두 하네스에서 태그 문법과 의미가 동일해야 한다. `[m]`의 의미, 트리거 패턴, 처리 방식이 하네스마다 다르면 사용자 경험이 일관되지 않는다. vocabulary/tags.yml이 이 공통 정의를 canonical하게 유지한다.
 
-### Issue #5 — nexus-code의 Supervision 역할은 외부, nexus-core는 read-only neutral 데이터만 제공
+### Issue #5 — Supervision 역할은 외부, nexus-core는 read-only neutral 데이터만 제공
 
-nexus-code의 Supervision 역할(세션 spawn, 관찰, Policy Enforcement, ApprovalBridge)은 nexus-core의 관여 밖이다. nexus-core는 nexus-code에 read-only neutral 데이터만 제공한다. nexus-code가 그 데이터로 무엇을 하는지는 nexus-code 내부 결정이다.
+Supervision consumer(과거 nexus-code 등)의 Supervision 역할(세션 spawn, 관찰, Policy Enforcement, ApprovalBridge)은 nexus-core의 관여 밖이다. nexus-core는 Supervision consumer에 read-only neutral 데이터만 제공한다. 해당 consumer가 그 데이터로 무엇을 하는지는 consumer 내부 결정이다.
 
 nexus-core가 제공하는 것: 에이전트 카탈로그(id, name, alias_ko, category, description, resume_tier, capabilities), vocabulary 4종, 스킬 목록(skills/{id}/meta.yml). nexus-core는 이 데이터의 사용 방식에 관여하지 않는다.
 
@@ -139,7 +139,7 @@ capabilities 설계 주의: plan session #2 Issue #3에서 canonical postdoc의 
 
 ACP(Agent Client Protocol)는 Zed가 주도하는 독립 오픈 표준이며 구독제 Nexus 생태계 밖에 위치한다. Primer §4.4에 따르면 Claude Code의 ACP 어댑터는 Agent SDK 기반으로 재구성되어 구독제 호환이 아니다.
 
-ACP vocabulary를 nexus-core에 편입하면 nexus-core가 구독제 생태계 밖의 표준에 결합된다. nexus-core의 소비자 3종은 모두 Nexus 생태계 안에 존재한다. 그 생태계 밖의 표준 어휘를 Authoring layer에 포함하는 것은 harness-neutral 원칙을 위반한다. 생태계 범위가 달라지면 nexus-core의 vocabulary가 생태계 경계와 어긋나는 항목을 포함하게 된다.
+ACP vocabulary를 nexus-core에 편입하면 nexus-core가 구독제 생태계 밖의 표준에 결합된다. nexus-core의 소비자는 모두 Nexus 생태계 안에 존재한다. 그 생태계 밖의 표준 어휘를 Authoring layer에 포함하는 것은 harness-neutral 원칙을 위반한다. 생태계 범위가 달라지면 nexus-core의 vocabulary가 생태계 경계와 어긋나는 항목을 포함하게 된다.
 
 ### 거절 2 — runtime 코드 포함 금지
 
@@ -163,13 +163,13 @@ bridge §2.2의 capability abstraction이 이 문제를 해결하는 이유: nex
 
 에이전트 아이콘, 색상, 정렬 순서 등 UI hint 필드는 nexus-core의 neutral 원칙을 위반한다.
 
-neutral metadata는 모든 소비자가 플랫폼 독립적으로 사용할 수 있는 데이터만 포함한다(Primer §1.1). UI hint는 nexus-code의 Supervision UI라는 특정 소비자의 표현 계층 결정이다. Claude Code 하네스나 OpenCode 하네스는 UI hint를 사용하지 않는다. 특정 소비자를 위한 전용 필드를 Authoring layer에 추가하면 neutral 원칙이 깨지고 nexus-core가 특정 소비자의 UI 결정에 결합된다.
+neutral metadata는 모든 소비자가 플랫폼 독립적으로 사용할 수 있는 데이터만 포함한다(Primer §1.1). UI hint는 Supervision UI 같은 특정 소비자의 표현 계층 결정이다. Claude Code 하네스나 OpenCode 하네스는 UI hint를 사용하지 않는다. 특정 소비자를 위한 전용 필드를 Authoring layer에 추가하면 neutral 원칙이 깨지고 nexus-core가 특정 소비자의 UI 결정에 결합된다.
 
 ### 거절 6 — Supervision 집행 로직 포함 금지
 
-ApprovalBridge, ProcessSupervisor, AgentHost 인터페이스는 nexus-code의 내부 구현이다(Primer §1.3). nexus-core가 이것들에 대한 정의나 스키마를 포함하면 Authoring layer가 Supervision layer의 집행 의미론에 결합된다.
+ApprovalBridge, ProcessSupervisor, AgentHost 같은 Supervision 집행 인터페이스는 외부 Supervision consumer의 내부 구현 사안이다(Primer §1.3). nexus-core가 이것들에 대한 정의나 스키마를 포함하면 Authoring layer가 Supervision layer의 집행 의미론에 결합된다.
 
-3층위 경계(Authoring / Execution / Supervision)는 각 층위가 자신의 책임 범위 밖을 모르도록 설계된다. Supervision 집행 의미론(어떤 권한 요청을 승인할 것인가, 어떤 세션 상태를 관찰할 것인가)은 nexus-code의 내부 정책이다. 그것을 nexus-core에 넣으면 Authoring layer가 Supervision layer를 위해 결정해야 하는 상황이 만들어지며, 층위 간 독립성이 무너진다.
+3층위 경계(Authoring / Execution / Supervision)는 각 층위가 자신의 책임 범위 밖을 모르도록 설계된다. Supervision 집행 의미론(어떤 권한 요청을 승인할 것인가, 어떤 세션 상태를 관찰할 것인가)은 외부 Supervision consumer의 내부 정책이다. 그것을 nexus-core에 넣으면 Authoring layer가 Supervision layer를 위해 결정해야 하는 상황이 만들어지며, 층위 간 독립성이 무너진다.
 
 ---
 

@@ -12,7 +12,7 @@
 
 ## 1. Purpose
 
-nexus-core는 claude-nexus · opencode-nexus · nexus-code 세 하네스가 읽기 전용으로 소비한다. 버전 정책의 목적은 consumer가 업그레이드 시점을 안전하게 결정할 수 있도록 변경의 파급 범위를 명시하는 것이다.
+nexus-core는 claude-nexus · opencode-nexus 두 하네스가 읽기 전용으로 소비한다 (nexus-code는 2026-04-14 archived). 버전 정책의 목적은 consumer가 업그레이드 시점을 안전하게 결정할 수 있도록 변경의 파급 범위를 명시하는 것이다.
 
 이 문서는 판단 기준을 제공한다. 실제 CHANGELOG 작성 방법은 `CHANGELOG.md`의 marker 규칙을 따른다.
 

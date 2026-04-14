@@ -1,6 +1,6 @@
 # Nexus MCP Tool Contracts
 
-This document is the normative specification for the eleven Nexus MCP tools. Implementations in all consumer harnesses (claude-nexus, opencode-nexus, nexus-code) must conform to the parameter names, types, return shapes, side effects, and error conditions defined here. Harness-specific registration names (prefixes such as `nx_` or `mcp__plugin_*`) are implementation details and are not part of this specification.
+This document is the normative specification for the eleven Nexus MCP tools. Implementations in all consumer harnesses (claude-nexus, opencode-nexus) must conform to the parameter names, types, return shapes, side effects, and error conditions defined here. Harness-specific registration names (prefixes such as `nx_` or `mcp__plugin_*`) are implementation details and are not part of this specification.
 
 ---
 

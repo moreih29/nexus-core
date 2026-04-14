@@ -1,3 +1,5 @@
+> **⚠ Archive note (2026-04-14)**: nexus-code 프로젝트가 archived된 현재, 이 문서가 논증한 "Agent SDK 기반 설계 회피 결정"의 대상 프로젝트는 더 이상 active consumer가 아니다. 문서 전체는 Plan session #1 결정 맥락과 Anthropic 공식 Note 인용의 일차 증거 보존 목적으로 유지한다. nexus-core neutral 원칙(rule:no-supervision-logic 등)의 근거는 이 문서의 Note 인용이 여전히 뒷받침한다.
+
 # agent-sdk-constraint.md — Anthropic Agent SDK 공식 문서 인용 보존
 
 ## 출처
