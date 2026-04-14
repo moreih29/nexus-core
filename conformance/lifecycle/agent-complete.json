@@ -3,7 +3,7 @@
   "description": "Verifies that agent_complete transitions an agent to completed status and records stopped_at, last_message, and files_touched in agent-tracker.json",
   "precondition": {
     "state_files": {
-      ".nexus/state/agent-tracker.json": [
+      "{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json": [
         {
           "harness_id": "claude-nexus",
           "agent_name": "architect",
@@ -26,7 +26,7 @@
   },
   "postcondition": {
     "state_files": {
-      ".nexus/state/agent-tracker.json": {
+      "{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json": {
         "$.length": 1,
         "$[0].status": "completed",
         "$[0].stopped_at": { "type": "iso8601" },

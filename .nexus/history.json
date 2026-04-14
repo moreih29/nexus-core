@@ -2049,6 +2049,354 @@
           "created_at": "2026-04-14T02:09:47.364Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-14T08:12:00.209Z",
+      "branch": "feat/v0.7.0-agent-tracker-namespace",
+      "plan": {
+        "id": 3,
+        "topic": "Issue #16 해결 — agent-tracker.json namespace 격리 및 harness state convention",
+        "issues": [
+          {
+            "id": 1,
+            "title": "agent-tracker.json namespace 격리 여부 (Status quo / 격리 / 공통+merge / hard delete)",
+            "status": "decided",
+            "decision": "Option B (Namespace 격리) 채택 — agent-tracker.json을 `.nexus/state/{harness-id}/agent-tracker.json` 경로로 이동. 근거: (1) task_add.owner_agent_id는 tasks.json에 opaque string pass-through일 뿐이고, 실제 consumer는 각 하네스 자신의 session hook뿐이므로 격리가 모든 live consumer를 보존. (2) v0.5.0의 'Supervision cross-harness aggregation을 위한 공통 구조 접근' 근거는 hypothetical이었음이 research로 확인 — 실제 구현된 aggregator 없음; glob `.nexus/state/*/agent-tracker.json` 패턴으로 충분. (3) orchestration.json, tool-log.jsonl, audit/ 등 기존 d-카테고리 격리 패턴과 동형 — 새로운 카테고리 아닌 일관성 회복. 기각 근거: A(Status Quo)는 이슈 자체가 실패 증거이며 'co-run 금지' 규칙은 nexus-core가 enforce 불가능한 집행 semantics 유입. C(공통+filter merge)는 concurrency-safe merge 의미(file lock/atomic rename/CAS)를 nexus-core가 neutral하게 specify 불가 + race window 잔존. D(hard delete)는 하네스 hook이 실제로 소비 중이므로 runtime.json과 달리 unused contract 아니며 장래 aggregator 표준 상실. 파생 작업: rule:harness-state-namespace clause #2 개정 (Issue #5에서 결정), nexus-outputs-contract.md path refactor (Issue #7에서 결정).</decision>\n<parameter name=\"how_agents\">[\"architect\", \"strategist\"]",
+            "how_summary": {
+              "architect": "Option B 권장. 결정적 근거: task_add.owner_agent_id 연계는 opaque string pass-through이고 agent-tracker.json의 유일한 live consumer는 하네스 자신의 hook. v0.5.0의 Supervision aggregation 근거는 hypothetical이었고 field evidence로 동시 실행 금지 전제도 falsified. orchestration.json/tool-log.jsonl 패턴 동형. rule:harness-state-namespace clause #2 개정 필요 (intent는 silent schema divergence 방지이므로 reframe로 해결).",
+              "strategist": "Option B 동의. 추가 관점: Phase 1 중 opencode-nexus만 실제 소비 + claude-nexus/nexus-code는 아직 미소비 → Phase 2 전 breaking change 타이밍이 전략적으로 이상적. 이슈 심각도(live data loss)가 defer 불가. v1.0 precondition이지 v1.0 deliverable 아님. co-run을 flip과 orthogonal한 first-class scenario로 승격 필요."
+            },
+            "how_agent_ids": {
+              "architect": "abe02ae1e7fdabe40",
+              "strategist": "ab9111c4030025cdd"
+            }
+          },
+          {
+            "id": 2,
+            "title": "Shared filename convention + minimum required field contract (2필드 vs 4필드 vs 문서 only)",
+            "status": "decided",
+            "decision": "Option A (2 필드 required) 채택 — agent-tracker.schema.json의 required 필드를 `harness_id`, `started_at` 2개로 축소. `agent_name`, `status`, `resume_count`, `agent_id`는 optional로 강등. nexus-outputs-contract.md §Shared filename convention 섹션에 `agent_name`(cross-harness display용)과 `status`(liveness용)를 'recommended for cross-harness aggregators' 수준 prose로 기술. 근거: (1) 실제 cross-cutting 수요는 attribution(harness_id) + temporal ordering(started_at) 2축뿐이며 이것 없이는 어떤 aggregator도 동작 불가. (2) `status` enum(running|completed) 강제는 opencode-nexus의 team coordination state 같은 harness-specific lifecycle과 mismatch 위험 — nexus-core가 하네스 lifecycle에 간섭하는 선. (3) `agent_name`은 display 용도로 consumer 결정 영역에 가까움 — 관례로 `harness_id:agent_name` 조합이 자연스럽게 수렴하되 schema 강제는 불필요. (4) Schema는 느슨, convention은 prose로 강하게 — 실사용 축적 후 v1.0.0 진입 시 required 승격 경로 오픈 (v0.5.0 schema_version optional→required 로드맵 패턴 동일). 기각 근거: B(4 필드)는 `status`/`agent_name` 시맨틱 지금 고정 시 장래 하네스 lifecycle 변주 수용 불가. C(6 필드)는 agent_id UUID 허구 유지로 opencode 현실과 충돌. D(문서 only, 공통 필드 無)는 공통 파일명을 써도 낱낱의 isolated store와 구별 안 됨 — 최소 계약이 convention의 실질. `agent_name`/`status` required 승격은 향후 cycle에서 consumer evidence 기반 재평가 (Issue #2 spin-off 후보).</decision>\n<parameter name=\"how_agents\">[\"architect\", \"strategist\"]</parameter>\n<parameter name=\"how_agent_ids\">{\"architect\": \"abe02ae1e7fdabe40\", \"strategist\": \"ab9111c4030025cdd\"}",
+            "how_summary": {
+              "architect": "Option A (harness_id+started_at 만 required) 권장. 근거: attribution+ordering이 실제 cross-cutting 수요의 전부. agent_name은 display라 consumer 결정이고, status는 opencode team states 같은 harness-specific lifecycle과 mismatch 위험. 강화는 future consumer evidence 기반 승격 경로로 남겨두는 것이 건전.",
+              "strategist": "Option B (4 필드) 권장 — dashboard-ready 관점. 단 Lead가 'schema 느슨+prose recommended' 절충안 채택 시 cross-harness messaging에 부족 없음. Supervision(nexus-code)이 future aggregator 구현 시 `status` 부재에 대해 runtime defensive 로직 필요 — 그것이 schema 강제보다 생태계에 유연."
+            }
+          },
+          {
+            "id": 3,
+            "title": "Conformance 강제 수준 및 fixture path-neutrality 처리 (문서 / schema+placeholder / runtime enforcement)",
+            "status": "decided",
+            "decision": "L2a (placeholder token convention) 채택. scope는 narrow — lifecycle fixture 3종만 token 규약 적용, 기존 공통 파일 fixture(plan-*/task-*/history-*/artifact-write)는 현 하드코딩 path 유지(follow-up 후보). 실행 항목: (1) fixture.schema.json의 state_files key description + $defs에 placeholder 문법 정의 — 허용 token 2개 canonical(`{STATE_ROOT}`, `{HARNESS_ID}`), 임의 token 금지. (2) conformance/lifecycle/agent-spawn.json, agent-complete.json, agent-resume.json 경로를 `{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json`로 업데이트, 각 fixture의 event.params.harness_id는 test data로 유지하여 runner 치환 기준으로 활용. (3) conformance/README.md Assertion conventions 테이블에 placeholder 규약 항목 추가. (4) CONSUMING.md runner 구현 가이드에 치환 규약 한 줄 추가. 근거: (a) Explicit path 유지로 문서 가독성·runner debugging 용이 — L2b shape-only 접근의 암묵적 key lookup 드리프트 방지. (b) token은 문자열 placeholder이지 harness 목록 enumeration 아님 → v0.5.0 'nexus-core는 harness 목록 모름' 원칙 유지. (c) v0.4.0 coverage CI gate 보전 — L1(문서-only)은 validate:conformance의 field coverage 100% 요구를 약화시켜 전사 역행. (d) L3(runtime enforcement)는 harness registry 전제로 v0.5.0 원칙 위반 + over-engineering. scope narrow 선택 근거: PR 초점 유지(대형 fixture 일괄 정규화는 별도 follow-up에서 규약 정착 후 수행). 파생 주의: fixture.schema.json의 state_files 값은 현재 `object | null`만 허용하므로 token 문법은 key string에 적용됨 — description과 prose로 명시.</decision>\n<parameter name=\"how_agents\">[\"architect\"]</parameter>\n<parameter name=\"how_agent_ids\">{\"architect\": \"abe02ae1e7fdabe40\"}",
+            "how_summary": {
+              "architect": "Level 2 schema-level + path-as-harness-responsibility 권장. 핵심: fixture.schema.json의 state_files key는 현재 plain string이라 placeholder 토큰 규약이 없음 → 규약을 명시적으로 도입해야 함. Level 3 runtime은 harness enumeration 전제로 v0.5.0 원칙 위반. Shape-only 접근은 key lookup drift 위험. 판 기존 공통 파일 fixture가 동일 규약으로 일괄 정규화되어야 하는지는 스코프 결정."
+            }
+          },
+          {
+            "id": 4,
+            "title": "기존 파일 마이그레이션 정책 — nexus-core prescriptive level (silent/warn/error/split-abstain)",
+            "status": "decided",
+            "decision": "Option D (Split: nexus-core abstain) + MIGRATIONS/consumer-guide에 recommendation 레이어링 채택. nexus-core는 migration 행동을 강제하지 않고 recommendation 수준으로만 기술. 실행 항목: (1) MIGRATIONS/v0_6_to_v0_7.md §Migration policy 섹션 prose 1단락 — \"agent-tracker.json is session-scoped; no user-initiated migration required. Harnesses MAY silently remove any legacy `.nexus/state/agent-tracker.json` (root) at session start. Session-end cleanup already guarantees the file does not persist across sessions.\" (2) docs/consumer-implementation-guide.md §9 Hook Event Lifecycle session_start 단락에 legacy root-level file best-effort delete 한 줄 추가. (3) CHANGELOG.md v0.7.0 \"Consumer Action Required\" 섹션에서 path change를 1순위로, migration은 \"no explicit action required\" 메시지. 근거: (a) boundaries.md §제외 범위가 런타임 I/O 로직을 Authoring layer에서 배제 — 세션 시작 시 파일 이동 거동 강제는 경계 위반. (b) agent-tracker는 이미 session-scoped(nexus-outputs-contract.md:97)로 두 세션 내 자연 소멸 — 강제 정책 실익 낮음. (c) v0.2/0.4/0.5 선례 모두 \"하네스 자체 책임, 문서 권고만 수행\" 패턴으로 일관. (d) Strategist의 warn-and-auto-move 권장은 recommendation 레이어로 동일 실효 달성. 기각 근거: A(Silent auto-move)는 Authoring layer가 런타임 거동 직접 강제 → boundaries 위반. B(Warn+proceed)는 이미 reset 동작하는 하네스에 별도 warn 강제 시 noise 비용 초과. C(Error+manual)는 session-scoped 파일에 upgrade 블록 과도 + UX 손상.</decision>\n<parameter name=\"how_agents\">[\"architect\", \"strategist\"]</parameter>\n<parameter name=\"how_agent_ids\">{\"architect\": \"abe02ae1e7fdabe40\", \"strategist\": \"ab9111c4030025cdd\"}",
+            "how_summary": {
+              "architect": "Split abstain 권장. 근거: agent-tracker는 session-scoped로 migration 실질 불필요; boundaries.md 제외 범위 준수; v0.5.0 MIGRATIONS 선례 일관. consumer-implementation-guide에 best-effort delete 권고 에 권장 여분.",
+              "strategist": "Warn-and-auto-move를 consumer UX 관점에서 권장했으나 nexus-core 강제가 아닌 recommendation이면 문제 없음. CHANGELOG에 'no explicit action required' 메시지 명시해 소비자 혼란 최소화. release 최좉우선순위는 path change."
+            }
+          },
+          {
+            "id": 5,
+            "title": "rule:harness-state-namespace 재작성 범위 (공통 파일명 재사용 금지 원칙의 intent reframe)",
+            "status": "decided",
+            "decision": "Option B (Intent reframe) 채택 — rule:harness-state-namespace의 clause #2 금지 대상을 'silent schema divergence 방지'라는 실질 intent 중심으로 재진술. 재작성 골자: (1) 금지 4항 중 #2 교체 — 기존 '공통 schema 파일명 재사용' → '{harness-id}/ 하위에서 docs/nexus-outputs-contract.md §Shared filename convention에 contract 명시되지 않은 공통 파일명(plan/tasks/history) 재사용'. #1/#3/#4 유지. (2) 허용 패턴에 추가: `.nexus/state/{harness-id}/agent-tracker.json` — shared-purpose file with contract 명시. (3) 예외 blocks: legacy carve-out(edit-tracker.json, reopen-tracker.json) 유지. (4) 위반 예시 업데이트: `.nexus/state/claude-nexus/plan.json`은 여전히 금지(contract 없음), `.nexus/state/claude-nexus/agent-tracker.json`은 허용 예시로 승격. 근거: (a) 원칙의 실질 intent는 'silent schema divergence 방지'이며 wording의 '파일명 재사용 금지'는 수단이었음 — 실제 hazard는 두 하네스가 같은 이름에 다른 schema를 silent하게 쓰는 상황. (b) Generic reframe이 장래 유사 shared-purpose file에 자동 적용되며 매번 carve-out 추가 불필요 — 'outputs-contract에 명시되면 허용'이라는 단일 게이트. (c) 이슈 Rec #2 전면 수용 + neutral 원칙(silent divergence 보호) 동시 유지. (d) 예외 누적 회피 — agent-tracker까지 carve-out에 추가하면 원칙-예외 비율 악화. 기각 근거: A(단순 carve-out)는 예외 누적 패턴으로 장래 shared-purpose file마다 carve-out 추가 → 규칙이 예외 리스트로 변질. C(Clause #2 삭제)는 silent schema divergence 보호 장치 자체 상실. D(별도 rule 신설)는 같은 concern을 다루는 rule 분산 — rule:harness-state-namespace 하나로 consolidate가 자연. 파생: docs/nexus-outputs-contract.md §Shared filename convention 섹션 신설(Issue #2 연동, shared-purpose file canonical contract 위치)은 본 결정의 referred source이므로 필수 동반 작업.</decision>\n<parameter name=\"how_agents\">[\"architect\"]</parameter>\n<parameter name=\"how_agent_ids\">{\"architect\": \"abe02ae1e7fdabe40\"}",
+            "how_summary": {
+              "architect": "Intent reframe (B) 권장. Clause #2의 실질 intent는 'silent schema divergence 방지'였으며 wording은 수단. 'outputs-contract.md §Shared filename convention에 명시되면 허용'이라는 단일 게이트로 generic 적용. 예외 누적 하면 rule이 예외 리스트로 변질 위험."
+            }
+          },
+          {
+            "id": 6,
+            "title": "agent_id schema description 개정 (UUID 의도 → harness-specific opaque string)",
+            "status": "decided",
+            "decision": "Option A (Description만 수정) 채택. conformance/state-schemas/agent-tracker.schema.json:22-26의 agent_id field description을 현실 align되도록 재작성: \"Harness-specific opaque agent instance identifier. Format is defined by the writing harness (UUID, composite string, etc.). Consumers MUST treat the value as opaque — do not parse or infer agent identity across harness namespaces.\" Pattern(`minLength: 1`)은 유지. field 자체는 Issue #2 결정에 의해 optional로 강등된 상태 유지. 근거: (a) opencode-nexus가 이미 `${agentType}-${Date.now()}` 합성 문자열을 live에서 사용 중(이슈 #16 증거) — UUID 강제는 pattern 통과 중인 현실을 semantic으로 뒤늦게 좁히는 reverse engineering으로 consumer 정당화 불가. (b) task_add.owner_agent_id는 opaque string pass-through(Issue #1 검증)이므로 format contract가 없어야 하네스 hook의 resume 구현 자유도 확보. (c) latent schema lie는 현실이 이미 align되어 있으므로 description이 현실을 서술하도록 바꾸는 최소 변경으로 해소. (d) cross-harness opacity 명시는 Issue #2의 agent_id harness-specific extension 강등 방향과 완전 일관 — consumer가 다른 하네스의 agent_id를 parse하려 드는 anti-pattern 선제적 방지. 기각 근거: B(Pattern UUID 강제)는 opencode-nexus breaking + live 현실 파괴; C(Field 삭제)는 owner_agent_id resume 연계 실제 존재로 field 제거 시 하네스가 자기 agent 조회할 키 상실; D(Field rename)는 비용 대비 semantic 이득 낮음 — description 한 줄로 동일 명확화 달성 가능. 파생: docs/nexus-state-overview.md와 docs/nexus-outputs-contract.md의 agent_id/owner_agent_id opaque 속성 설명 일관 업데이트는 Issue #7 scope에서 일괄 처리.</decision>\n<parameter name=\"how_agents\">[\"architect\"]</parameter>\n<parameter name=\"how_agent_ids\">{\"architect\": \"abe02ae1e7fdabe40\"}",
+            "how_summary": {
+              "architect": "Description-only 수정 권장. Pattern은 minLength:1만 보존해 live 현실(opencode 합성 문자열) 유지. cross-harness opacity 명시로 consumer anti-pattern 방지. B/C/D는 live breaking이거나 비용 대비 이득 낮음."
+            }
+          },
+          {
+            "id": 7,
+            "title": "nexus-outputs-contract.md path 일괄 refactor + 관련 gitignore/session-scoped 명세 정합성",
+            "status": "decided",
+            "decision": "Option C (wide scope — docs 5 + conformance/ 4 + rule 1 + schema 1 = 11 files atomic) 채택. 단일 브랜치 feat/v0.7.0-agent-tracker-namespace 내에서 동기 변경할 파일 매트릭스: (1) docs/nexus-outputs-contract.md — L20-22 카테고리 테이블 + L89-106 agent-tracker 섹션 path + L145 MUST #5 gitignore list + L157-161 3 파일 유형 분류 + L188 위반 예시 + L205-217 예시 tree + §Shared filename convention 섹션 신설(Issue #2/#5 referred source). (2) docs/nexus-state-overview.md — agent-tracker path + agent_id 설명 일관(Issue #6). (3) docs/nexus-layout.md — canonical directory tree 업데이트. (4) docs/consumer-implementation-guide.md — §4 State File Management path + §9 session_start best-effort delete 한 줄(Issue #4). (5) CONSUMING.md — path 언급 반영. (6) conformance/README.md — Assertion conventions 테이블 placeholder 규약 추가(Issue #3). (7) conformance/lifecycle/README.md — agent-spawn/complete/resume 경로 설명. (8) conformance/schema/fixture.schema.json — state_files placeholder 규약 schema-level + $defs 또는 description 확장(Issue #3). (9) conformance/state-schemas/agent-tracker.schema.json — agent_id description(Issue #6) + required 필드 축소(Issue #2). (10) conformance/lifecycle/agent-spawn.json/agent-complete.json/agent-resume.json — path를 `{STATE_ROOT}/{HARNESS_ID}/agent-tracker.json` token으로 갱신(Issue #3). (11) .nexus/rules/neutral-principles.md — rule:harness-state-namespace 재작성(Issue #5). 제외 항목: MIGRATIONS/v0_6_to_v0_7.md · CHANGELOG v0.7.0 entry · package.json bump · .nexus/context/evolution.md v0.7.0 entry는 Issue #9 Release 결정과 함께 동일 브랜치 finalize commit에서 추가. .nexus/context/boundaries.md L55 state-schema 4종 설명은 count 불변이라 수정 불요. 근거: (a) Architect가 경고한 'rule + outputs-contract + gitignore/session-scoped 명세 동시 갱신' 최소 조건 — narrow/medium은 rule이 참조하는 §Shared filename convention 섹션 drift 생산. (b) Issue #3의 placeholder 규약은 fixture.schema.json + conformance/README + lifecycle fixture 3종과 불가분 — 쪼개면 runtime 위반 창 발생. (c) Release artifact(MIGRATIONS/CHANGELOG)는 version 확정 후 작성이 자연 — Issue #9 finalize 단계 분리가 review scope 현실론. (d) 11 files는 tractable — 대부분 localized 문구 갱신이며 신규 작성은 outputs-contract §Shared filename convention + rule 재작성 두 곳. 기각: A(narrow)는 rule-doc drift 보장. B(medium)는 conformance/placeholder 빠져 Issue #3 실행 불가. D(comprehensive)는 버전 번호 placeholder 작업 부담 + review scope 과대.</decision>\n<parameter name=\"how_agents\">[\"architect\"]</parameter>\n<parameter name=\"how_agent_ids\">{\"architect\": \"abe02ae1e7fdabe40\"}",
+            "how_summary": {
+              "architect": "atomic revision 필수 경고 — rule:harness-state-namespace + outputs-contract 예시/gitignore/session-scoped 명세 3가 동시 갱신. fixture placeholder 규약은 schema + runner + 3 lifecycle fixture가 불가분. scope 내에 MIGRATIONS/CHANGELOG 포함 시 version placeholder 재작업 부담."
+            }
+          },
+          {
+            "id": 8,
+            "title": "co-run scenario를 ecosystem.md에 first-class citizen으로 도입할지 (flip과 orthogonal 개념)",
+            "status": "decided",
+            "decision": "Option A (ecosystem.md §Co-run scenarios 섹션 신설) 채택. 섹션 골자 (10-20줄, narrow wording으로 과대 해석 방지): (1) Co-run 정의 — 두 Execution layer 하네스가 동일 프로젝트 디렉토리에서 동시 실행되는 상태. flip(시간 축 주력 하네스 전환)과 orthogonal한 공간 축 현상. flip이 primary pattern이며 co-run은 '발생 시 state 파괴를 막는 fallback' 수준. (2) nexus-core 보장 범위 제한 — state-layer 호환성만 보장. Runtime-level 경합(MCP server port, hook 순서, tool invocation 충돌)은 각 하네스 runtime 책임이며 nexus-core 관할 밖(boundaries.md §제외 범위). (3) State 분리 기준 — genuinely shared schema(plan/tasks/history/config)는 루트 경로 유지; harness-specific lifecycle/의미를 가진 파일(agent-tracker 등)은 `.nexus/state/{harness-id}/` 격리. 공통 파일명 재사용 convention은 docs/nexus-outputs-contract.md §Shared filename convention 참조. (4) Supervision implication — cross-harness aggregation은 구현될 경우 `.nexus/state/*/agent-tracker.json` glob 모델을 전제로 설계한다. 단일 공통 파일 모델 아님. (5) 미결 유보 — harness 수 증가 또는 co-run 빈도 증가 시 harness_id registry 도입 여부는 v1.0 roadmap 재평가 항목. 현재는 free-string + pattern 유지. 근거: (a) Issue #16 evidence가 v0.5.0 'multi-harness simultaneous 금지 암묵 전제'를 falsified — ecosystem-level assumption update는 ecosystem.md mental model에 반영되는 것이 자연. (b) rule/contract만 갱신 시 '왜 변경했는가' context 6개월 후 추적 불가 — ecosystem이 upstream 문서이므로 reframe 근거가 여기 박혀야 함. (c) nexus-code Supervision 설계자가 glob 전제 참조할 upstream 지점 필요. (d) ecosystem.md footer가 이미 boundaries/evolution/ecosystem 역할 분담 선언 중 — co-run은 mental model이므로 ecosystem이 자연 위치. 기각 근거: B(boundaries.md §포함 범위)는 범위 문서에 멘탈 모델 혼재로 역할 침범. C(outputs-contract §Shared filename convention만)는 normative MUST/MUST NOT 문서에 개념 설명 혼재. D(defer)는 이번 PR이 전부 co-run 전제로 reframe되는데 그 왜가 ecosystem에 없으면 rule 변경 추적 불가. 파생: (1) Issue #7 scope를 11 → 12 files로 확장하여 동일 브랜치에서 ecosystem.md 갱신 흡수 — rule + outputs-contract + ecosystem 3자 context drift 방지. (2) .nexus/memory/open-questions.md에 항목 (f) 신설 'co-run 빈도·harness 수 증가 시 harness_id registry 도입 판단 기준' (v1.0 roadmap 재평가 후보).</decision>\n<parameter name=\"how_agents\">[\"strategist\"]</parameter>\n<parameter name=\"how_agent_ids\">{\"strategist\": \"ab9111c4030025cdd\"}",
+            "how_summary": {
+              "strategist": "co-run을 first-class scenario로 승격 필요 권장. flip(temporal ownership transfer)과 co-run(simultaneous co-existence)은 orthogonal axis. v0.5.0 가정 falsified이므로 ecosystem-level mental model update 반영 필수. Supervision aggregation 설계를 glob 기준으로 day-1부터 진행 필요 — 재적합 비용 큐. harness_id registry 도입은 v1.0 roadmap 유보."
+            }
+          },
+          {
+            "id": 9,
+            "title": "Release 전략 및 framing — v0.7.0 minor correctness release (R1/R2/R3/R4 중 택일 + cooling period 커밋 여부)",
+            "status": "decided",
+            "decision": "R1 (v0.7.0 즉시 minor correctness release) + framing 차별화 채택. **Cooling period commitment는 명시적으로 제외** — pre-v1 Phase 1의 flexibility를 유지하기 위해 향후 breaking change 배제 선언하지 않음. 실행 항목: (1) CHANGELOG.md v0.7.0 entry — subheading 'Correctness fix — cross-harness state namespace', `<!-- nx-car:v0.7.0:start/end -->` 마커, 'Consumer Action Required' 섹션 opening 'This is a correctness release addressing cross-harness state file collision (GH #16). Affected consumers: opencode-nexus, claude-nexus, nexus-code.', BREAKING subsection에 rule:harness-state-namespace reframe 포함. (2) MIGRATIONS/v0_6_to_v0_7.md 신설 — Overview(breaking change 요약 + GH #16 link) / What changed / Consumer action checklist(path constant, required 필드 축소, fixture placeholder adoption, rule 재확인) / Migration policy §(session-scoped, no user-initiated migration required, harnesses MAY silently delete legacy root file) / Validation 절차(bun run validate:conformance) / 예시 디렉토리 구조. v0_5_to_v0_6 패턴 준수. (3) package.json version 0.6.0 → 0.7.0. (4) .nexus/context/evolution.md v0.7.0 서브섹션 신설 — 9 decisions summary, correctness release 성격 명시, v0.5.0 'multi-harness simultaneous 금지 암묵 전제' falsification 기록. 근거: (a) Live data loss는 defer 불가(R4 기각), opencode-nexus 이미 corruption 중. (b) R2 bundling은 scope creep — open-questions (a) UI hint는 nexus-code UI 미준비, (e) schema_version required 승격은 v1.0.0 후보. correctness bug를 speculative scope에 묶으면 리스크 역전. (c) R3 v1.0 승격은 milestone 소진 — semver-policy/evolution의 v1.0 gate '3 consumer stable + 90-day window' 미달 상태에서 bugfix로 burning하면 향후 stable 선언 신뢰 저하. (d) Phase 2 전 타이밍 strategic — claude-nexus/nexus-code 미소비라 migration 비용 opencode-nexus 1개 국한. defer 시 Phase 2 진입 후 비용 증가. (e) Framing 차별화(correctness release subheading)가 '5번째 minor bump' perception risk 관리. Cooling period 제외 결정 근거: pre-v1 Phase 1에서는 향후 다른 live-loss bug 발견 시 즉시 대응 가능한 flexibility 유지가 commitment의 상징적 가치보다 실용적 — 자기 손 묶지 않는 판단.</decision>\n<parameter name=\"how_agents\">[\"strategist\"]</parameter>\n<parameter name=\"how_agent_ids\">{\"strategist\": \"ab9111c4030025cdd\"}",
+            "how_summary": {
+              "strategist": "R1 v0.7.0 즉시 릴리즈 권장 — correctness framing으로 design release(v0.2-v0.6)와 차별화, 'cadence stabilizing toward milestone' messaging. R2/R3/R4 모두 기각. cooling period commitment 제안했으나 Lead가 pre-v1 flexibility 유지 관점에서 제외 — 합리적 판단(future bug 대응 가능성 유지)."
+            }
+          }
+        ],
+        "research_summary": "Issue #16은 claude-nexus와 opencode-nexus가 동일 프로젝트 디렉토리에서 co-run할 때 .nexus/state/agent-tracker.json에서 상호 레코드 파괴가 발생하는 live 증거를 제시. v0.5.0 결정(공통 schema 유지)의 두 기둥 모두 취약성 노출 — (1) 'Supervision cross-harness aggregation 필요' 근거는 hypothetical이었음이 확인(현 MCP tool 중 agent-tracker를 read/write하는 것이 없음. task_add.owner_agent_id는 tasks.json에 opaque string pass-through일 뿐. 실제 consumer는 각 하네스 자신의 session hook). (2) 'multi-harness simultaneous 제약은 암묵적 전제'는 field evidence로 falsified. rule:harness-state-namespace(neutral-principles.md:162-202)의 공통 파일명 재사용 금지 원칙은 이슈 Rec #2와 정면 충돌하나, 원칙의 실질 intent는 'silent schema divergence 방지'이며 reframe 가능. agent-tracker.schema.json의 agent_id description 'UUID'는 latent schema lie(opencode-nexus는 이미 ${type}-${timestamp} 합성 문자열 사용, pattern은 허용). 배경 release 이력: v0.2.0→v0.6.0이 2-3일 간 4회 minor bump였으나 모두 design release. 이번은 correctness release 성격. Phase 1 중이며 실제 consumer는 opencode-nexus 하나뿐, claude-nexus/nexus-code는 아직 미소비 — Phase 2 전 breaking change 타이밍 favorable. Architect(agentId abe02ae1e7fdabe40) 권장: namespace 격리(B) + minimum 2 필드(harness_id, started_at) + conformance Level 2(placeholder token) + nexus-core abstain migration policy. Strategist(agentId ab9111c4030025cdd) 권장: R1 v0.7.0 즉시 릴리즈 + correctness framing + 4 필드 contract + rule CHANGELOG 포함. 두 에이전트 공통 수렴점: namespace 격리는 결정적, task_add.owner_agent_id 연계는 격리로 인한 손상 없음. 갈라지는 지점: 최소 필드 수(2 vs 4), migration policy wording.",
+        "created_at": "2026-04-14T07:11:34.836Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "agent-tracker.schema.json 재작성 — required 축소 + agent_id description 개정",
+          "context": "Issue #2/#6 반영. required=[harness_id, started_at]로 축소, agent_name/agent_id/status/resume_count는 optional. agent_id description을 opaque harness-specific identifier로 재작성 (pattern minLength:1 유지).",
+          "approach": "(1) required 배열에서 agent_name/agent_id/status/resume_count 제거. (2) agent_id description 교체: \"Harness-specific opaque agent instance identifier. Format is defined by the writing harness (UUID, composite string, etc.). Consumers MUST treat the value as opaque — do not parse or infer agent identity across harness namespaces.\" (3) file description의 session-scoped 설명 유지. (4) additionalProperties false 유지.",
+          "acceptance": "required=[harness_id, started_at]만; agent_id description에서 UUID 언급 제거 + opaque 강조; pattern minLength:1 유지; bun run validate 통과.",
+          "risk": "agent-spawn.json fixture의 covers.state_schemas 배열과 필드 일치성은 T2에서 병렬 갱신되므로 atomic 유지 필요.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-14T07:41:42.116Z"
+        },
+        {
+          "id": 2,
+          "title": "fixture.schema.json placeholder 규약 + lifecycle fixture 3종 path token 갱신",
+          "context": "Issue #3 반영. state_files key에 {STATE_ROOT}, {HARNESS_ID} canonical token 2개 도입. narrow scope — conformance/lifecycle/agent-spawn.json, agent-complete.json, agent-resume.json만 token 경로로 갱신. 공통 파일 fixture(plan-*/task-*/history-*/artifact-write)는 현 path 유지.",
+          "approach": "(1) fixture.schema.json state_files key의 description 또는 $defs에 placeholder 문법 prose 정의 — 허용 token 2개 명시, 임의 token 금지. (2) agent-spawn/agent-complete/agent-resume의 하드코딩 경로 .nexus/state/agent-tracker.json → {STATE_ROOT}/{HARNESS_ID}/agent-tracker.json 교체. (3) 각 fixture의 event.params.harness_id는 test data로 유지(runner 치환 기준). (4) covers.state_schemas 변경 없음.",
+          "acceptance": "fixture.schema.json에 placeholder 규약 machine-readable 또는 prose description 존재; 3 lifecycle fixture의 state_files key가 token 형식; validate:conformance 실행 시 coverage 손실 없음; 허용 token 외 사용 금지 명시.",
+          "risk": "downstream consumer runner가 token 미지원 상태에서 fixture 실행 불가 — 본 레포는 schema+fixture 정의만 담당.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "engineer",
+          "created_at": "2026-04-14T07:41:52.726Z"
+        },
+        {
+          "id": 3,
+          "title": ".nexus/rules/neutral-principles.md rule:harness-state-namespace 재작성",
+          "context": "Issue #5 반영. 원칙 intent를 'silent schema divergence 방지'로 reframe. Clause #2 금지 대상 재진술 + 허용 패턴에 agent-tracker 추가 + 위반/허용 예시 업데이트. legacy carve-out(edit-tracker, reopen-tracker) 유지.",
+          "approach": "(1) 금지 #2 교체: \"{harness-id}/ 하위에서 docs/nexus-outputs-contract.md §Shared filename convention에 contract 명시되지 않은 공통 파일명(plan/tasks/history) 재사용\". (2) 허용 패턴에 .nexus/state/{harness-id}/agent-tracker.json 추가. (3) 위반 예시: .nexus/state/claude-nexus/plan.json 유지; 허용 예시로 .nexus/state/claude-nexus/agent-tracker.json 승격. (4) 예외 blocks(edit/reopen) 유지. (5) 근거 참조(boundaries.md, outputs-contract.md §Shared filename convention) 업데이트.",
+          "acceptance": "Clause #2가 contract 유무 conditional 금지로 rewrite; agent-tracker 허용 예시 존재; plan.json 위반 예시 유지; legacy 예외 목록 유지; outputs-contract §Shared filename convention 참조 링크 존재.",
+          "risk": "outputs-contract §Shared filename convention 섹션(T4)이 atomic 동시 작성되지 않으면 rule이 존재하지 않는 섹션 참조. T4와 한 PR 묶음 필수.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:42:03.719Z"
+        },
+        {
+          "id": 4,
+          "title": "docs/nexus-outputs-contract.md 전체 refactor + §Shared filename convention 신설",
+          "context": "Issue #1/#2/#5/#6/#7 반영. agent-tracker path 전면 교체, §Shared filename convention 섹션 신설(rule의 referred source), gitignore/session-scoped 명세 일관, 3 파일 유형 분류 테이블 갱신, 예시 tree 갱신.",
+          "approach": "(1) L20-22 카테고리 테이블 agent-tracker 경로 갱신. (2) L89-106 §agent-tracker 섹션 재작성 — path .nexus/state/{harness-id}/agent-tracker.json, interop requirement에 min required 2 필드(harness_id, started_at) 명시 + agent_name/status는 recommended for cross-harness aggregators로 prose 기술, owner_agent_id opaque 속성 재강조. (3) L145 MUST #5 gitignore 조항 path 업데이트 + session-scoped 속성 유지. (4) L157-161 3 파일 유형 분류 테이블에 shared-filename convention 행 추가. (5) L188 위반 예시 갱신 — plan.json 유지, agent-tracker는 허용 예시로 승격. (6) L205-217 예시 tree 갱신. (7) 신규 §Shared filename convention 섹션 작성 — shared-purpose file 정의, 최소 필드 contract, 향후 shared-purpose file 패턴 명시.",
+          "acceptance": "agent-tracker 전역 path가 {harness-id}/ 하위로 통일; §Shared filename convention 섹션 존재 + min required 필드 명시; rule 재작성본이 이 섹션 참조 가능; 예시 tree에서 agent-tracker가 harness-id 하위; gitignore MUST 조항 일관; owner_agent_id opaque 강조 유지.",
+          "risk": "rule과 atomic — T3과 동일 PR. reviewer(T14)에서 상호 참조 일관성 검증.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 7,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:42:16.689Z"
+        },
+        {
+          "id": 5,
+          "title": "docs/nexus-state-overview.md + nexus-layout.md agent-tracker 동기 갱신",
+          "context": "Issue #6/#7 반영. agent-tracker 경로 업데이트 + agent_id description 일관화(opaque string). canonical directory tree 업데이트.",
+          "approach": "(1) nexus-state-overview.md agent-tracker 섹션 path 교체 + agent_id description 'Unique agent instance identifier (UUID)' 제거하고 opaque harness-specific wording 반영. (2) nexus-layout.md의 .nexus/state/ 디렉토리 tree에서 agent-tracker.json을 harness-id 하위로 이동, 2 하네스 예시 tree 추가.",
+          "acceptance": "state-overview agent-tracker 섹션의 path + agent_id description이 schema와 일관; layout tree의 agent-tracker가 harness-id 하위 위치.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 7,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:42:22.318Z"
+        },
+        {
+          "id": 6,
+          "title": "docs/consumer-implementation-guide.md §4/§9 + CONSUMING.md path/session_start 권고",
+          "context": "Issue #4/#7 반영. §4 State File Management의 agent-tracker path 교체, §9 Hook Event Lifecycle session_start 단락에 legacy root file best-effort delete 권고 한 줄 추가, CONSUMING.md path 언급 반영.",
+          "approach": "(1) consumer-implementation-guide.md §4 agent-tracker 경로 갱신. (2) §9 session_start 단락에 \"On v0.7.0+, harnesses SHOULD silently remove any legacy .nexus/state/agent-tracker.json (root) at session start\" 추가. (3) CONSUMING.md의 agent-tracker/path 언급 정합성 확인·반영.",
+          "acceptance": "consumer-guide §4 path 갱신; §9 session_start 권고 한 줄; CONSUMING.md path 반영.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 7,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:42:28.466Z"
+        },
+        {
+          "id": 7,
+          "title": "conformance/README.md Assertion conventions + conformance/lifecycle/README.md 갱신",
+          "context": "Issue #3/#7 반영. placeholder token 규약을 conformance/README.md Assertion conventions 테이블에 추가. conformance/lifecycle/README.md의 agent-spawn/complete/resume 경로 설명 갱신.",
+          "approach": "(1) conformance/README.md Assertion conventions 테이블에 placeholder token 행 추가(허용 token 2개 canonical, 임의 token 금지). (2) lifecycle/README.md의 fixture 3종 설명에서 agent-tracker 경로를 token 형식으로 업데이트. (3) 테스트 runner 작성 가이드에 치환 규약 참조 한 줄 추가.",
+          "acceptance": "conformance/README.md에 placeholder 규약 명시; lifecycle/README.md의 3 fixture 경로 설명이 token 형식; runner 작성 가이드가 치환 규약 언급.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 7,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:42:33.728Z"
+        },
+        {
+          "id": 8,
+          "title": ".nexus/context/ecosystem.md §Co-run scenarios 섹션 신설",
+          "context": "Issue #8 반영. flip과 orthogonal한 공간 축 co-run 개념 first-class 문서화. narrow wording — state-layer 호환성만 보장, runtime 경합은 각 하네스 책임. Supervision aggregation glob 전제. harness_id registry는 v1.0 roadmap 유보.",
+          "approach": "(1) §Bidirectional flip 모델 다음에 §Co-run scenarios 섹션(10-20줄) 신설. (2) 정의 — 두 Execution layer 하네스가 동일 프로젝트 디렉토리에서 동시 실행되는 상태. flip과 orthogonal axis. flip이 primary pattern. (3) nexus-core 보장 범위 — state-layer 호환성만. Runtime-level 경합(MCP port, hook 순서, tool invocation)은 각 하네스 responsibility. (4) 분리 기준 — genuinely shared(plan/tasks/history/config) 루트, harness-specific lifecycle(agent-tracker 등) {harness-id}/ 격리. outputs-contract §Shared filename convention 참조. (5) Supervision implication — cross-harness aggregation은 glob 모델 전제(단일 공통 파일 아님). (6) 미결 유보 — harness_id registry는 v1.0 roadmap 재평가.",
+          "acceptance": "§Co-run scenarios 섹션 존재(10-20줄 narrow); flip과 orthogonal 관계 명시; nexus-core 보장 범위(state-layer만) 명시; runtime 경합은 하네스 책임 문장; glob aggregation 전제; outputs-contract §Shared filename convention 참조.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 8,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:42:45.872Z"
+        },
+        {
+          "id": 9,
+          "title": "package.json v0.7.0 bump + .nexus/memory/open-questions.md 항목 (f) 신설",
+          "context": "Issue #8/#9 반영. package.json version 0.6.0 → 0.7.0. open-questions.md에 항목 (f) 추가 — 'co-run 빈도·harness 수 증가 시 harness_id registry 도입 판단 기준' (v1.0 roadmap 재평가 후보).",
+          "approach": "(1) package.json의 version 필드를 '0.7.0'으로 수정. (2) open-questions.md 파일 끝에 '## (f) co-run 빈도·harness 수 증가 시 harness_id registry 도입 판단 기준' 섹션 추가 — '무엇을 논의해야 하는가 + 현재 정보 부족분' 포맷 준수.",
+          "acceptance": "package.json version 0.7.0; open-questions.md (f) 섹션 존재 + 기존 항목 포맷 준수.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 9,
+          "owner": "lead",
+          "created_at": "2026-04-14T07:42:51.913Z"
+        },
+        {
+          "id": 10,
+          "title": "validate:conformance CI gate 통과 확인 (schema + fixture + coverage)",
+          "context": "Issue #3/#7 반영. schema 변경(T1) + fixture path token(T2) 도입 후 validate:conformance 통과 확인. agent-tracker schema required 축소에 대해 fixture cover 손실 없는지 검증.",
+          "approach": "(1) bun run validate:conformance 실행. (2) agent-tracker.schema.json required=[harness_id, started_at]에 대해 agent-spawn.json fixture의 covers.state_schemas 배열이 모든 필드(required+optional) cover 확인. (3) placeholder token 규약이 existing validator에서 에러 발생시키지 않는지 확인. (4) state schema 4종(plan/tasks/history/agent-tracker) 유지, fixture coverage 100% 유지.",
+          "acceptance": "validate:conformance exit 0; agent-tracker.schema.json 모든 필드 cover; fixture.schema.json 자체 schema validity; coverage 손실 0건.",
+          "status": "completed",
+          "deps": [
+            1,
+            2
+          ],
+          "plan_issue": 3,
+          "owner": "tester",
+          "created_at": "2026-04-14T07:43:00.301Z"
+        },
+        {
+          "id": 11,
+          "title": "MIGRATIONS/v0_6_to_v0_7.md 신설 — consumer action guide",
+          "context": "Issue #4/#9 반영. Overview/What changed/Consumer action checklist/Migration policy §(Issue #4 결정 prose)/Validation 절차/예시 디렉토리 구조. v0_5_to_v0_6 패턴 준수.",
+          "approach": "(1) Overview — breaking change 요약, 영향 consumer(opencode-nexus, claude-nexus, nexus-code), GH #16 링크. (2) What changed — agent-tracker path namespace 이동, required 축소(2 필드), agent_id description opaque, fixture placeholder 규약 도입, rule:harness-state-namespace reframe. (3) Consumer action checklist — AGENT_TRACKER_FILE 상수 갱신, required 2필드만 assert, agent_id opaque 취급, runner placeholder 치환 구현, rule 재확인. (4) Migration policy § — 'session-scoped, no user-initiated migration required. Harnesses MAY silently remove legacy .nexus/state/agent-tracker.json (root) at session start.' (5) Validation 절차 — bun run validate:conformance 실행. (6) 예시 디렉토리 구조 — before/after tree.",
+          "acceptance": "MIGRATIONS/v0_6_to_v0_7.md 파일 존재; 6 섹션 모두 포함; v0_5_to_v0_6.md 포맷 준수; Migration policy §가 Issue #4 결정 wording 반영.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "plan_issue": 9,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:43:10.297Z"
+        },
+        {
+          "id": 12,
+          "title": "CHANGELOG.md v0.7.0 entry + nx-car:v0.7.0 marker",
+          "context": "Issue #9 반영. Correctness fix subheading, Consumer Action Required 섹션(marker로 감쌈), BREAKING subsection에 rule reframe 포함, MIGRATIONS 링크.",
+          "approach": "(1) v0.7.0 entry 신설(v0.6.0 위). (2) Subheading 'Correctness fix — cross-harness state namespace (GH #16)'. (3) ### Changed — agent-tracker path namespace, required 축소, agent_id description 개정, fixture placeholder 규약. (4) ### BREAKING CHANGES + <!-- nx-car:v0.7.0:start --> marker. Consumer Action Required opening + affected consumers(opencode-nexus, claude-nexus, nexus-code) + 4 required actions(path, schema, fixture, rule) + MIGRATIONS/v0_6_to_v0_7.md 링크 + end marker. (5) rule 재작성을 BREAKING subsection에 'rule:harness-state-namespace — scope reframed to exempt outputs-contract-declared shared-purpose files' 문구로 포함.",
+          "acceptance": "v0.7.0 entry 존재; nx-car marker 정확(중첩 없음); Correctness subheading; affected consumers 3개 명시; MIGRATIONS 링크 정확; rule reframe 언급.",
+          "status": "completed",
+          "deps": [
+            11
+          ],
+          "plan_issue": 9,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:43:19.795Z"
+        },
+        {
+          "id": 13,
+          "title": ".nexus/context/evolution.md v0.7.0 서브섹션 신설",
+          "context": "Issue #9 반영. 9 decisions summary, correctness release 성격 명시, v0.5.0 'multi-harness simultaneous 금지 암묵 전제' falsification 기록, pre-v1 정책 일관, cooling period 제외 명시.",
+          "approach": "(1) §v0.6.0 뒤에 §v0.7.0 추가. (2) 상단: 'Correctness release — agent-tracker.json namespace 격리 및 harness state convention 확립 (GH #16).' (3) 9 decisions summary bullet. (4) v0.5.0 falsification 기록 — 'v0.5.0의 multi-harness simultaneous 금지 암묵 전제가 field evidence로 무효화. co-run scenario가 ecosystem.md §Co-run scenarios로 first-class citizen이 되었다.' (5) pre-v1 minor bump 정책 일관 명시. (6) cooling period commitment 제외 명시(향후 flexibility 유지).",
+          "acceptance": "§v0.7.0 섹션 존재; 9 decisions summary; v0.5.0 falsification 문장; pre-v1 정책 일관; cooling period 제외 명시.",
+          "status": "completed",
+          "deps": [
+            11,
+            12
+          ],
+          "plan_issue": 9,
+          "owner": "writer",
+          "created_at": "2026-04-14T07:43:27.652Z"
+        },
+        {
+          "id": 14,
+          "title": "reviewer — rule + outputs-contract + ecosystem 3자 정합성 review",
+          "context": "Issue #1/#5/#7/#8의 atomic revision 조건 충족 확인. rule이 outputs-contract 섹션을 정확히 참조하는지, ecosystem §Co-run이 outputs-contract 섹션과 모순되지 않는지, co-run 개념이 rule의 허용 패턴과 일관되는지 검증.",
+          "approach": "(1) .nexus/rules/neutral-principles.md rule:harness-state-namespace 재작성본 read. (2) docs/nexus-outputs-contract.md §Shared filename convention + §agent-tracker 섹션 read. (3) .nexus/context/ecosystem.md §Co-run scenarios read. (4) 3 문서 간 cross-reference 정확성 — rule의 referred source가 outputs-contract 실제 섹션 이름과 일치, ecosystem의 Supervision glob 전제가 outputs-contract interop 조항과 일관. (5) 위반/허용 예시가 3 문서에서 일관. (6) gitignore MUST 조항과 co-run state-layer 보장이 모순 없는지.",
+          "acceptance": "rule → outputs-contract 참조 정확; outputs-contract → ecosystem Supervision 개념 일관; ecosystem → outputs-contract §Shared filename convention 참조; 예시 일관; 모순 0건; atomic revision 조건 충족 서면 결과.",
+          "status": "completed",
+          "deps": [
+            3,
+            4,
+            8
+          ],
+          "plan_issue": 7,
+          "owner": "reviewer",
+          "created_at": "2026-04-14T07:43:37.601Z"
+        },
+        {
+          "id": 15,
+          "title": "reviewer — state-overview + layout + consumer-guide + CONSUMING + conformance READMEs 일관성 review",
+          "context": "Issue #3/#4/#6/#7의 문서 세트(T5/T6/T7) 갱신이 outputs-contract §agent-tracker/§Shared filename convention과 일관되는지 검증.",
+          "approach": "(1) T5/T6/T7 산출물 read. (2) agent-tracker path 전역 일관성 확인. (3) agent_id description이 outputs-contract 및 schema와 동일 wording. (4) placeholder token 규약이 conformance/README + lifecycle/README에서 동일 설명. (5) §9 session_start 권고 한 줄 존재(legacy root best-effort delete). (6) layout tree에서 agent-tracker harness-id 하위 위치.",
+          "acceptance": "5 파일의 path 일관; agent_id description wording 일관; placeholder 규약 drift 0; session_start 권고 존재; layout tree 정확.",
+          "status": "completed",
+          "deps": [
+            5,
+            6,
+            7
+          ],
+          "plan_issue": 7,
+          "owner": "reviewer",
+          "created_at": "2026-04-14T07:43:44.548Z"
+        },
+        {
+          "id": 16,
+          "title": "reviewer — MIGRATIONS + CHANGELOG + evolution.md v0.7.0 정합성 review",
+          "context": "Issue #9의 release artifacts 3종이 서로 일관되는지 검증.",
+          "approach": "(1) MIGRATIONS/v0_6_to_v0_7.md 6 섹션 완성도 확인. (2) CHANGELOG.md v0.7.0 — nx-car marker 중첩 없음, Consumer Action Required existence, MIGRATIONS 링크 정확, affected consumers 3개, BREAKING subsection에 rule reframe 포함. (3) evolution.md v0.7.0 — 9 decisions summary + v0.5.0 falsification + pre-v1 정책 일관 + cooling 제외 명시. (4) 3 문서 decision summary 일관 확인(drift 없음). (5) semver pre-v1 정책 표기 일관.",
+          "acceptance": "MIGRATIONS 6 섹션; CHANGELOG nx-car/marker/링크/BREAKING 정확; evolution 9 decisions + falsification + cooling 제외; 3 문서 decision summary 일관; semver 정책 일관.",
+          "status": "completed",
+          "deps": [
+            11,
+            12,
+            13
+          ],
+          "plan_issue": 9,
+          "owner": "reviewer",
+          "created_at": "2026-04-14T07:43:50.688Z"
+        },
+        {
+          "id": 17,
+          "title": "architect (resume) — atomic revision 조건 최종 architecture review",
+          "context": "Architect(agentId abe02ae1e7fdabe40)가 plan 단계에서 경고한 'rule + outputs-contract + gitignore/session-scoped' atomic 조건 및 'fixture.schema.json placeholder convention' 지적이 구현에서 모두 충족되었는지 최종 review. resume으로 plan context 재활용.",
+          "approach": "(1) resume architect(abe02ae1e7fdabe40)로 SendMessage. (2) delta message — 'plan 단계에서 경고한 atomic 3자 갱신(rule + outputs-contract §Shared filename convention + gitignore/session-scoped MUST #5)과 fixture.schema.json placeholder 규약이 T3/T4/T2 산출물에 반영되었다. T14/T15/T16 reviewer 검증 결과 포함. 구현이 plan 단계 경고를 충족하는지 최종 판단 + 4 derived issue(agent_id description, gitignore list, fixture placeholder, co-run ecosystem)도 모두 resolved 되었는지 확인하라.' (3) architect 판정 서면 수령.",
+          "acceptance": "architect가 atomic 조건 충족 판정; 4 derived issue resolved 확인; 추가 risk·follow-up 있으면 기록.",
+          "risk": "persistent tier이므로 resume 가능. CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS 미활성 시 fresh spawn fallback — 그 경우 prompt에 plan 요지 재포함 필요.",
+          "status": "completed",
+          "deps": [
+            14,
+            15,
+            16
+          ],
+          "plan_issue": 7,
+          "owner": "architect",
+          "owner_agent_id": "abe02ae1e7fdabe40",
+          "owner_reuse_policy": "resume",
+          "created_at": "2026-04-14T07:44:03.727Z"
+        }
+      ]
     }
   ]
 }

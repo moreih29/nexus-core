@@ -98,6 +98,30 @@ GH #14/#15 해결. surveyed consumer 전원이 `runtime.schema.json`을 write-on
 
 pre-v1 정책에 따라 minor bump + nx-car:v0.6.0 마커로 처리.
 
+### v0.7.0 — Correctness release: agent-tracker namespace isolation + co-run first-class (2026-04-14)
+
+GH #16 해결. agent-tracker.json namespace 격리 및 harness state convention 확립. v0.5.0의 'multi-harness simultaneous 금지 암묵 전제'가 field evidence로 falsified되어, co-run scenario가 ecosystem.md §Co-run scenarios로 first-class citizen이 되었다.
+
+plan session #3 9 decisions (2026-04-14) 반영 내용:
+
+- #1: agent-tracker.json을 `.nexus/state/{harness-id}/agent-tracker.json`로 namespace 격리 (Option B)
+- #2: required 필드 축소 6 → 2 (`harness_id`, `started_at`), 나머지 4 필드 optional
+- #3: conformance placeholder token 규약 (`{STATE_ROOT}`, `{HARNESS_ID}`) — lifecycle fixture narrow scope (Option L2a)
+- #4: Migration 정책 nexus-core abstain + MIGRATIONS/consumer-guide recommendation 레이어링 (Option D)
+- #5: rule:harness-state-namespace intent reframe — 'silent schema divergence 방지' + outputs-contract §Shared filename convention이 referred source (Option B)
+- #6: agent_id description opaque harness-specific string, pattern minLength:1 유지 (Option A)
+- #7: docs 5 + conformance/ 4 + rule 1 + schema 1 + ecosystem 1 = 12 files atomic wide refactor (Option C + ecosystem 흡수)
+- #8: ecosystem.md §Co-run scenarios 신설 — flip과 orthogonal axis, state-layer 호환성만 보장 (Option A)
+- #9: v0.7.0 minor correctness release + framing 차별화, cooling period commitment 제외 (R1 변형)
+
+v0.5.0 §Consumer experience + harness-neutral refinements 서브섹션에서 암묵적 전제였던 'multi-harness simultaneous 금지'가 Issue #16의 live cross-contamination 증거로 falsified되었다. co-run scenario가 이제 .nexus/context/ecosystem.md §Co-run scenarios로 first-class citizen으로 문서화되었다. flip(시간 축 주력 하네스 전환)과 orthogonal한 공간 축 개념이다.
+
+v0.2.0(harness-agnostic 재설계) ~ v0.6.0(runtime.json 제거)이 design release였다면 v0.7.0은 correctness release다. live data loss(GH #16)를 해소하는 성격이며 design 확장 아닌 이슈 해결.
+
+v0.7.0 이후 추가 breaking change 배제 commitment는 제외한다. pre-v1 Phase 1 flexibility 유지를 위해 향후 필요 시 즉시 대응할 수 있는 여지를 남긴다.
+
+pre-v1 정책에 따라 major bump 대신 minor bump + nx-car:v0.7.0 마커로 처리. v0.2.0/v0.4.0/v0.5.0/v0.6.0과 동일 패턴.
+
 ---
 
 ## CHANGELOG Canonical 포맷

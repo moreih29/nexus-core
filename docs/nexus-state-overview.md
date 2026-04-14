@@ -91,7 +91,7 @@ The Nexus state layout is divided into two categories:
 
 ---
 
-### `.nexus/state/agent-tracker.json`
+### `.nexus/state/{harness-id}/agent-tracker.json`
 
 | Attribute | Value |
 |-----------|-------|
@@ -100,13 +100,17 @@ The Nexus state layout is divided into two categories:
 | Created by | Session start (harness hook) |
 | Deleted by | Session end (harness hook) |
 
-**Purpose.** Tracks agent instance activity during the session — which agents were spawned, their instance IDs, and what artifacts they touched. Used by the harness to evaluate `owner_reuse_policy` on subsequent `task_add` calls and to support agent resume.
+**Purpose.** Tracks agent instance activity during the session — which agents were spawned, their instance IDs, and what artifacts they touched. Used by the harness to evaluate `owner_reuse_policy` on subsequent `task_add` calls and to support agent resume. Each harness writes its own file under a harness-specific subdirectory, keeping records isolated across harness namespaces.
 
-**Creation trigger.** Initialized by the harness at session start.
+**Schema.** The file contains a JSON object. Required fields: `harness_id` (string, identifies the writing harness) and `started_at` (ISO 8601 timestamp of session start). The following fields are optional: `agent_id`, `tasks`, `artifacts`, and any harness-defined extension fields.
+
+The `agent_id` field, when present, is a harness-specific opaque agent instance identifier. Its format is defined by the writing harness (for example, a UUID, a composite string, or another harness-native scheme). Consumers of this file treat the value as opaque — they do not parse it or infer agent identity across harness namespaces.
+
+**Creation trigger.** Initialized by the harness at session start. The harness creates the `{harness-id}/` subdirectory if it does not already exist.
 
 **Deletion trigger.** Removed by the harness upon session teardown.
 
-**Tool access.** Managed exclusively by harness hooks. No Nexus MCP tool listed in this specification writes to this file; `task_add` reads the `owner_agent_id` field from tasks to inform the harness, but does not access `agent-tracker.json` directly.
+**Tool access.** Managed exclusively by harness hooks. No Nexus MCP tool listed in this specification writes to this file. When `task_add` records an `owner_agent_id` on a task, it stores the value as received from the harness without parsing or interpreting it — the value is passed through opaquely to the harness on subsequent reads.
 
 ---
 

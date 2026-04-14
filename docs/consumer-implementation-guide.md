@@ -159,11 +159,12 @@ Nexus state is split into two categories with different scopes, persistence, and
 ├── state/                    ← session-scoped (not git-tracked)
 │   ├── plan.json
 │   ├── tasks.json
-│   ├── agent-tracker.json
 │   ├── tool-log.jsonl
 │   ├── edit-tracker.json
 │   ├── reopen-tracker.json
-│   └── artifacts/
+│   ├── artifacts/
+│   └── {harness-id}/         ← harness namespace (see §Harness-local State Extension)
+│       └── agent-tracker.json
 ├── history.json              ← project-scoped (git-tracked, append-only)
 ├── memory/                   ← project-scoped (git-tracked)
 │   └── *.md
@@ -181,7 +182,7 @@ At session start, your harness must:
 1. Create `.nexus/` if it does not exist.
 2. Create `.nexus/state/` if it does not exist.
 3. Write `.nexus/.gitignore` with content `state/` if the file does not exist.
-4. Initialize `.nexus/state/agent-tracker.json` as an empty array `[]`.
+4. Create `.nexus/state/{harness-id}/` if it does not exist, then initialize `.nexus/state/{harness-id}/agent-tracker.json` as an empty array `[]`. (`{harness-id}` is the last segment of your npm package name; see [nexus-outputs-contract.md §Shared filename convention](./nexus-outputs-contract.md) for the namespace convention.)
 5. Check for stale state files from a prior crashed session. If `plan.json` or `tasks.json` exist without a running session, warn the user that a previous session may not have closed cleanly.
 
 ### Key state files
@@ -190,7 +191,7 @@ At session start, your harness must:
 |------|-------|------------|------------|------------|
 | `state/plan.json` | Session | No | `plan_start` tool | `task_close` tool |
 | `state/tasks.json` | Session | No | `task_add` tool (first call) | `task_close` tool |
-| `state/agent-tracker.json` | Session | No | session_start hook | session_end hook |
+| `state/{harness-id}/agent-tracker.json` | Session | No | session_start hook | session_end hook |
 | `state/tool-log.jsonl` | Session | No | post_tool_use hook | session_end hook |
 | `state/edit-tracker.json` | Session | No | post_tool_use hook (first edit) | task_close / session_end |
 | `history.json` | Project | Yes | `plan_start` or `task_close` (first archive) | Never |
@@ -523,7 +524,8 @@ Identify the equivalent events in your harness's plugin system and implement the
 **Expected consumer behavior:**
 - Create `.nexus/` and `.nexus/state/` directories if they do not exist.
 - Write `.nexus/.gitignore` with `state/` if it does not exist.
-- Initialize `.nexus/state/agent-tracker.json` as `[]`.
+- Create `.nexus/state/{harness-id}/` if it does not exist, then initialize `.nexus/state/{harness-id}/agent-tracker.json` as `[]`. `agent-tracker.json` is a shared-purpose session file whose path is namespaced per harness to prevent cross-harness collisions (see [nexus-outputs-contract.md §Shared filename convention](./nexus-outputs-contract.md)).
+- On v0.7.0+, harnesses SHOULD silently remove any legacy `.nexus/state/agent-tracker.json` (root) at session start. The file is session-scoped and legacy records are safely discarded.
 - Check for stale state from a prior crashed session: if `plan.json` or `tasks.json` exist, warn the user that these may be leftover from an unclean shutdown.
 - Load the knowledge index: list files in `.nexus/memory/`, `.nexus/context/`, and `.nexus/rules/` to build the reference index that will be injected into subagent spawns.
 
@@ -551,7 +553,7 @@ Identify the equivalent events in your harness's plugin system and implement the
 **When it fires:** Lead spawns a subagent to execute a task.
 
 **Expected consumer behavior:**
-- Record the new agent entry in `agent-tracker.json`: `{ harness_id, agent_name, agent_id, task_id, started_at }`.
+- Record the new agent entry in `.nexus/state/{harness-id}/agent-tracker.json`: `{ harness_id, agent_name, agent_id, task_id, started_at }`.
 - Inject the knowledge index into the subagent's initial context: the list of files in `.nexus/memory/`, `.nexus/context/`, and `.nexus/rules/` so the agent knows what project knowledge is available.
 - Apply capability restrictions: resolve `effective_capabilities` for this agent type and configure the subagent's tool access accordingly (see §6).
 - Apply the resume evaluation: check `owner_reuse_policy` on the task and the agent's `resume_tier` to determine whether to spawn fresh or resume a prior session (see §10).
@@ -564,7 +566,7 @@ Identify the equivalent events in your harness's plugin system and implement the
 **When it fires:** A subagent finishes its assigned work and returns control to Lead.
 
 **Expected consumer behavior:**
-- Update `agent-tracker.json`: set `status=completed`, record `stopped_at` timestamp.
+- Update `.nexus/state/{harness-id}/agent-tracker.json`: set `status=completed`, record `stopped_at` timestamp.
 - Compute `files_touched` from your tool-log or the subagent's tool usage record. Record which files were created or modified.
 - Update `edit-tracker.json` with the files touched by this agent. This data feeds the bounded-tier resume evaluation on subsequent spawns.
 - Check if the completed task has pending acceptance criteria that were not verified. If the task has `acceptance` defined and no `tester` or `reviewer` subagent has been scheduled, surface a reminder to Lead.
@@ -603,7 +605,7 @@ Read-only tools (query tools, status reads) are never blocked by capability gate
 **Expected consumer behavior:**
 - Check for pending tasks: if `tasks.json` exists and contains incomplete tasks (status `pending` or `in_progress`), warn the user that the session is ending with unfinished work and suggest calling `task_close` to archive before exiting.
 - Check for an active plan: if `plan.json` exists, warn that the plan session will be lost if not archived.
-- Delete `agent-tracker.json` (a session-scoped file that has no value beyond the session).
+- Delete `.nexus/state/{harness-id}/agent-tracker.json` (a session-scoped file that has no value beyond the session).
 - Optionally rotate or archive `tool-log.jsonl` if your harness supports log retention.
 - Do not delete `history.json`, `memory/`, `context/`, or `rules/` — these are project-scoped and must persist.
 
@@ -619,7 +621,7 @@ Read-only tools (query tools, status reads) are never blocked by capability gate
   - Plan status: if `plan.json` exists, re-inject the issue list with pending/decided status.
   - Task progress: if `tasks.json` exists, re-inject the task list with status and ready-task set.
   - Knowledge file index: re-inject the list of files in `.nexus/memory/`, `.nexus/context/`, `.nexus/rules/`.
-  - Active agent list: re-inject which subagents are currently tracked in `agent-tracker.json`.
+  - Active agent list: re-inject which subagents are currently tracked in `.nexus/state/{harness-id}/agent-tracker.json`.
 - Context compaction is a context loss event. The LLM cannot reconstruct session state from its compressed context alone. Your consumer must restore state from the state files on disk.
 - Read state files fresh from disk — do not rely on in-memory caches that may also have been cleared.
 
@@ -701,7 +703,7 @@ Before spawning an agent, evaluate whether to spawn fresh or resume a prior sess
 Before attempting to resume, verify that your harness supports the resume mechanism for the current context. If the mechanism is unavailable (the harness cannot reopen a prior session, or no session ID was recorded for this agent), fall back to a fresh spawn silently. Do not surface a resume failure as an error to the user.
 
 For `bounded` agents evaluating resume eligibility:
-- Check `agent-tracker.json` for the prior agent ID assigned to this task.
+- Check `.nexus/state/{harness-id}/agent-tracker.json` for the prior agent ID assigned to this task.
 - Check `edit-tracker.json` to determine if any other agent has modified the target files since the last session.
 - If any intervening edit is found, use a fresh spawn regardless of `owner_reuse_policy`.
 
@@ -803,7 +805,7 @@ Implement tag detection in your `user_message` hook. When `[plan]` is detected, 
 
 | Event | Minimum required behavior |
 |-------|--------------------------|
-| `session_start` | Create `.nexus/state/` directory; initialize `agent-tracker.json` as `[]` |
+| `session_start` | Create `.nexus/state/{harness-id}/` directory; initialize `agent-tracker.json` as `[]` |
 | `user_message` | Detect `[plan]` tag; load `skills/nx-plan/body.md`; inject into Lead's context |
 | `session_end` | Check for `tasks.json`; if present with incomplete tasks, warn the user |
 

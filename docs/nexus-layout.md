@@ -11,11 +11,14 @@ This document is the canonical reference for the `.nexus/` directory structure u
 ├── state/                    ← session/branch-scoped (ephemeral)
 │   ├── plan.json
 │   ├── tasks.json
-│   ├── agent-tracker.json
 │   ├── tool-log.jsonl
 │   ├── edit-tracker.json
 │   ├── reopen-tracker.json
-│   └── artifacts/
+│   ├── artifacts/
+│   ├── claude-nexus/         ← harness-namespaced directory (example)
+│   │   └── agent-tracker.json
+│   └── opencode-nexus/       ← harness-namespaced directory (example)
+│       └── agent-tracker.json
 ├── history.json              ← project-scoped (git-tracked, append-only)
 ├── memory/                   ← project-scoped (git-tracked)
 │   └── *.md
@@ -72,15 +75,15 @@ This document is the canonical reference for the `.nexus/` directory structure u
 
 ---
 
-#### `state/agent-tracker.json`
+#### `state/{harness-id}/agent-tracker.json`
 
-**Purpose.** Records which subagents have been spawned in the current session, their assigned tasks, and their resume-tier classification.
+**Purpose.** Records which subagents have been spawned in the current session, their assigned tasks, and their resume-tier classification. Each harness writes into its own subdirectory under `state/` (for example, `state/claude-nexus/` or `state/opencode-nexus/`), keeping agent-tracker records isolated across harness namespaces.
 
 **Scope.** Session-scoped.
 
 **Git tracking.** Ignored.
 
-**Lifecycle.** Created when the first subagent is spawned. Cleared at session end.
+**Lifecycle.** Created when the first subagent is spawned in the session. The harness creates the `{harness-id}/` subdirectory if it does not already exist. Cleared at session end.
 
 **Owner.** Harness agent-management layer.
 

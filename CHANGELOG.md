@@ -21,6 +21,56 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.7.0] - 2026-04-14 — Correctness fix: cross-harness state namespace isolation
+
+This release corrects specification errors that accumulated during the design-focused v0.2–v0.6 series. No new design concepts are introduced. All changes narrow, clarify, or make consistent existing contracts — consumers whose implementations already respected the intent of the namespace isolation principle are unaffected at runtime, but schema and path changes require explicit migration.
+
+### Added
+
+- `docs/nexus-outputs-contract.md` §Shared filename convention: normative section enumerating every state file whose name is shared across harnesses, with path and ownership column.
+- `.nexus/context/ecosystem.md` §Co-run scenarios: new section documenting multi-harness co-run state isolation expectations.
+- `MIGRATIONS/v0_6_to_v0_7.md`: migration guide for this release (path update, schema required assertion, placeholder substitution).
+- `.nexus/memory/open-questions.md` item (f): records the open question surfaced during this correctness pass.
+
+### Changed
+
+- `conformance/state-schemas/agent-tracker.schema.json`: `required` array reduced from 6 fields to 2 (`harness_id`, `started_at`); remaining fields remain defined but are not required by the shared schema.
+- `conformance/state-schemas/agent-tracker.schema.json` `agent_id` description: reframed as opaque — cross-harness parsing of the `agent_id` value is explicitly forbidden.
+- `conformance/schema/fixture.schema.json` + `conformance/lifecycle/agent-spawn.json`, `agent-complete.json`, `agent-resume.json`: placeholder token convention introduced (`{STATE_ROOT}`, `{HARNESS_ID}`) for lifecycle fixture path values; path strings now use tokens rather than literal paths.
+- `.nexus/rules/neutral-principles.md` `rule:harness-state-namespace`: scope reframed — the rule's isolation prohibition is now explicitly scoped to exempt files declared in the outputs-contract §Shared filename convention, preventing the rule from conflicting with intentionally shared common-purpose files.
+- `docs/nexus-outputs-contract.md`: `agent-tracker.json` path updated to the namespace-isolated form; §Shared filename convention section added (see Added).
+- `docs/nexus-state-overview.md`, `docs/nexus-layout.md`, `docs/consumer-implementation-guide.md`: path references and descriptions updated to match the corrected `agent-tracker.json` location.
+- `conformance/README.md` + `conformance/lifecycle/README.md`: placeholder token convention documented; fixture authoring guidance updated.
+
+### BREAKING CHANGES
+<!-- nx-car:v0.7.0:start -->
+**Tracking issue**: [GH #16](https://github.com/moreih29/nexus-core/issues/16)
+
+**Affected consumers**: opencode-nexus (Phase 1 active), claude-nexus (Phase 2 pending), nexus-code (Phase 2 pending)
+
+**Consumer Action Required**:
+
+- **changed**: `agent-tracker.json` path namespace isolation — the canonical path has moved to the harness-namespaced location. Consumers writing or reading `agent-tracker.json` at the previous path must update to the new path as specified in `docs/nexus-outputs-contract.md`.
+  - **impact**: any harness writing `agent-tracker.json` to the old path will create a file that conformance fixtures no longer validate.
+  - **action**: update `AGENT_TRACKER_FILE` path constant in your harness to the value declared in `docs/nexus-outputs-contract.md` §Shared filename convention.
+
+- **changed**: `agent-tracker.schema.json` required fields reduced 6 → 2 (`harness_id`, `started_at`) — harness implementations that validated entry completeness against all 6 previously-required fields must relax their assertion to the 2 fields now required by the shared schema. Additional required fields may still be enforced by a harness-local extension schema.
+  - **impact**: consumers enforcing the old 6-field required set will over-validate against the shared schema contract.
+  - **action**: assert only `harness_id` and `started_at` as required at the shared-schema layer; add a harness-local extension schema if your harness requires additional fields.
+
+- **changed**: `agent_id` opaque semantic — the `agent_id` field in `agent-tracker.json` entries is now explicitly opaque. Cross-harness parsing of the value (e.g., splitting on `:` to extract harness name) is forbidden. Treat the value as an opaque identifier for equality comparison only.
+
+- **added**: fixture state file path placeholder token convention (`{STATE_ROOT}`, `{HARNESS_ID}`) — lifecycle fixtures now use placeholder tokens in `state_files` paths instead of literal strings. Conformance runners must implement substitution of these tokens before evaluating fixture assertions.
+
+- **rule**: `rule:harness-state-namespace` scope reframed — the rule now explicitly exempts files listed in `docs/nexus-outputs-contract.md` §Shared filename convention. Consumers whose rule-compliance logic hard-coded the old scope must re-verify against the updated rule text in `.nexus/rules/neutral-principles.md`.
+
+- **impact**: opencode-nexus is in Phase 1 (active integration) and must apply all actions before next conformance gate. claude-nexus and nexus-code are in Phase 2 (pending) and should apply actions before Phase 2 activation.
+
+- **action**: (1) update `AGENT_TRACKER_FILE` path, (2) assert only 2 required fields at shared-schema layer, (3) treat `agent_id` as opaque, (4) implement `{STATE_ROOT}` / `{HARNESS_ID}` placeholder substitution in your conformance runner, (5) re-verify `rule:harness-state-namespace` compliance against updated rule text.
+
+- **migration**: See [MIGRATIONS/v0_6_to_v0_7.md](./MIGRATIONS/v0_6_to_v0_7.md)
+<!-- nx-car:v0.7.0:end -->
+
 ## [0.6.0] - 2026-04-14 — Lifecycle simplification (runtime.json removed)
 
 ### Removed
@@ -243,7 +293,9 @@ If your harness stored runtime-like configuration in `runtime.json`, move it to 
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/moreih29/nexus-core/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/moreih29/nexus-core/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/moreih29/nexus-core/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/moreih29/nexus-core/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/moreih29/nexus-core/compare/v0.2.0...v0.3.0
