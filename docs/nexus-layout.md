@@ -12,13 +12,15 @@ This document is the canonical reference for the `.nexus/` directory structure u
 │   ├── plan.json
 │   ├── tasks.json
 │   ├── tool-log.jsonl
-│   ├── edit-tracker.json
-│   ├── reopen-tracker.json
 │   ├── artifacts/
 │   ├── claude-nexus/         ← harness-namespaced directory (example)
-│   │   └── agent-tracker.json
+│   │   ├── agent-tracker.json
+│   │   ├── edit-tracker.json
+│   │   └── reopen-tracker.json
 │   └── opencode-nexus/       ← harness-namespaced directory (example)
-│       └── agent-tracker.json
+│       ├── agent-tracker.json
+│       ├── edit-tracker.json
+│       └── reopen-tracker.json
 ├── history.json              ← project-scoped (git-tracked, append-only)
 ├── memory/                   ← project-scoped (git-tracked)
 │   └── *.md
@@ -103,7 +105,7 @@ This document is the canonical reference for the `.nexus/` directory structure u
 
 ---
 
-#### `state/edit-tracker.json`
+#### `state/{harness-id}/edit-tracker.json`
 
 **Purpose.** Tracks which files have been edited in the current session. Used by the bounded resume tier to detect intervening edits before allowing agent reuse.
 
@@ -111,13 +113,13 @@ This document is the canonical reference for the `.nexus/` directory structure u
 
 **Git tracking.** Ignored.
 
-**Lifecycle.** Created on first file edit. Cleared at session end.
+**Lifecycle.** Created on first file edit. Cleared at session end by the consumer harness session hook.
 
-**Owner.** Harness file-edit hooks.
+**Owner.** Consumer harness session hook. Not managed by any nexus-core MCP tool.
 
 ---
 
-#### `state/reopen-tracker.json`
+#### `state/{harness-id}/reopen-tracker.json`
 
 **Purpose.** Records tasks or plan issues that have been reopened within the current cycle, to prevent infinite reopen loops.
 
@@ -125,9 +127,9 @@ This document is the canonical reference for the `.nexus/` directory structure u
 
 **Git tracking.** Ignored.
 
-**Lifecycle.** Created on first reopen event. Cleared at cycle end.
+**Lifecycle.** Created on first reopen event. Cleared at cycle end by the consumer harness session hook.
 
-**Owner.** Task and plan lifecycle tools.
+**Owner.** Consumer harness session hook. Not managed by any nexus-core MCP tool.
 
 ---
 

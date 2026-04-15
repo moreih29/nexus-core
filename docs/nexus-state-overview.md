@@ -102,7 +102,7 @@ The Nexus state layout is divided into two categories:
 
 **Purpose.** Tracks agent instance activity during the session — which agents were spawned, their instance IDs, and what artifacts they touched. Used by the harness to evaluate `owner_reuse_policy` on subsequent `task_add` calls and to support agent resume. Each harness writes its own file under a harness-specific subdirectory, keeping records isolated across harness namespaces.
 
-**Schema.** The file contains a JSON object. Required fields: `harness_id` (string, identifies the writing harness) and `started_at` (ISO 8601 timestamp of session start). The following fields are optional: `agent_id`, `tasks`, `artifacts`, and any harness-defined extension fields.
+**Schema.** The file contains a JSON array. Each entry is an object representing one spawned agent instance. Required fields per entry: `harness_id` (string, identifies the writing harness) and `started_at` (ISO 8601 timestamp when the agent instance was first started). The following fields are optional per entry: `agent_name`, `agent_id`, `last_resumed_at`, `resume_count`, `status`, `stopped_at`, `last_message`, and `files_touched`. Harness-defined extension fields are not permitted — `additionalProperties` is false per the schema.
 
 The `agent_id` field, when present, is a harness-specific opaque agent instance identifier. Its format is defined by the writing harness (for example, a UUID, a composite string, or another harness-native scheme). Consumers of this file treat the value as opaque — they do not parse it or infer agent identity across harness namespaces.
 

@@ -31,6 +31,7 @@ This immutability guarantees that consumer LLM agents can reference any historic
 
 | Version Jump | File | Summary |
 |---|---|---|
+| v0.8.x → v0.9.0 | [v0_8_to_v0_9.md](./v0_8_to_v0_9.md) | `task_close` scope reduced to nexus-core owned state only: `memoryHint.hadLoopDetection` removed from return shape; `edit-tracker.json`/`reopen-tracker.json` delete side effects removed; both tracker files removed from nexus-core contract; `rule:neutral-tool-side-effect` 신설 |
 | v0.6.x → v0.7.0 | [v0_6_to_v0_7.md](./v0_6_to_v0_7.md) | `agent-tracker.json` path namespace-isolated to `{harness-id}/`; schema `required` fields 6 → 2 (`harness_id`, `started_at`); `agent_id` reframed as opaque; fixture placeholder token convention (`{STATE_ROOT}`, `{HARNESS_ID}`); `rule:harness-state-namespace` intent reframe |
 | v0.5.x → v0.6.0 | [v0_5_to_v0_6.md](./v0_5_to_v0_6.md) | `runtime.schema.json` removed (no consumer readers); `session_start`/`session_end` lifecycle fixtures dropped; `event.type` enum reduced to `agent_*` |
 | v0.4.x → v0.5.0 | [v0_4_to_v0_5.md](./v0_4_to_v0_5.md) | `plugin_version` → `harness_id` + `harness_version` on `runtime.schema.json`; `agent_type` decomposed; `plan_decide` param renamed `summary` → `decision` |

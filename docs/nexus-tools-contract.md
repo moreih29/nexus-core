@@ -326,13 +326,14 @@ None.
 | `total_cycles` | `number` | Total number of cycles in `history.json` after closure |
 | `memoryHint.taskCount` | `number` | Number of tasks in the closed cycle |
 | `memoryHint.decisionCount` | `number` | Number of decided issues in the closed cycle |
-| `memoryHint.hadLoopDetection` | `boolean` | `true` if the edit tracker recorded three or more edits to any single file during the cycle |
 | `memoryHint.cycleTopics` | `string[]` | Non-empty strings from `plan.topic` and `tasks.goal` |
 
 ### Side Effects
 
 - Appends a cycle record to `.nexus/history.json` (creating the file if absent). The record contains `completed_at`, `branch`, `plan` (full `PlanFile` or `null`), and `tasks` (full `Task[]`).
-- Deletes the following session-scoped files if they exist: `plan.json`, `tasks.json`, `edit-tracker.json`, `reopen-tracker.json` (all within `.nexus/state/`).
+- Deletes the following session-scoped files if they exist: `plan.json`, `tasks.json` (all within `.nexus/state/`).
+
+Harness-local tracker files (`edit-tracker.json`, `reopen-tracker.json`, and any other files under `.nexus/state/{harness-id}/`) are not managed by `task_close`. Their lifecycle is the responsibility of consumer harness session hooks.
 
 ### Error Conditions
 
