@@ -160,8 +160,6 @@ Nexus state is split into two categories with different scopes, persistence, and
 │   ├── plan.json
 │   ├── tasks.json
 │   ├── tool-log.jsonl
-│   ├── edit-tracker.json
-│   ├── reopen-tracker.json
 │   ├── artifacts/
 │   └── {harness-id}/         ← harness namespace (see §Harness-local State Extension)
 │       └── agent-tracker.json
@@ -193,7 +191,6 @@ At session start, your harness must:
 | `state/tasks.json` | Session | No | `task_add` tool (first call) | `task_close` tool |
 | `state/{harness-id}/agent-tracker.json` | Session | No | session_start hook | session_end hook |
 | `state/tool-log.jsonl` | Session | No | post_tool_use hook | session_end hook |
-| `state/edit-tracker.json` | Session | No | post_tool_use hook (first edit) | task_close / session_end |
 | `history.json` | Project | Yes | `plan_start` or `task_close` (first archive) | Never |
 
 ### Schema validation
@@ -235,7 +232,7 @@ For every tool, implement exactly the parameter schema, return shape, and side e
 Specific requirements to enforce:
 
 - `plan_start`: when a prior `plan.json` exists, archive it to `history.json` before creating the new session. Failure to archive on replace will cause data loss.
-- `task_close`: delete `plan.json`, `tasks.json`, `edit-tracker.json`, and `reopen-tracker.json` after archiving. Leaving these files causes stale state on next session.
+- `task_close`: delete `plan.json` and `tasks.json` after archiving. Leaving these files causes stale state on next session. Files such as `edit-tracker.json` and `reopen-tracker.json` are harness-local concerns and are not managed by `task_close`; delete them in your session_end hook if your harness maintains them.
 - `artifact_write`: create `.nexus/state/artifacts/` on demand if it does not exist. Do not require the directory to pre-exist.
 - `context`: return `{ active: false }` (for plan_status) or `{ exists: false }` (for task_list) when the relevant state file is absent. Do not return an error.
 
@@ -567,8 +564,8 @@ Identify the equivalent events in your harness's plugin system and implement the
 
 **Expected consumer behavior:**
 - Update `.nexus/state/{harness-id}/agent-tracker.json`: set `status=completed`, record `stopped_at` timestamp.
-- Compute `files_touched` from your tool-log or the subagent's tool usage record. Record which files were created or modified.
-- Update `edit-tracker.json` with the files touched by this agent. This data feeds the bounded-tier resume evaluation on subsequent spawns.
+- Compute `files_touched` from your tool-log or the subagent's tool usage record. Record which files were created or modified in the `files_touched` array of the agent's `agent-tracker.json` entry. This field is the authoritative source for bounded-tier resume evaluation.
+- (Optional, harness-local) If your harness maintains a separate `edit-tracker.json` for cross-session file-touch history, update it here. This is not a nexus-core requirement; it is a harness-local optimization.
 - Check if the completed task has pending acceptance criteria that were not verified. If the task has `acceptance` defined and no `tester` or `reviewer` subagent has been scheduled, surface a reminder to Lead.
 - Update the task status in `tasks.json` via the `task_update` tool: set to `completed`.
 
@@ -593,7 +590,7 @@ Read-only tools (query tools, status reads) are never blocked by capability gate
 
 **Expected consumer behavior:**
 - Append a log entry to `.nexus/state/tool-log.jsonl`: timestamp, agent_id, tool name, file path (if a file was touched), result status.
-- If the tool was a file-editing tool, update `edit-tracker.json`: record the file path and the agent_id that modified it. This is the data source for bounded-tier resume evaluation.
+- (Optional, harness-local) If your harness maintains `edit-tracker.json`, record the file path and agent_id here. This is a harness-local optimization and is not required by nexus-core. The `files_touched` array in `agent-tracker.json` is the nexus-core-defined record of which files an agent touched.
 - If the tool result indicates an error, record the error in the log for diagnostic purposes. Do not suppress error results.
 
 ---
@@ -704,8 +701,8 @@ Before attempting to resume, verify that your harness supports the resume mechan
 
 For `bounded` agents evaluating resume eligibility:
 - Check `.nexus/state/{harness-id}/agent-tracker.json` for the prior agent ID assigned to this task.
-- Check `edit-tracker.json` to determine if any other agent has modified the target files since the last session.
-- If any intervening edit is found, use a fresh spawn regardless of `owner_reuse_policy`.
+- Scan the `files_touched` arrays of all other completed agents in `agent-tracker.json`. If any other agent has touched the same target files since the last session, treat that as an intervening edit and use a fresh spawn regardless of `owner_reuse_policy`. The `files_touched` field is defined in `state-schemas/agent-tracker.schema.json` and is the nexus-core-defined source for this check.
+- If your harness additionally maintains `edit-tracker.json` for finer-grained cross-session tracking, you may consult it as a supplemental heuristic, but it is not required by nexus-core.
 
 Full resume tier definitions are in [behavioral-contracts.md §3](./behavioral-contracts.md).
 
@@ -807,7 +804,7 @@ Implement tag detection in your `user_message` hook. When `[plan]` is detected, 
 |-------|--------------------------|
 | `session_start` | Create `.nexus/state/{harness-id}/` directory; initialize `agent-tracker.json` as `[]` |
 | `user_message` | Detect `[plan]` tag; load `skills/nx-plan/body.md`; inject into Lead's context |
-| `session_end` | Check for `tasks.json`; if present with incomplete tasks, warn the user |
+| `session_end` | Check for `tasks.json`; if present with incomplete tasks, warn the user. If the harness maintains local tracker files (e.g. `edit-tracker.json`, `reopen-tracker.json`), delete them here — see the `session_end` subsection in §9 for full details. |
 
 ### State files (3 minimum)
 

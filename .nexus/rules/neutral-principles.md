@@ -256,13 +256,32 @@ v0.8.0 신규 추가: `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`, `TaskSt
 - `.nexus/state/opencode-nexus/permission-log.json` ✓
 - `.nexus/state/claude-nexus/agent-tracker.json` ✓ (shared-purpose file, `docs/nexus-outputs-contract.md §Shared filename convention`에 contract 명시)
 
-**예외**:
-
-- v0.3.x 이하에 루트 경로로 등록된 legacy 2종(`edit-tracker.json`, `reopen-tracker.json`)은 `task_close` tool 계약에 명시되어 backward-compat으로 유지. 신규 파일은 이 예외에 편승하지 않는다.
+**예외**: 없음. (v0.9.0에서 legacy `edit-tracker.json` / `reopen-tracker.json` carve-out 제거 — 두 파일은 harness-local concern이며 `task_close` tool 계약 대상이 아니다. 각 consumer harness가 자기 `session_end` 훅에서 관리한다.)
 
 **위반 시 동작**: Lead는 즉시 작업을 중단하고 사용자에게 확인을 요청한다.
 
 근거: `.nexus/context/boundaries.md` (포함/제외 범위 원칙), `docs/nexus-outputs-contract.md §Shared filename convention`, `docs/nexus-outputs-contract.md §Harness-local State Extension` 참조.
+
+---
+
+### rule:neutral-tool-side-effect — MCP tool 계약은 nexus-core 소유 schema에만 side effect 발생
+
+**금지 대상**: nexus-core MCP tool contract (`docs/nexus-tools-contract.md` 정의)에서 nexus-core가 소유하지 않는 schema를 대상으로 하는 side effect(파일 delete, write, mutate) 또는 required return field 명시.
+
+nexus-core가 소유하는 schema는 `conformance/state-schemas/*.json`에 등록된 파일(`plan.json`, `tasks.json`, `history.json`, `agent-tracker.json`)과 그 content뿐이다. 하네스 독립 파일(`edit-tracker.json`, `reopen-tracker.json`, `tool-log.jsonl`, `{harness-id}/*.json` 등)은 nexus-core 소유 schema가 아니다.
+
+**위반 예시**:
+- `task_close` 계약에 "Deletes `edit-tracker.json` and `reopen-tracker.json`" side effect 명시
+- `task_close` 반환값에 `memoryHint.hadLoopDetection` 같은 하네스-specific aggregation 필드 명시
+- nexus-core MCP tool이 harness-local 파일에 직접 write / read / delete 수행
+
+**허용**: 하네스 독립 파일의 관리는 consumer harness가 자기 session hook(`session_start`, `session_end`, `subagent_complete` 등)에서 전적으로 책임진다. nexus-core tool은 이 파일들의 존재나 내용에 의존하지 않는다.
+
+**예외**: 없음.
+
+**위반 시 동작**: Lead는 즉시 작업을 중단하고 사용자에게 확인을 요청한다.
+
+근거: `.nexus/context/boundaries.md` 거절 2(runtime 코드 포함 금지), 거절 6(Supervision 집행 로직 포함 금지). Plan session #5 Issue #18 결정 (v0.9.0, 2026-04-15).
 
 ---
 

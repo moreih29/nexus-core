@@ -1,4 +1,4 @@
-> 이 문서는 plan session #1(2026-04-10) 기반으로 시작, plan session #2(2026-04-11)의 구현 결정이 추가 반영되어 있다, plan session #3(2026-04-12)의 v0.2.0 harness-agnostic 재설계 결정이 추가 반영되어 있다, plan session #4(2026-04-13)의 conformance full-coverage 결정이 추가 반영되어 있다, plan session #5(2026-04-14)의 invocation abstraction 결정(Option A + Spec γ)이 추가 반영되어 있다. 8 issues 결정 세부는 `.nexus/history.json` 참조. 원본 논의: `.nexus/memory/` 참조.
+> 이 문서는 plan session #1(2026-04-10) 기반으로 시작, plan session #2(2026-04-11)의 구현 결정이 추가 반영되어 있다, plan session #3(2026-04-12)의 v0.2.0 harness-agnostic 재설계 결정이 추가 반영되어 있다, plan session #4(2026-04-13)의 conformance full-coverage 결정이 추가 반영되어 있다, plan session #5(2026-04-14)의 invocation abstraction 결정(Option A + Spec γ)이 추가 반영되어 있다, plan session #5(2026-04-15)의 agent-tracker docs drift 수정(GH #17) 및 task_close scope 축소(GH #18) 결정이 추가 반영되어 있다. 10 issues 결정 세부는 `.nexus/history.json` 참조. 원본 논의: `.nexus/memory/` 참조.
 
 # 경계와 vocabulary
 
@@ -85,7 +85,7 @@ Runtime: Bun (최신 stable). sibling과 일관성. prompt-only 정체성과 무
 
 ---
 
-## 5개 Issue 결정 요지
+## 7개 Issue 결정 요지
 
 ### Issue #1 — Authoring layer 정체성, 집행 semantics 없음
 
@@ -129,6 +129,22 @@ capabilities 설계 주의: plan session #2 Issue #3에서 canonical postdoc의 
 3. **CI gate** — validator exit 0이 릴리스 조건. fixture 추가·수정 시 coverage 보존 검증.
 
 이 결정으로 conformance/tools/*.json 11/11 커버 완성, conformance/lifecycle/ 신설(5 event-based fixture), docs/nexus-outputs-contract.md 신설이 함께 실행되었다(v0.4.0).
+
+### plan session #5 결정 요지 (2026-04-15) — GH #17 agent-tracker docs drift 수정, GH #18 task_close scope 축소
+
+**결정 1 (GH #17 — Option B 채택)**: agent-tracker.json 문서 drift를 array-of-entries 모델로 통일한다. `conformance/state-schemas/agent-tracker.schema.json`을 canonical ground truth로 확립하고, `additionalProperties: false` strict 검증을 적용한다. 변경 성격은 patch-grade clarification으로, consumer breaking change는 발생하지 않는다. 영향 파일: docs/nexus-outputs-contract.md, docs/nexus-layout.md, docs/nexus-tools-contract.md, docs/consumer-implementation-guide.md의 agent-tracker 서술 통일.
+
+**결정 2 (GH #18 — Option 3 채택)**: task_close의 scope를 축소하여 Authoring layer 정체성을 회복한다. 구체 변경 내용:
+
+- `task_close` 반환값에서 `memoryHint.hadLoopDetection` 필드 제거
+- `task_close` side effect에서 `edit-tracker.json`, `reopen-tracker.json` delete 제거
+- 두 tracker 파일을 nexus-core 계약에서 완전 제거 — harness-local concern으로 격상
+- `docs/nexus-outputs-contract.md` legacy carve-out(v0.9.0 이전 tracker 계약) 삭제
+- `task_close`는 nexus-core 소유 파일(`plan.json`, `tasks.json`, `history.json`)만 관리
+
+이 변경은 nexus-core의 거절 2(runtime 코드 포함 금지)와 거절 6(Supervision 집행 로직 포함 금지) 원칙을 실행 수준에서 회복한다. 거절 범위가 확장된 것이 아니라, 원칙 선언 이후 실행이 뒤늦게 따라잡은 것이다. task_close에 포함되어 있던 harness-local 파일 관리 side effect는 처음부터 nexus-core 범위 밖이었다. v0.9.0 major bump.
+
+**신설 규칙 (rule:neutral-tool-side-effect)**: nexus-core MCP tool contract는 nexus-core가 소유한 schema(`plan.json`, `tasks.json`, `history.json`, `agent-tracker.json`)에만 side effect를 가질 수 있다. harness-local 파일(`edit-tracker.json`, `reopen-tracker.json`, `tool-log.jsonl` 등)은 consumer harness의 session hook이 관리한다. 규칙 상세는 `.nexus/rules/neutral-principles.md §rule:neutral-tool-side-effect` 참조.
 
 ---
 

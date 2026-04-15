@@ -21,6 +21,48 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.9.0] - Unreleased (planned 2026-04-15) — task_close scope reduction + rule:neutral-tool-side-effect
+
+This release narrows `task_close` to the nexus-core owned state files only, removes a harness-specific return field, and formalizes the boundary as a new enforceable rule. A companion patch (Issue #17) corrects the `agent-tracker.json` array-of-entries narrative drift without breaking any consumer contract.
+
+### BREAKING CHANGES
+<!-- nx-car:v0.9.0:start -->
+- **Impact**: claude-nexus, opencode-nexus — `task_close` return shape no longer includes `memoryHint.hadLoopDetection`. Consumer code that reads this field will receive `undefined`. `task_close` no longer deletes `edit-tracker.json` or `reopen-tracker.json`; consumers that depended on this side effect must move tracker cleanup to their `session_end` hook.
+- **Action required (claude-nexus)**:
+  1. `@moreih29/nexus-core` devDependency를 `^0.9.0`으로 업데이트.
+  2. `result.memoryHint.hadLoopDetection` 참조 코드 제거.
+  3. `session_end` hook에 `edit-tracker.json` / `reopen-tracker.json` 정리 로직 추가. 권장 경로: `.nexus/state/claude-nexus/edit-tracker.json`, `.nexus/state/claude-nexus/reopen-tracker.json`. 파일 존재 여부 확인 후 삭제.
+  4. 내부 문서에서 두 tracker를 harness-local로 재분류.
+- **Action required (opencode-nexus)**:
+  1. `@moreih29/nexus-core` devDependency를 `^0.9.0`으로 업데이트.
+  2. `result.memoryHint.hadLoopDetection` 참조 코드 제거. `edit-tracker` 미구현이므로 추가 조치 없음.
+- **Migration guide**: [MIGRATIONS/v0_8_to_v0_9.md](./MIGRATIONS/v0_8_to_v0_9.md) (Before/After 반환값 예시 + consumer action checklist + 근거 포함).
+- **Rationale (semver)**: pre-v1 minor + nx-car marker — v0.2.0/v0.4.0/v0.5.0/v0.6.0/v0.7.0/v0.8.0 선례 일관. `task_close` 반환 shape 축소 + side effect 범위 축소는 consumer 측 코드 변경을 요구하는 breaking change.
+<!-- nx-car:v0.9.0:end -->
+
+### Changed
+
+- `docs/nexus-tools-contract.md` §task_close: 반환 shape에서 `memoryHint.hadLoopDetection` 제거; side effect에서 `edit-tracker.json`·`reopen-tracker.json` delete 제거; harness-local tracker는 consumer session hook 책임임을 명기.
+- `docs/nexus-outputs-contract.md`: legacy carve-out 섹션 삭제; `edit-tracker.json`·`reopen-tracker.json`을 harness-local state로 재분류. `task_close` 삭제 트리거 서술을 `plan.json`·`tasks.json`만으로 축소.
+- `docs/nexus-layout.md`: `edit-tracker.json`·`reopen-tracker.json`을 harness-local namespace(`{harness-id}/`) 아래로 이동.
+- `docs/consumer-implementation-guide.md`: `edit-tracker`를 optional harness-local 파일로 기술; 관리 책임이 consumer session hook에 있음을 명기.
+- `.nexus/rules/neutral-principles.md`: `rule:neutral-tool-side-effect` 신설 — nexus-core MCP tool contract는 `conformance/state-schemas/*.json` 등록 파일(`plan.json`, `tasks.json`, `history.json`, `agent-tracker.json`)에만 side effect 선언 가능.
+
+### Fixed / Clarified
+
+- `docs/nexus-state-overview.md` §agent-tracker: 서술을 단일 객체에서 array-of-entries로 통일 (Issue #17 patch). Consumer implementation에서 이미 array를 사용하고 있었으나 nexus-core narrative가 단일 객체 서술을 유지하던 drift 수정.
+
+### Removed
+
+- `task_close` 반환값 `memoryHint.hadLoopDetection` 필드 — claude-nexus 특화 loop detection 집계값. harness-neutral tool contract에 포함될 수 없는 harness-specific 필드.
+- `task_close` side effect에서 `edit-tracker.json`·`reopen-tracker.json` delete — nexus-core가 소유하지 않는 schema 파일에 대한 side effect. `rule:neutral-tool-side-effect` 위반.
+- `docs/nexus-outputs-contract.md` legacy carve-out 섹션 — harness-local 파일의 nexus-core 계약 포함을 허용하던 예외 조항.
+
+### Related Issues
+
+- [GH #17](https://github.com/moreih29/nexus-core/issues/17) — agent-tracker docs drift 수정 (patch, no breaking change)
+- [GH #18](https://github.com/moreih29/nexus-core/issues/18) — task_close scope 축소 (Plan session #5, 2026-04-15)
+
 ## [0.8.0] - 2026-04-15 — Invocation vocabulary + Spec γ macro rewrite + G6 lint hardening
 
 This release introduces `vocabulary/invocations.yml` as the 5th canonical vocabulary, rewrites 13 harness-specific tool call sites in `skills/*/body.md` to Spec γ macro tokens, and hardens G6 lint to enforce the macro/namespace contract. All changes are additive to the vocabulary layer; the breaking surface is the prompt drift in `skills/*/body.md` — consumers that expand macro tokens at build time must integrate a macro expander.
