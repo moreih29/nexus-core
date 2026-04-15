@@ -21,7 +21,7 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
-## [0.9.0] - Unreleased (planned 2026-04-15) — task_close scope reduction + rule:neutral-tool-side-effect
+## [0.9.0] - 2026-04-15 — task_close scope reduction + rule:neutral-tool-side-effect
 
 This release narrows `task_close` to the nexus-core owned state files only, removes a harness-specific return field, and formalizes the boundary as a new enforceable rule. A companion patch (Issue #17) corrects the `agent-tracker.json` array-of-entries narrative drift without breaking any consumer contract.
 
