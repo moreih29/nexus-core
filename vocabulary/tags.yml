@@ -36,12 +36,21 @@ tags:
     type: inline_action
     handler: memory_store
     description: "Stores a lesson or reference to .nexus/memory/"
+    prose_guidance: >
+      저장 admission 기준 — 코드/웹에서 다시 얻을 수 없는 정보만 저장한다.
+      memory 파일의 naming, category, lifecycle 운영 정책은
+      vocabulary/memory_policy.yml과 docs/memory-lifecycle-contract.md를
+      canonical source로 참조한다.
 
   - id: m-gc
     trigger: "[m:gc]"
     type: inline_action
     handler: memory_gc
     description: "Garbage-collects .nexus/memory/ by merging or removing stale entries"
+    prose_guidance: >
+      gc 트리거 조건 평가, merge 판단, forgetting policy 집행은
+      vocabulary/memory_policy.yml에 정의된 원칙을 따르고
+      구체 임계값은 consumer-local 설정으로 결정한다.
 
   - id: rule
     trigger: "[rule]"

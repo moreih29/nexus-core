@@ -81,12 +81,30 @@ interface InvocationEntry {
   fallback_behavior: string;
 }
 
+interface TaskExceptionEntry {
+  id: string;
+  description: string;
+  applies_when: string;
+  treatment: string;
+  rationale: string;
+}
+
+interface MemoryPolicy {
+  categories: unknown[];
+  naming: unknown;
+  access_tracking: unknown;
+  forgetting: unknown;
+  merge: unknown;
+}
+
 interface Vocab {
   capabilities: CapabilityEntry[];
   categories: SimpleEntry[];
   resume_tiers: SimpleEntry[];
   tags: TagEntry[];
   invocations: InvocationEntry[];
+  task_exceptions: TaskExceptionEntry[];
+  memory_policy: MemoryPolicy;
 }
 
 interface ManifestAgent extends AgentMeta {
@@ -116,6 +134,8 @@ interface Manifest {
     resume_tiers: SimpleEntry[];
     tags: TagEntry[];
     invocations: ManifestInvocationEntry[];
+    task_exceptions: TaskExceptionEntry[];
+    memory_policy: MemoryPolicy;
   };
 }
 
@@ -129,6 +149,8 @@ interface LoadedSchemas {
   skillValidator: ValidateFunction;
   vocabValidator: ValidateFunction;
   manifestValidator: ValidateFunction;
+  taskExceptionValidator: ValidateFunction;
+  memoryPolicyValidator: ValidateFunction;
 }
 
 let cachedSchemas: LoadedSchemas | null = null;
@@ -152,12 +174,14 @@ export async function loadSchemas(root: string): Promise<void> {
   addFormats(ajv);
   ajvErrors(ajv);
 
-  const [commonRaw, agentRaw, skillRaw, vocabRaw, manifestRaw] = await Promise.all([
+  const [commonRaw, agentRaw, skillRaw, vocabRaw, manifestRaw, taskExceptionSchemaRaw, memoryPolicySchemaRaw] = await Promise.all([
     readFile(path.join(schemaDir, 'common.schema.json'), 'utf8'),
     readFile(path.join(schemaDir, 'agent.schema.json'), 'utf8'),
     readFile(path.join(schemaDir, 'skill.schema.json'), 'utf8'),
     readFile(path.join(schemaDir, 'vocabulary.schema.json'), 'utf8'),
     readFile(path.join(schemaDir, 'manifest.schema.json'), 'utf8'),
+    readFile(path.join(schemaDir, 'task-exceptions.schema.json'), 'utf8'),
+    readFile(path.join(schemaDir, 'memory-policy.schema.json'), 'utf8'),
   ]);
 
   const commonSchema = JSON.parse(commonRaw) as Record<string, unknown>;
@@ -165,6 +189,8 @@ export async function loadSchemas(root: string): Promise<void> {
   const skillSchema = JSON.parse(skillRaw) as Record<string, unknown>;
   const vocabSchema = JSON.parse(vocabRaw) as Record<string, unknown>;
   const manifestSchema = JSON.parse(manifestRaw) as Record<string, unknown>;
+  const taskExceptionSchema = JSON.parse(taskExceptionSchemaRaw) as Record<string, unknown>;
+  const memoryPolicySchema = JSON.parse(memoryPolicySchemaRaw) as Record<string, unknown>;
 
   ajv.addSchema(commonSchema);
   ajv.addSchema(vocabSchema);
@@ -210,6 +236,8 @@ export async function loadSchemas(root: string): Promise<void> {
   const resumeTierValidator = await ajv.compileAsync(resumeTierFileSchema);
   const tagValidator = await ajv.compileAsync(tagFileSchema);
   const invocationValidator = await ajv.compileAsync(invocationFileSchema);
+  const taskExceptionValidator = await ajv.compileAsync(taskExceptionSchema);
+  const memoryPolicyValidator = await ajv.compileAsync(memoryPolicySchema);
 
   const manifestAjv = new Ajv2020({
     strict: false,
@@ -233,10 +261,12 @@ export async function loadSchemas(root: string): Promise<void> {
     // Store vocabulary validators and manifest as composite
     vocabValidator: capabilityValidator, // placeholder — we handle vocab separately below
     manifestValidator,
+    taskExceptionValidator,
+    memoryPolicyValidator,
   };
 
   // Store all vocab validators for internal use
-  _vocabValidators = { capabilityValidator, categoryValidator, resumeTierValidator, tagValidator, invocationValidator };
+  _vocabValidators = { capabilityValidator, categoryValidator, resumeTierValidator, tagValidator, invocationValidator, taskExceptionValidator, memoryPolicyValidator };
 }
 
 interface VocabValidators {
@@ -245,6 +275,8 @@ interface VocabValidators {
   resumeTierValidator: ValidateFunction;
   tagValidator: ValidateFunction;
   invocationValidator: ValidateFunction;
+  taskExceptionValidator: ValidateFunction;
+  memoryPolicyValidator: ValidateFunction;
 }
 
 let _vocabValidators: VocabValidators | null = null;
@@ -559,15 +591,17 @@ async function loadVocab(root: string): Promise<{ vocab: Vocab | null; results: 
     return data as T;
   }
 
-  const [capData, catData, resumeData, tagData, invocationData] = await Promise.all([
+  const [capData, catData, resumeData, tagData, invocationData, taskExceptionData, memoryPolicyData] = await Promise.all([
     loadYaml<{ capabilities: CapabilityEntry[] }>('capabilities.yml', _vocabValidators.capabilityValidator),
     loadYaml<{ categories: SimpleEntry[] }>('categories.yml', _vocabValidators.categoryValidator),
     loadYaml<{ resume_tiers: SimpleEntry[] }>('resume-tiers.yml', _vocabValidators.resumeTierValidator),
     loadYaml<{ tags: TagEntry[] }>('tags.yml', _vocabValidators.tagValidator),
     loadYaml<{ invocations: InvocationEntry[] }>('invocations.yml', _vocabValidators.invocationValidator),
+    loadYaml<{ task_exceptions: TaskExceptionEntry[] }>('task-exceptions.yml', _vocabValidators.taskExceptionValidator),
+    loadYaml<MemoryPolicy>('memory_policy.yml', _vocabValidators.memoryPolicyValidator),
   ]);
 
-  if (!capData || !catData || !resumeData || !tagData || !invocationData) {
+  if (!capData || !catData || !resumeData || !tagData || !invocationData || !taskExceptionData || !memoryPolicyData) {
     return { vocab: null, results };
   }
 
@@ -578,6 +612,8 @@ async function loadVocab(root: string): Promise<{ vocab: Vocab | null; results: 
       resume_tiers: resumeData.resume_tiers,
       tags: tagData.tags,
       invocations: invocationData.invocations,
+      task_exceptions: taskExceptionData.task_exceptions,
+      memory_policy: memoryPolicyData,
     },
     results,
   };
@@ -636,6 +672,8 @@ export async function generateManifest(
       resume_tiers: vocab.resume_tiers,
       tags: vocab.tags,
       invocations: invocationSummaries,
+      task_exceptions: vocab.task_exceptions,
+      memory_policy: vocab.memory_policy,
     },
   };
 }

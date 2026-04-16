@@ -70,7 +70,8 @@
         "description": { "$ref": "common.schema.json#/$defs/description" },
         "skill": { "$ref": "common.schema.json#/$defs/id" },
         "handler": { "type": "string", "minLength": 1 },
-        "variants": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        "variants": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "prose_guidance": { "type": "string", "minLength": 40 }
       },
       "if": {
         "properties": { "type": { "const": "skill" } },
@@ -137,6 +138,30 @@
       "properties": {
         "invocations": { "type": "array", "items": { "$ref": "#/$defs/invocationEntry" } }
       }
-    }
+    },
+    "taskExceptionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "applies_when", "treatment", "rationale"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)?$"
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "applies_when": { "type": "string", "minLength": 1 },
+        "treatment": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    },
+    "taskExceptionFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_exceptions"],
+      "properties": {
+        "task_exceptions": { "type": "array", "items": { "$ref": "#/$defs/taskExceptionEntry" } }
+      }
+    },
+    "memoryPolicyFile": { "$ref": "memory-policy.schema.json" }
   }
 }

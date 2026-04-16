@@ -192,6 +192,21 @@ ApprovalBridge, ProcessSupervisor, AgentHost 같은 Supervision 집행 인터페
 
 ---
 
+## Canonical specifics의 증거 기준
+
+nexus-core에 canonical로 등록되는 구체 수치, enumerate된 값, 정확한 정규식, 고정 파일명은 두 active consumer(claude-nexus, opencode-nexus) 모두에서 empirical 필요성이 확인된 경우에만 박는다. 단일 consumer 증거만 있으면 **원칙·구조 수준** canonical화만 허용하고 구체 값은 consumer-local로 둔다. 이는 단일 harness의 cycle cadence·context window·운영 패턴에서 도출된 수치가 canonical로 오해되어 다른 consumer의 국소 최적을 구조적으로 박탈하는 상황을 방지한다.
+
+`model_tier: high | standard`만 허용하고 구체 model identifier(예: `opus`, `gpt-5`)를 금지하는 거절 3번의 논리와 동일한 축이다. 거절 3번이 구체 model이 harness 종속이라 금지하는 것처럼, 여기서는 구체 수치가 consumer cadence 종속이라 canonical 대상 아님을 선언한다.
+
+**적용 예시**:
+- `conformance/state-schemas/memory-access.schema.json`의 4-field schema(path/last_accessed_ts/access_count/last_agent)는 agent-tracker.json 선례로 두 consumer 모두 필요성 인정 → canonical.
+- P1 자동 삭제의 "180일·6 cycles·access=0" 수치는 claude-nexus cycle cadence(2-4 cycles/week) 단일 근거 → consumer-local, docs/memory-lifecycle-contract.md에 원칙만 canonical(3신호 교집합 구조).
+- Plan Step 7의 "≤3 files·≤150 lines·cap=5" 같은 task 분해 수치는 claude-nexus empirical data 기반, opencode-nexus 관점 부재 → canonical 아님, skills/nx-plan/body.md에 qualitative guidance만.
+
+**재확인 주기**: `.nexus/context/evolution.md §90일 재평가 윈도우`의 지표 3번 "opencode-nexus 추가 drift 발견 여부"와 함께 본 원칙을 주기적으로 재확인한다. 두 consumer 모두에서 같은 필요성이 확인된 수치는 후속 plan session을 통해 canonical 승격 검토 대상으로 올린다.
+
+---
+
 ## Vocabulary 4종
 
 nexus-core의 `vocabulary/` 디렉토리는 4개 파일로 구성된다. 각 파일은 동등한 위상을 갖는 canonical 정의 소스다.

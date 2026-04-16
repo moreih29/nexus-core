@@ -2860,6 +2860,374 @@
           "created_at": "2026-04-15T08:27:11.183Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-16T08:52:55.250Z",
+      "branch": "feat/v0.10.0-upstream-proposals-partial-accept",
+      "plan": {
+        "id": 6,
+        "topic": "GH #19, #20 업스트림 제안 객관 평가",
+        "issues": [
+          {
+            "id": 1,
+            "title": "#19 (Proposal A: Plan/Run quantitative guidelines) 수용/수정/거부 판단",
+            "status": "decided",
+            "decision": "Option B (부분 수용). 수용: artifact-coherence metric 개념, conditional auto-pairing (researcher·순수 refactor·type-only·docs-adjacent 제외 carve-out), exception catalog를 신규 vocabulary/task-exceptions.yml 파일로 분리하고 schema 정의까지 같은 PR에 포함, Dedup Layer 1 (plan Step 7 static merge), HOW decomposition row-differ 규칙, parallel decomposition threshold \"≥3 independent artifacts\"를 qualitative prose guidance로만. 거부: cap=5 hard 정수 / pair-wise streaming spawn 알고리즘 / Dedup Layer 2 (wave-time intersection) / TUI wave_id grouping axis / escalation serialization의 wave pause-resume 상태 머신 / tool-log.jsonl wave_complete recording + cap recalibration 규칙 / run_parallel_dispatch harness_keys entry — 모두 dispatcher/runtime/UI 층위로 consumer-local 이관 요청. B-1: task-size 수치 임계값(≤3 files / ≤150 lines / CHECK:DO ≤0.5)은 body.md에서 완전 제거(불안정 값을 single-source에 박지 않음), decomp trigger \"≥3 artifacts\"만 qualitative guidance prose로 유지. B-2: vocabulary/task-exceptions.yml + schema 정의를 같은 PR에 포함 (schema 없는 vocabulary는 hidden enum 재생산). B-3: parallel decomp threshold와 HOW row-differ는 body.md prose에 유지(vocabulary 파일로 올리지 않음 — standard rule 자체이지 예외 분류가 아님). 근거: v0.9.0 task_close scope 축소와 같은 authoring/dispatcher 경계 오류가 body.md prose 형태로 재도입되려 함. §3.2가 자인한 \"6-8주 후 recalibration 필요\" 값을 canonical에 bind하는 것은 자기모순. tester-artifact-gap.md documented incident 교정(conditional pairing)은 명백한 authoring 개선이라 지연시킬 이유 없음. Exception catalog는 tags.yml/invocations.yml 선례에 정합. Plan session #6.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Partial acceptance. 제안이 authoring norm / dispatcher algorithm / consumer telemetry UI 세 층위를 혼재시켰다고 진단. Accept: coherence concept, conditional pairing w/ researcher·docs-adjacent carve-out (documented incident 교정), exception catalog as vocabulary/task-exceptions.yml (tags.yml·invocations.yml 선례), Dedup Layer 1, HOW row-differ rule, parallel decomp ≥3 as qualitative guidance. Reject: cap=5 hard (opencode-nexus concurrency profile 무시), pair-wise streaming algorithm (§5.1 pseudocode 자체가 dispatcher 코드), drain wave algorithmic rule (prose hint만 가능), Dedup Layer 2 (wave-time runtime), wave_id TUI grouping (rule:no-ui-hint 철학 충돌), escalation serialization의 wave pause-resume (scheduler 상태 머신), tool-log.jsonl recalibration (harness-local state 의존을 body.md가 규정), run_parallel_dispatch harness_keys (CA-7 조건부 premature). Critical: v0.9.0 task_close scope 축소가 막 제거한 패턴과 동일 범주 오류 — tool contract 대신 body.md prose로 우회 재진입. Escalation: claude-nexus maintainer에게 authoring/dispatcher boundary 기준으로 제안 재구조화 요청 고려."
+            },
+            "how_agent_ids": {
+              "architect": "a4e91d93013e52044"
+            }
+          },
+          {
+            "id": 2,
+            "title": "#20 (Proposal B: memory operational policy + access tracking) 수용/수정/거부 판단",
+            "status": "decided",
+            "decision": "5차 C안 + (α) 확정 — 부분 수용, 단 canonical 범위를 초기 분석보다 확장. 수용: (1) `vocabulary/memory_policy.yml` 신규 파일 — memory 범주 **3개**(empirical / external / pattern) canonical, 저자 제안 4개 중 `primer-` 삭제(context/와 중복), pattern 경계는 tactical recipe에 한정하고 architectural pattern은 context/로 간다는 prose로 명시(α안 — 실전 판단은 저장 에이전트 재량). (2) 파일명 structural contract canonical — lowercase, kebab-case, `.md`, 2-4단어 descriptive topic, 날짜·버전 suffix 금지. (3) `conformance/state-schemas/memory-access.schema.json` 신설 — agent-tracker 선례 그대로 적용. 경로 `.nexus/state/{harness_id}/memory-access.jsonl`를 docs/nexus-outputs-contract.md §Shared filename convention에 등록. 4-field canonical: path / last_accessed_ts / access_count / last_agent. (4) Access tracking 원칙 canonical — 읽기 이벤트만 관측(쓰기·scan·경로 언급 제외), 3 정보 축적. (5) P4 manual gate 기본값 canonical — 자동 삭제는 consumer opt-in. (6) P1 자동 삭제 **구조** canonical — 최소 3 독립 신호 교집합 요구(단일 신호 금지), 구체 수치는 consumer 재량. (7) Git-backed 삭제 원칙 canonical — commit 필수 + 복구 경로 명시, 구체 메시지 포맷은 consumer 재량. (8) Merge-before-create 원칙 canonical — 매칭 기준 수치(2+ keyword)는 consumer 재량. (9) `vocabulary/tags.yml`의 [m]/[m:gc] entry에 prose_guidance 보강(저장 admission 기준). (10) `vocabulary/invocations.yml`에 `memory_read_observation` primitive 1 entry 신설 검토. (11) `docs/memory-lifecycle-contract.md` 신설 — canonical 원칙 기술 + 모든 구체 수치는 consumer 재량임을 명시. 거부: `primer-` 범주(context/ 중복), `max_count: 1 primer` 제약(primer 자체 제거로 moot), size limit 수치(80/200), gc trigger 수치(15files/60KB/20cycles), P1 임계값(180d/6c/access=0 구체 수), merge keyword threshold 수치, git commit 메시지 포맷 구체, resume session 미증분 규칙(하네스 resume 메커니즘 의존), PostToolUse 등 구체 hook 구현 코드(rule:no-runtime). 근거: (a) `.nexus/` 기존 4 디렉토리 layout(context/rules/memory/history.json)의 축을 보존하려면 primer는 memory가 아닌 context에 속함 — 저자 §7.3 자인. (b) agent-tracker.json 선례로 `{harness-id}/` namespace 하위 shared-purpose 파일의 schema는 canonical화가 일관된 선택 — silent divergence 방지. (c) 범주화 원칙·access tracking·P4 기본값·P1 구조·git-backed 삭제·merge-before-create 6 원칙은 하네스·프로젝트 cadence와 무관하게 일반화 가능 → 좋은 canonical guidance가 하네스 성능 향상에 직접 기여. (d) 구체 수치는 cycle cadence·context window·프로젝트 특성에 의존하므로 consumer 재량 유지. (α)안 선택 이유: 3 범주로 축소하되 pattern 경계는 실전에서 완전 기계적 분리가 어려우므로 docs prose로 판단 guidance만 제공, β안(pattern을 context/patterns/로 완전 이관)은 layout 엄격성은 높으나 tactical cycle-level recipe가 context에 섞여 들어가는 부작용. Plan session #6.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "가장 보수적인 초기 판정(거의 거부)에서 출발. 사용자의 연속적 push로 4차례 활장. 핵심 조각: (1) vocabulary = semantic only 경계 유지는 유효하나 agent-tracker 선례는 state schema를 canonical화한 전례 존재 — memory-access도 동일 대우. (2) structural naming rule은 state/*.json 선례와 docs/nexus-layout.md 선언 맥락에서 canonical화 정합. (3) 4 prefix taxonomy 중 primer는 context/와 치명적 중복(저자 §7.3 자인), 3처로 축소가 올바름. (4) gc/P1에서 원칙(읽기 관측·P4 기본·3신호 교집합·git-backed ·merge-before-create)과 수치가 분리 가능 — 원칙은 canonical, 수치는 consumer. 위험 평가: Proposal A 대비 memory는 git-tracked라 잠못된 자동 삭제가 데이터 손실 — P1 구체 수치 canonical화는 위험, 구조 canonical화는 안전. (α)안은 pattern 경계 실전 모호성 인정 + architectural은 context/로라는 prose 고정 — 경계 사고를 전면적으로 context/로 몰아넣는 β안보다 전략적으로 가벼움."
+            },
+            "how_agent_ids": {
+              "architect": "a162a58e2d37c29aa"
+            }
+          },
+          {
+            "id": 3,
+            "title": "두 제안 공통 메타 — consumer→upstream 역제안 프로세스와 opencode-nexus 관점 반영",
+            "status": "decided",
+            "decision": "재구성안 채택 — 새 rule/문서 신설 없이 기존 구조 활용. Sub-A(회신 형식): GH #19/#20 각각에 상세 코멘트로 수용/거부 이유 + 재구조화 방향 회신, 수용 부분 PR은 기존 evolution.md의 Breaking change 대응 절차에 올림. #19 수용분(body.md 수정)은 v0.10.0 minor bump + nx-car:v0.10.0 marker + MIGRATIONS/v0_9_to_v0_10.md (pre-v1 정책, v0.7.0/v0.8.0 선례 동일 패턴). #20 수용분(신규 vocabulary/memory_policy.yml + schema/memory-policy.schema.json + conformance/state-schemas/memory-access.schema.json + docs/memory-lifecycle-contract.md)은 additive-with-obligation으로 minor bump + nx-car marker + MIGRATIONS (v0.4.0 선례). Sub-B(opencode-nexus 관점 반영): 새 rule 파일 신설하지 않음 — `.nexus/rules/`는 기계적 판단 규칙 영역이고 'dual-harness 증거 기준'은 의사결정 철학이라 `.nexus/context/boundaries.md` §거절 근거 뒤 또는 `.nexus/context/evolution.md` §Forward-only 완화 부근에 원칙 한 문단 edit. 원칙 문안: \"Canonical specifics(구체 수치·enumerate된 값·정확한 정규식·고정 파일명)는 두 active consumer 모두에서 필요성이 empirical하게 확인된 경우에만 canonical로 박는다. 단일 consumer 증거만 있으면 원칙·구조 수준 canonical화만 허용하고 구체 값은 consumer-local로 둔다. 90일 재평가 윈도우에서 Issue #5 W2(opencode-nexus drift 발견)와 함께 주기적으로 재확인한다.\" 추가로 이번 plan session #6의 판단 과정 자체를 `.nexus/memory/pattern-upstream-proposal-review.md` 1개 파일로 기록(범주는 이번 plan의 Issue #2 결정에 따라 pattern-). 근거: (a) evolution.md가 이미 v0.2.0~v0.9.0까지 8회 breaking change 대응을 확립한 실전 검증된 프로세스. (b) v0.7.0 Option D '나exus-core migration abstain + MIGRATIONS/consumer-guide recommendation 레이어링'가 consumer 역할 분담 이미 해소. (c) 90일 재평가 §3 'opencode-nexus 추가 drift 발견 여부'가 이미 체크리스트 항목 — proactive 메커니즘 대신 post-facto 재평가가 기존 culture. (d) rule:dual-harness-evidence 신설은 기계적 lint 대상 아닌 의사결정 철학이라 rules/ 층위 부적합, 과잉 구조. 기존 프로세스에 한 문단 edit + memory 기록으로 Issue #3 해소. Plan session #6."
+          }
+        ],
+        "research_summary": "## 두 이슈 개요 (모두 2026-04-16 OPEN, claude-nexus Plan session #7 산출물)\n\n**#19 (Proposal A)** — skills/nx-plan/body.md Step 7 + skills/nx-run/body.md Steps 1.5/2 + manifest.json body_hash + 선택적 vocabulary/harness_keys.yml 추가.\n핵심 도입: artifact-coherence metric, 수치 임계값(≤3 files, ≤150 lines, CHECK/DO ≤0.5, 병렬 decomp threshold ≥3), conditional auto-pairing (engineer+runtime behavior acceptance일 때만 tester), exception catalog 3종(docs_only/same_file_bundle/generated_artifacts), cap=5 hard in-flight, pair-wise streaming dispatch, drain wave exception, dedup 2-layer(plan Step 7 merge + run Step 2 defer), TUI grouping 2축(wave_id, plan_issue), escalation serialization. body_hash 변경으로 semver major 요구.\n근거: claude-nexus 내부 memory 파일 2개 — cycle-split-pattern.md, tester-artifact-gap.md (v0.7.0까지는 owner: \"writer\" → reviewer 자동 pairing이 researcher 산출물에도 적용되어 \"artifact not found\" 발생). 수치는 cycle 경험에서 유도된 starting values (recalibration 가정).\n\n**#20 (Proposal B)** — vocabulary/memory_policy.yml 신규 canonical 파일 + 선택적 orchestration doc 참조.\nMemory Operational Policy: 4 category prefix (empirical-/external-/pattern-/primer-), naming (`{prefix}-{2~4 kebab}.md`), size limits (일반 80줄 / primer 200줄, max 1 primer), merge criteria (same prefix + ≥2 topic keyword overlap), 자동 gc triggers (>15 files, >60KB, >20 cycles since last gc).\nAccess Tracking Spec: file-read event only, 저장 경로 `.nexus/state/{harness_id}/memory-access.jsonl` (rule:harness-state-namespace 정합), 4 fields(path/last_accessed_ts/access_count/last_agent), forgetting policy = P4 manual gate + P1 automatic (180d ∧ 6c ∧ access=0 intersection), resume 세션은 보수적으로 access count 미증분. body_hash 영향 없음 (vocabulary 추가만).\n\n## 기존 nexus-core 원칙과의 정합 검증\n\n`docs/nexus-layout.md`에서 `.nexus/memory/` 자체는 nexus-core canonical layout의 project-scoped, git-tracked 디렉토리로 등록되어 있다 — memory policy를 nexus-core가 canonicalize하는 것은 scope 내부.\n\n`.nexus/rules/neutral-principles.md`의 8개 규칙:\n- rule:no-runtime — hook/MCP/tool runtime 포함 금지 (scripts/ 예외). #19의 §5, #20의 §6는 reference implementation으로 claude-nexus에 위치, nexus-core spec만 abstract.\n- rule:no-harness-tool — Agent(/Skill(/mcp__plugin_* 등 금지. #19에서 body.md에 \"subagent spawn primitive\" 같은 추상 용어 사용 — 이 원칙과 정합.\n- rule:harness-state-namespace — harness-specific state는 `.nexus/state/{harness-id}/` 아래. #20의 memory-access.jsonl은 이 경로 준수.\n- rule:neutral-tool-side-effect — MCP tool은 nexus-core-owned schema만 touch. 두 제안 모두 신규 tool 만들지 않음.\n\nv0.8.0에서 invocation abstraction (Spec γ) 도입, v0.9.0에서 task_close scope 축소 — 최근 방향은 \"authoring layer 정체성 회복, harness-local concern은 consumer로 분리\".\n\n## 긴장 지점 (객관 평가용)\n\n1. **behavioral spec의 authoring layer 침투**: #19의 cap=5 hard, streaming dispatch, escalation serialization은 behavioral/runtime 규정. body.md prose이면 authoring 층위 유지, 그러나 schema 필드(dispatch_mode, wave_id)로 올라오면 거절 2(runtime 포함 금지)와 긴장.\n2. **수치의 canonical 강제**: 모든 임계값이 claude-nexus 한쪽 경험 유도. opencode-nexus는 다른 context window/concurrency profile일 수 있음. 저자 §6(e) \"cap recalibration ownership\"에서 같은 질문 제기.\n3. **Empirical evidence 편향**: 두 제안 모두 claude-nexus 발 경험만 인용. opencode-nexus가 같은 문제를 확인했다는 근거 없음.\n4. **Breaking change 비용**: #19는 body_hash semver major. #20은 새 vocabulary 파일로 non-breaking이지만 소비자가 policy 미준수 시 drift 누적.\n5. **절차적 메타**: 두 제안 모두 maintainer(=moreih29 본인)에게 열린 질문 5~7개 포함 — 완성된 spec이 아닌 협상 요청. 수용 여부뿐 아니라 각 열린 질문에 대한 방향 결정이 필요.\n\n## history 검색\n\n`memory policy`, `skill body quantitative` 둘 다 0건. 이 주제는 nexus-core 내부에서 이번에 처음 다룬다.",
+        "created_at": "2026-04-16T07:17:30.396Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "skills/nx-plan/body.md Step 7 수정",
+          "context": "Proposal A 수용 부분을 skills/nx-plan/body.md Step 7 본문에 반영. 현재 body.md의 \"Verification auto-pairing\"과 \"DO/CHECK decomposition principle\" 섹션을 대체.",
+          "approach": "현재 섹션을 다음으로 교체: (1) artifact-coherence primary metric prose(한 문장 설명·revert 일관성·acceptance 단독 검증 3 기준). (2) Conditional auto-pairing — engineer+runtime behavior acceptance → tester, writer+verifiable deliverable acceptance → reviewer, researcher·pure refactor·type-only·docs-adjacent 제외. (3) Dedup Layer 1(plan Step 7 static merge) prose — vocabulary/task-exceptions.yml의 same_file_bundle 참조. (4) HOW decomposition row-differ 규칙(domain-agent mapping row가 다를 때만 분할). (5) Parallel decomposition threshold \"≥3 independent artifacts\"를 qualitative guidance 문구로. 수치 임계값(≤3 files, ≤150 lines, CHECK:DO ≤0.5, cap=5, streaming, wave_id, escalation serialization)은 본문에 포함 금지. vocabulary/task-exceptions.yml을 inline 참조.",
+          "acceptance": "body.md가 lint G6 통과. manifest.json body_hash 변경분이 scripts/validate.ts 실행 결과와 일치. 거부 항목(cap=5 숫자, pair-wise streaming pseudocode, wave_id, dispatcher pause-resume)이 본문에 등장하지 않음(grep 확인). conditional pairing 규칙이 researcher 제외를 명시적으로 포함. Layer 1 prose가 task-exceptions vocabulary를 참조.",
+          "risk": "body.md prose 내에 dispatcher 성격 문구가 실수로 남을 위험 — grep으로 \"cap\", \"wave\", \"streaming\", \"in-flight\" 등 키워드 검출해 제거 확인 필요. body_hash 변경이 다른 manifest entry에 영향 없는지 검증.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-16T08:25:13.317Z"
+        },
+        {
+          "id": 2,
+          "title": "body.md Step 7 수정 검증",
+          "context": "task 1의 body.md 수정이 거부 항목을 본문에서 완전 제거하고 수용 항목을 정확히 반영했는지 검증.",
+          "approach": "(1) lint G6 실행: bun run lint. 5 카테고리(Distinctive, Skill/Agent call-pattern, namespace prefix, macro whitelist, heredoc opaque) 모두 통과. (2) grep으로 거부 키워드 미등장 확인: \"cap\", \"wave_id\", \"streaming\", \"pause dispatch\", \"in-flight\", \"cap=5\", \"Layer 2\". (3) conditional pairing 문구가 \"researcher\" 제외를 명시하는지 확인. (4) Layer 1 prose가 vocabulary/task-exceptions.yml을 참조하는지 확인. (5) body_hash 일치: scripts/validate.ts 실행 → manifest.json의 skills/nx-plan body_hash가 본문 sha256과 일치.",
+          "acceptance": "lint G6 exit 0. grep 결과 거부 키워드 0건. conditional pairing 규칙에 researcher 명시 제외 확인. task-exceptions vocabulary 참조 확인. body_hash 일치.",
+          "risk": "lint G6이 이번 prose 변경에서 false positive를 낼 수 있음(예: \"cap\" 단어가 \"capability\"의 부분 문자열로 등장). word boundary regex 확인.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 1,
+          "owner": "tester",
+          "created_at": "2026-04-16T08:25:21.282Z"
+        },
+        {
+          "id": 3,
+          "title": "vocabulary/task-exceptions.yml + schema 신설",
+          "context": "Proposal A의 exception catalog를 inline이 아닌 별도 vocabulary 파일로 분리. tags.yml·invocations.yml과 동일 패턴.",
+          "approach": "(1) vocabulary/task-exceptions.yml 신설 — 4 entries: docs_only.coherent(모든 파일 .md/frontmatter + 공통 scheme → 1 writer + 1 reviewer pair, file/line 임계값 waive), docs_only.independent(각 .md 독립 주제 → N parallel writer + 1 reviewer each), same_file_bundle(여러 sub-task가 동일 파일 수정 → 1 owner에 structured prompt로 merge, file conflict 방지), generated_artifacts(build output path → task count·file count 계산에서 제외). 각 entry는 id/description/applies_when/treatment/rationale 5 필드. (2) schema/task-exceptions.schema.json 신설 — JSON Schema draft 2020-12, additionalProperties: false. (3) schema/vocabulary.schema.json에 $ref 추가. (4) scripts/lib/validate.ts에 task-exceptions 검증 gate 추가.",
+          "acceptance": "vocabulary/task-exceptions.yml 4 entries 포함. schema validation 통과. manifest.json에 vocabulary entry 반영. scripts/validate.ts 실행 시 에러 0건. conformance-coverage.ts 영향 없음(state-schemas 대상 아님).",
+          "risk": "schema/vocabulary.schema.json의 기존 구조에 $ref 추가 시 다른 vocabulary 파일 로딩 영향 여부. 기존 tags.yml/invocations.yml 검증이 여전히 통과하는지 regression 확인 필요.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-16T08:25:32.889Z"
+        },
+        {
+          "id": 4,
+          "title": "task-exceptions vocabulary/schema 검증",
+          "context": "task 3의 vocabulary/task-exceptions.yml과 schema 신설이 정합하고 기존 vocabulary 로딩에 regression 없음을 검증.",
+          "approach": "(1) bun run scripts/validate.ts 실행 — exit 0. (2) schema validation: task-exceptions.yml이 schema/task-exceptions.schema.json 통과, schema/vocabulary.schema.json 재검증. (3) 기존 vocabulary 파일(capabilities/categories/resume-tiers/tags/invocations) 재검증 — 모두 pass. (4) manifest.json에 vocabulary/task-exceptions.yml entry 자동 등록 확인.",
+          "acceptance": "validate.ts exit 0. 5 기존 vocabulary + 1 신규 모두 schema validation pass. manifest entry 자동 등록.",
+          "risk": "schema 이름 충돌 또는 $ref 경로 오타로 기존 vocabulary 검증 실패 가능성.",
+          "status": "completed",
+          "deps": [
+            3
+          ],
+          "plan_issue": 1,
+          "owner": "tester",
+          "created_at": "2026-04-16T08:25:38.033Z"
+        },
+        {
+          "id": 5,
+          "title": "vocabulary/memory_policy.yml + schema 신설",
+          "context": "Proposal B의 canonical 부분 구현 — 3 범주(empirical/external/pattern), structural naming contract, access tracking 원칙, forgetting 원칙, merge 원칙. 수치는 포함하지 않음.",
+          "approach": "(1) vocabulary/memory_policy.yml 신설. 구조: categories 섹션(3 entries — empirical/external/pattern, 각 id/prefix/description; primer 포함하지 않음), naming 섹션(structural contract regex `^[a-z0-9][a-z0-9-]*\\.md$` + optional prefix 구조 설명), access_tracking 섹션(observation_primitive=file_read only, storage path pattern=.nexus/state/{harness_id}/memory-access.jsonl, fields 3종 — last_accessed_ts/access_count/last_agent의 의미; 구체 필드명은 memory-access schema가 canonical), forgetting 섹션(p4_manual_default: true, p1_automatic_structure: \"minimum 3 independent signals intersection\"; 구체 임계값은 consumer 재량 명시), merge 섹션(principle: merge-before-create; 구체 매칭 기준은 consumer 재량). 모든 구체 수치(80/200/15/60KB/20c/180d/6c/access=0)·max_count·git commit 포맷·resume 규칙 포함 금지. (2) schema/memory-policy.schema.json 신설 — additionalProperties: false. (3) schema/vocabulary.schema.json에 $ref 추가. (4) scripts/lib/validate.ts에 memory-policy 검증 gate 추가.",
+          "acceptance": "vocabulary/memory_policy.yml에 3 범주만 존재(primer 없음). 구체 수치 0건(grep \"180\", \"80 lines\", \"60KB\", \"15 files\" 모두 미검출). schema validation 통과. manifest 반영.",
+          "risk": "primer를 실수로 포함하여 context/와 중복 발생. 수치가 예시 형태로라도 본문에 들어갈 위험 — grep 엄격 체크.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-16T08:25:50.338Z"
+        },
+        {
+          "id": 6,
+          "title": "conformance/state-schemas/memory-access.schema.json 신설",
+          "context": "agent-tracker.json 선례로 memory-access.jsonl을 Shared filename convention 등록. canonical state schema 추가.",
+          "approach": "(1) conformance/state-schemas/memory-access.schema.json 신설 — JSON Schema draft 2020-12, JSONL line-object schema, 4 필드(path: string absolute, last_accessed_ts: ISO 8601, access_count: integer ≥0, last_agent: string), additionalProperties: false. upsert_key: path를 description에 명시. (2) conformance-coverage.ts가 새 state-schema를 인식하도록 fixture 추가 필요 시 fixture 생성. state-schema count 4 → 5. (3) CI gate validate:conformance가 신규 schema 커버하는지 확인.",
+          "acceptance": "memory-access.schema.json이 JSON Schema draft 2020-12로 유효. conformance-coverage.ts가 신규 schema 탐지. validate:conformance exit 0. state-schema count 5(plan/tasks/history/agent-tracker/memory-access).",
+          "risk": "conformance fixture가 신규 schema에 대해 missing coverage 에러를 낼 수 있음. fixture 작성 필요 여부 판단.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-16T08:25:57.565Z"
+        },
+        {
+          "id": 7,
+          "title": "vocabulary/tags.yml + invocations.yml 소규모 확장",
+          "context": "Proposal B 수용의 semantic 보강 부분 — [m]/[m:gc] prose_guidance + memory_read_observation primitive.",
+          "approach": "(1) vocabulary/tags.yml의 [m]/[m:gc] entry에 prose_guidance 필드 추가. 내용: \"memory 저장 admission 기준 — 코드/웹에서 다시 얻을 수 없는 정보만 저장. 자세한 운영 정책은 vocabulary/memory_policy.yml 및 docs/memory-lifecycle-contract.md 참조.\" (2) vocabulary/invocations.yml에 memory_read_observation primitive 1 entry 신설 — id, description, intent(abstract event: agent가 memory 파일을 실제로 읽는 순간), semantic_params(file_path, agent_id, timestamp), prose_guidance, fallback_behavior(tracking primitive 부재 시 consumer 재량). (3) schema 재검증.",
+          "acceptance": "tags.yml [m]/[m:gc] 2 entry에 prose_guidance 필드 추가. invocations.yml에 memory_read_observation entry 1건. schema validation pass. lint G6 통과(rule:use-invocation-vocabulary 정합).",
+          "risk": "invocations.yml schema의 required field(intent/semantic_params/prose_guidance/fallback_behavior) 누락 위험.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-16T08:26:07.597Z"
+        },
+        {
+          "id": 8,
+          "title": "Proposal B vocabulary/schema 통합 검증",
+          "context": "task 5/6/7의 memory_policy + memory-access + tags/invocations 변경이 일관되고 기존 검증에 regression 없음을 확인.",
+          "approach": "(1) bun run scripts/validate.ts 전체 실행. (2) validate:conformance 실행 — state-schemas 5종 커버 확인. (3) lint G6 전체 실행 — 5 카테고리 통과. (4) manifest.json 갱신 확인 — vocabulary 4→6(task-exceptions 포함)로 증가. (5) 기존 conformance fixture regression 없음.",
+          "acceptance": "validate.ts, validate:conformance, lint G6 모두 exit 0. manifest vocabulary 증가 확인. 기존 fixture 통과.",
+          "risk": "schema 상호 참조 오류로 일부 vocabulary 파일 검증 실패 가능.",
+          "status": "completed",
+          "deps": [
+            5,
+            6,
+            7
+          ],
+          "plan_issue": 2,
+          "owner": "tester",
+          "created_at": "2026-04-16T08:26:13.812Z"
+        },
+        {
+          "id": 9,
+          "title": "docs/nexus-outputs-contract.md §Shared filename convention 업데이트",
+          "context": "memory-access.jsonl이 canonical shared-purpose file이 되었으므로 nexus-outputs-contract.md에 등록 필수. rule:harness-state-namespace의 요건.",
+          "approach": "docs/nexus-outputs-contract.md의 §Shared filename convention 섹션에 memory-access.jsonl 항목 추가. 항목 내용: 파일 위치 `.nexus/state/{harness_id}/memory-access.jsonl`, 목적(memory 파일 읽기 관측 누적), schema 참조(conformance/state-schemas/memory-access.schema.json), 소유 주체(각 harness의 memory-read observation hook), lifecycle(harness가 읽기 이벤트 관측 시 upsert, 삭제는 consumer 재량의 gc 정책). agent-tracker entry와 동일 포맷.",
+          "acceptance": "§Shared filename convention에 memory-access.jsonl entry 추가. agent-tracker entry와 동일 포맷 준수. prose 60줄 이하.",
+          "risk": "기존 agent-tracker entry와 포맷 불일치 위험. 복사-편집 시 내용 mix-up 주의.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "writer",
+          "created_at": "2026-04-16T08:26:21.019Z"
+        },
+        {
+          "id": 10,
+          "title": "docs/memory-lifecycle-contract.md 신설",
+          "context": "Proposal B의 behavioral contract 부분을 vocabulary 밖 docs 층위에 정착. abstract semantic + 5 canonical 원칙 + 범주 경계 + 수치 consumer 재량 명시.",
+          "approach": "신규 파일 docs/memory-lifecycle-contract.md 작성. 구조: (1) §1 Overview — memory 운영 원칙 정착 이유, vocabulary/memory_policy.yml과의 관계. (2) §2 Canonical Principles(5): read-event observation 정의, 3 information types 축적, P4 manual gate 기본값, P1 auto-delete 구조 요건(3신호 교집합), git-backed deletion 요건, merge-before-create 원칙. (3) §3 Category 경계 — 3 범주(empirical/external/pattern) 설명과 pattern의 tactical 경계(architectural pattern은 context/로), primer가 context/ 소관인 이유. (4) §4 Consumer Responsibility — 구체 수치(시간/cycle/size/file count 임계값) + git commit 포맷 + resume 세션 처리 + 병합 keyword 기준 모두 consumer 재량임을 명시. (5) §5 Reference Implementation Pointer — consumer 참고용 예시(claude-nexus 등)는 consumer repo 참조하라는 링크만. docs/behavioral-contracts.md와 일관 톤.",
+          "acceptance": "docs/memory-lifecycle-contract.md 신설. 5 canonical 원칙 모두 명시. 구체 수치(80/200/180/6/15/60KB) 미등장. Consumer Responsibility 섹션에서 consumer 재량 범위 명시. docs/behavioral-contracts.md 참조 링크 포함.",
+          "risk": "구체 수치를 \"예시\"로라도 포함하면 canonical로 오독될 위험. 명시적으로 \"consumer가 자기 프로젝트에 맞게 결정\"임을 반복 강조 필요.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "writer",
+          "created_at": "2026-04-16T08:26:33.782Z"
+        },
+        {
+          "id": 11,
+          "title": "docs 파일 2개 검증",
+          "context": "task 9/10의 docs/nexus-outputs-contract.md 업데이트와 docs/memory-lifecycle-contract.md 신설 내용 검증.",
+          "approach": "(1) nexus-outputs-contract.md 업데이트 — agent-tracker entry와 format 정합 확인, rule:harness-state-namespace 요건(shared filename convention 등록) 충족 확인. (2) memory-lifecycle-contract.md 신설 — 5 canonical 원칙 누락 여부, 구체 수치 미등장 검증(grep \"180\", \"80\", \"6 cycles\", \"60\", \"15\"), Consumer Responsibility 섹션 명확성, category 경계 prose가 \"primer는 context/\" 명시 확인. (3) docs/ 내부 cross-reference 정상 동작.",
+          "acceptance": "두 파일 내용 논리 일관. grep 결과 거부 수치 미등장. cross-reference 정상. rule:harness-state-namespace 요건 충족.",
+          "risk": "수치가 예시/참고 형태로 숨어 있을 가능성 — grep 엄격하게.",
+          "status": "completed",
+          "deps": [
+            9,
+            10
+          ],
+          "plan_issue": 2,
+          "owner": "reviewer",
+          "created_at": "2026-04-16T08:26:40.270Z"
+        },
+        {
+          "id": 12,
+          "title": ".nexus/context/boundaries.md 원칙 문단 edit",
+          "context": "Canonical specifics 증거 기준 원칙을 기존 boundaries.md에 한 문단으로 추가. 새 rule/문서 신설하지 않고 기존 원칙 문서에 녹임.",
+          "approach": ".nexus/context/boundaries.md의 §거절 근거(6개) 뒤에 \"§Canonical specifics의 증거 기준\"으로 한 섹션 추가. 내용: \"nexus-core에 canonical로 등록되는 구체 수치, enumerate된 값, 정확한 정규식, 고정 파일명은 두 active consumer(claude-nexus, opencode-nexus) 모두에서 empirical 필요성이 확인된 경우에만 박는다. 단일 consumer 증거만 있으면 원칙·구조 수준 canonical화만 허용하고 구체 값은 consumer-local로 둔다. 90일 재평가 윈도우(evolution.md §90일 재평가 지표 3번 opencode-nexus drift 발견)에서 본 원칙을 함께 재확인한다. 적용 예시: memory-access.jsonl 4-field schema는 agent-tracker 선례로 양쪽 필요성 → canonical; P1 자동 삭제의 180일/6 cycles 수치는 claude-nexus cycle cadence 단일 근거 → consumer-local.\"",
+          "acceptance": "boundaries.md에 신규 섹션 1개 추가. 기존 6개 거절 근거 구조 유지. 80줄 제한 내. evolution.md와 cross-reference 성립.",
+          "risk": "기존 거절 근거와 개념 중복 인식될 위험 — \"거절\"이 아닌 \"증거 기준\"임을 prose로 명확히.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-16T08:26:52.869Z"
+        },
+        {
+          "id": 13,
+          "title": "boundaries.md edit 검증",
+          "context": "task 12의 boundaries.md 원칙 edit 내용 검증.",
+          "approach": "(1) boundaries.md 구조 일관성 — 기존 §포함 범위 / §제외 범위 / §7개 Issue 결정 요지 / §6개 거절 근거 / §Vocabulary 4종 / §tags.yml 스키마 초안 뒤에 신규 섹션 자연스럽게 위치. (2) 내용 검증 — \"원칙·구조 수준 vs 구체 값\" 분리 명시, 90일 재평가 cross-reference, 적용 예시(memory-access vs P1 수치) 포함. (3) 기존 6개 거절 근거와 의미 중복 없음.",
+          "acceptance": "섹션 위치 자연스러움. 3 요소(분리 명시/cross-ref/적용 예시) 모두 포함. 기존 거절 근거와 구분됨.",
+          "risk": "기존 문단과 맞닿는 부분의 heading level mismatch.",
+          "status": "completed",
+          "deps": [
+            12
+          ],
+          "plan_issue": 3,
+          "owner": "reviewer",
+          "created_at": "2026-04-16T08:26:58.500Z"
+        },
+        {
+          "id": 14,
+          "title": ".nexus/memory/pattern-upstream-proposal-review.md 기록",
+          "context": "Plan session #6의 판단 과정 자체를 memory에 기록 — 향후 유사 upstream 제안 평가 시 참조. 범주는 이번 Issue #2 결정의 3 범주 중 pattern-(operational recipe).",
+          "approach": ".nexus/memory/pattern-upstream-proposal-review.md 작성. 내용: (1) Plan session #6 context(GH #19/#20 2개 제안). (2) 판단 축 3가지 — authoring layer 경계, vocabulary=semantic only 경계, 수치 증거 기반. (3) 결정 요지 — #19 B안 부분 수용(dispatcher 거부), #20 5차 C안+α(3 범주, 수치 consumer 재량, schema canonical). (4) 판단 반복 포인트 — 사용자 push로 4회 입장 수정(더 canonical로 기울어진 과정), 최종 경계는 \"원칙·구조는 canonical, 수치는 consumer\". (5) 재사용 규칙 — 향후 consumer upstream 제안 평가 시 boundaries.md §Canonical specifics 증거 기준을 먼저 확인. 총 80줄 이하.",
+          "acceptance": "파일 생성, 80줄 이하, pattern- prefix 준수, 5 요소 모두 포함.",
+          "risk": "memory 운영 원칙의 \"pattern-은 tactical recipe\"에 부합하도록 — architectural 원칙은 context/에 이미 편입.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "lead",
+          "created_at": "2026-04-16T08:27:09.315Z"
+        },
+        {
+          "id": 15,
+          "title": "manifest.json 재생성 + scripts/validate.ts 재실행",
+          "context": "body.md 수정·신규 vocabulary/schema 파일 추가·docs 추가로 인한 manifest.json body_hash + 파일 목록 변경분 반영.",
+          "approach": "bun run scripts/validate.ts 실행. validate.ts가 manifest.json 자동 재생성하며 body_hash(skills/nx-plan), vocabulary 목록(task-exceptions + memory_policy 추가), schema 목록(task-exceptions.schema + memory-policy.schema + state-schemas/memory-access.schema 추가) 갱신. 재생성 후 git diff 검토 — 의도한 변경만 포함되었는지 확인. 예상치 못한 entry 삭제·중복 탐지.",
+          "acceptance": "validate.ts exit 0. manifest.json 변경분이 body.md 수정 + 신규 파일 3-4개(task-exceptions vocabulary + schema, memory-policy vocabulary + schema, memory-access state-schema)만 반영. 다른 entry 의도치 않은 변경 없음.",
+          "risk": "validate.ts가 신규 vocabulary 파일 자동 discovery하지 못할 가능성 — script 경로 탐색 로직 확인.",
+          "status": "completed",
+          "deps": [
+            1,
+            3,
+            5,
+            6,
+            7
+          ],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-16T08:27:15.970Z"
+        },
+        {
+          "id": 16,
+          "title": "manifest 재생성 검증 + CI gate 통과",
+          "context": "task 15의 manifest 갱신이 정확하고 validate:conformance CI gate 통과함을 확인.",
+          "approach": "(1) manifest.json diff 검토 — 의도한 entry만 추가·수정. (2) bun run validate:conformance — CI gate exit 0. (3) state-schema 5종(plan/tasks/history/agent-tracker/memory-access) 커버 확인. (4) vocabulary 6종(capabilities/categories/resume-tiers/tags/invocations/memory_policy + task-exceptions) = 7종 등록 확인 — wait, vocabulary count 업데이트 확인.",
+          "acceptance": "manifest diff clean. validate:conformance exit 0. state-schema 5종 + vocabulary 7종 manifest 반영.",
+          "risk": "conformance-coverage.ts가 신규 state-schema에 대한 fixture 없어서 uncovered 에러 — fixture 추가 필요 시 task 6에서 처리됐는지 재확인.",
+          "status": "completed",
+          "deps": [
+            15
+          ],
+          "plan_issue": 1,
+          "owner": "tester",
+          "created_at": "2026-04-16T08:27:21.738Z"
+        },
+        {
+          "id": 17,
+          "title": "CHANGELOG.md v0.10.0 엔트리 작성",
+          "context": "evolution.md §Breaking change 대응 절차에 따라 v0.10.0 릴리스 문서화. additive-with-obligation(body.md 수정 + conformance 확장) pre-v1 정책 minor bump.",
+          "approach": "CHANGELOG.md에 v0.10.0 엔트리 추가 (최상단). Keep a Changelog 포맷 + nx-car:v0.10.0 marker로 Consumer Action Required 섹션 감싸기. 내용: Added(vocabulary/task-exceptions.yml, vocabulary/memory_policy.yml, schema/{task-exceptions,memory-policy}.schema.json, conformance/state-schemas/memory-access.schema.json, docs/memory-lifecycle-contract.md), Changed(skills/nx-plan/body.md Step 7, docs/nexus-outputs-contract.md §Shared filename convention, vocabulary/tags.yml [m]/[m:gc] prose_guidance, vocabulary/invocations.yml + memory_read_observation), BREAKING CHANGES 섹션에 body_hash 변경으로 소비자 빌드 재실행 필요 명시. Consumer Action Required에는 claude-nexus/opencode-nexus 각 action: (1) nexus-core 버전 업데이트, (2) 빌드 재실행, (3) conditional auto-pairing 구현 반영 여부 검토, (4) memory-access.jsonl observation hook 구현 여부 판단(optional), (5) task-exceptions vocabulary의 exception catalog 인식하여 Step 7 local 처리에 반영. 50줄 초과 시 MIGRATIONS/v0_9_to_v0_10.md 링크.",
+          "acceptance": "v0.10.0 엔트리 최상단. nx-car:v0.10.0 marker 감싸기. Consumer Action Required 섹션이 다른 항목보다 선행. 영향 대상 2 consumer 명시.",
+          "risk": "nx-car marker 중첩(다른 버전 marker 내부에 위치) — evolution.md §CHANGELOG Canonical 포맷의 \"중첩 금지\" 준수.",
+          "status": "completed",
+          "deps": [
+            16
+          ],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-16T08:27:33.265Z"
+        },
+        {
+          "id": 18,
+          "title": "MIGRATIONS/v0_9_to_v0_10.md 신설",
+          "context": "CHANGELOG Consumer Action Required 상세를 50줄 초과 시 별도 파일에 담는 evolution.md 정책에 따라 신설.",
+          "approach": "MIGRATIONS/v0_9_to_v0_10.md 작성. 섹션: §Overview(부분 수용 + 재구조화 배경), §Breaking Changes(body_hash 변경 → 빌드 재실행), §Consumer Action — claude-nexus(conditional auto-pairing 구현 적용·researcher pair 코드 제거·memory observation hook 선택·local dispatcher 규칙 consumer-local로 이관·exception catalog 인식 dispatcher 수정), §Consumer Action — opencode-nexus(동일 내용의 opencode 하네스 적용 관점, memory observation hook 구현은 선택), §Rejected Items Reference(#19의 cap=5·Layer 2·wave_id·escalation serialization·tool-log recalibration, #20의 P1 수치·max 1 primer·git commit 포맷·resume 규칙 등 — consumer-local 결정 영역임을 명시), §Link Back(CHANGELOG v0.10.0 nx-car marker). MIGRATIONS/INDEX.md에도 신규 entry 추가.",
+          "acceptance": "파일 생성. 5 섹션 모두 포함. INDEX.md 업데이트. v0_8_to_v0_9.md와 format 일관.",
+          "risk": "Consumer Action에서 \"거부된 항목\"을 consumer가 canonical 지시로 오독할 위험 — \"consumer-local 결정 영역\" 명시.",
+          "status": "completed",
+          "deps": [
+            16
+          ],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-16T08:27:43.377Z"
+        },
+        {
+          "id": 19,
+          "title": "릴리스 docs 2 파일 검증",
+          "context": "task 17/18의 CHANGELOG + MIGRATIONS 내용이 정합하고 evolution.md 정책 준수함을 확인.",
+          "approach": "(1) CHANGELOG nx-car:v0.10.0 marker pair(start/end) 정합. marker 중첩 없음. (2) Consumer Action Required 섹션이 v0.10.0 엔트리 최상단. (3) 50줄 초과 시 MIGRATIONS 링크 존재. (4) MIGRATIONS/v0_9_to_v0_10.md 내 action 항목이 claude-nexus/opencode-nexus 양쪽 모두 커버. (5) INDEX.md 업데이트. (6) 거부된 항목이 consumer-local 영역임을 명시적으로 기술.",
+          "acceptance": "nx-car marker 정합. 50줄 룰 준수. 양 consumer action 커버. INDEX 업데이트. 거부 항목 명시.",
+          "risk": "CHANGELOG가 영문/한글 혼재 — 기존 문서 톤 확인 필요.",
+          "status": "completed",
+          "deps": [
+            17,
+            18
+          ],
+          "plan_issue": 3,
+          "owner": "reviewer",
+          "created_at": "2026-04-16T08:27:49.192Z"
+        },
+        {
+          "id": 20,
+          "title": "GH #19 회신 코멘트 작성",
+          "context": "#19 저자에게 B안 부분 수용 근거 + 수용/거부 항목별 이유 + 저자 §6 Questions 응답을 상세 코멘트로 회신.",
+          "approach": "GH 이슈 #19에 코멘트 작성. 섹션: §Summary(Option B 부분 수용 결론), §Accept(artifact-coherence, conditional auto-pairing with researcher/docs-adjacent exclusions, exception catalog as vocabulary/task-exceptions.yml, Dedup Layer 1, HOW row-differ, parallel decomp ≥3 as qualitative guidance), §Reject and Rationale(cap=5·streaming·Layer 2·wave_id·escalation·tool-log·run_parallel_dispatch — 각각 authoring/dispatcher boundary 침범 근거 명시. v0.9.0 task_close scope 축소 선례 인용), §Response to Open Questions(저자 §6 (a)-(g) 7 질문에 각각 답: primitive vocabulary 거부·exception catalog 분리 vocabulary 채택·same_file_bundle 포맷 harness 재량·dispatch_mode schema 필드 거부·cap recalibration consumer-local·Layer 1 mandatory + Layer 2 consumer-local·wave_id 1st-class 거부), §Next steps(v0.10.0 릴리스 예정 + MIGRATIONS 링크). 톤은 협업적, 저자 기여 인정 + 경계 명확화.",
+          "acceptance": "GH 코멘트 게시. 7 질문 모두 응답. 거부 항목마다 근거 prose. 수용 항목이 PR로 이어질 것임 안내.",
+          "risk": "톤이 defensive하거나 dismissive로 읽힐 위험 — 저자 기여(incident 교정 등)를 명시 인정.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-16T08:28:03.136Z"
+        },
+        {
+          "id": 21,
+          "title": "GH #20 회신 코멘트 작성",
+          "context": "#20 저자에게 5차 C안+α 근거 + 3 범주 축소(primer 삭제) 이유 + canonical 범위 명시 + 저자 §8 Questions 응답.",
+          "approach": "GH 이슈 #20에 코멘트 작성. 섹션: §Summary(5차 C안+α 부분 수용), §Accept(memory_policy.yml 3 범주 — empirical/external/pattern; structural naming contract; memory-access.jsonl 4-field canonical schema via agent-tracker 선례; 5 canonical 원칙 — read-event observation/P4 default/P1 3-signal intersection structure/git-backed deletion/merge-before-create; tags.yml prose_guidance boost; invocations.yml memory_read_observation primitive), §Reject and Rationale(primer 범주 — context/와 중복, 저자 §7.3 자인; 구체 수치 180d/6c/80/200/15/60KB — consumer cycle cadence 의존; max_count:1 primer; regex enforcement의 4 prefix 외 확장 막힘; P1 enforcement 수치; git commit 포맷; resume 세션 규칙 — 하네스 resume 메커니즘 의존), §Response to Open Questions(저자 §8 (a)-(e) 5 질문 응답), §Structural Decisions(memory_policy.yml은 vocabulary이나 semantic-only 원칙 유지; memory-lifecycle-contract.md docs 신설; boundaries.md §Canonical specifics 증거 기준 신설), §Next steps(v0.10.0 포함, consumer 각자 구체 수치 정책 설정 권고).",
+          "acceptance": "GH 코멘트 게시. 5 질문 모두 응답. 거부 항목마다 근거. 3 범주 축소 이유에 저자 §7.3 자인 인용.",
+          "risk": "primer 삭제 결정이 저자 기여 부정으로 읽힐 위험 — §7.3 본인 자인 인용으로 완화.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-16T08:28:15.805Z"
+        },
+        {
+          "id": 22,
+          "title": "GH 코멘트 2개 검증",
+          "context": "task 20/21의 GH #19/#20 회신 코멘트가 논거 일관성 유지하고 저자 질문 누락 없음을 확인.",
+          "approach": "(1) #19 응답이 §6 (a)-(g) 7 질문 모두 커버. (2) #20 응답이 §8 (a)-(e) 5 질문 모두 커버. (3) 거부 항목 근거가 본 plan의 결정(boundaries.md §Canonical specifics 증거 기준)과 일관. (4) 톤이 협업적이고 저자 기여 인정. (5) 링크 유효 — CHANGELOG v0.10.0, MIGRATIONS/v0_9_to_v0_10.md. (6) plan session #6 인용 있음.",
+          "acceptance": "모든 저자 질문 응답 확인. 거부 근거 plan 결정과 일관. 링크 유효. 톤 점검 통과.",
+          "risk": "저자 질문 일부 누락 가능성 — 체크리스트로 하나씩 확인.",
+          "status": "completed",
+          "deps": [
+            20,
+            21
+          ],
+          "plan_issue": 3,
+          "owner": "reviewer",
+          "created_at": "2026-04-16T08:28:20.934Z"
+        }
+      ]
     }
   ]
 }
