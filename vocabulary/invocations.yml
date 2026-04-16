@@ -114,3 +114,34 @@ invocations:
       numbered list, then await the user's free-form reply. The LLM is
       expected to map the reply to the most appropriate option or treat it
       as a free-form answer if no options were given.
+
+  - id: memory_read_observation
+    description: >
+      Harness-local observation of an agent reading a file under .nexus/memory/.
+      This invocation captures the moment a memory file's content is loaded into
+      an agent's context. It is not the read action itself — the read is performed
+      by the harness's file-read primitive — but the observation event emitted by
+      the harness after the read completes.
+    intent: memory_read_observation
+    semantic_params:
+      - name: file_path
+        description: Absolute or project-relative path to the memory file that was read.
+        required: true
+      - name: reader_identity
+        description: Opaque identifier of the agent or subject that performed the read.
+        required: true
+      - name: observed_at
+        description: ISO 8601 timestamp of the observation event.
+        required: true
+    prose_guidance: >
+      Harnesses that wish to track memory access to support informed gc decisions
+      should implement this observation by hooking into their filesystem read
+      primitive and emitting the event after a read under .nexus/memory/ completes.
+      Writes and directory scans are excluded. The accumulated records are persisted
+      per conformance/state-schemas/memory-access.schema.json at
+      .nexus/state/{harness_id}/memory-access.jsonl.
+    fallback_behavior: >
+      If the harness cannot observe file-read events (no equivalent hook), memory
+      access tracking is unavailable and forgetting decisions must rely on manual
+      inspection via the [m:gc] tag. Automatic deletion policies requiring access
+      metadata are consequently not enabled in such harnesses.

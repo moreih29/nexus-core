@@ -220,12 +220,21 @@ All issues decided → generate the plan document (tasks.json) immediately:
    | Design analysis / review | **architect** etc. HOW | Technical trade-off judgment |
    | Sequential edits to same file | **lead** | Parallel subagents risk conflict |
 
-   **Verification auto-pairing** — create separate verification tasks:
-   - Any task with `owner: "engineer"` + `acceptance` field → pair a **tester** task (verify acceptance criteria)
-   - Any task with `owner: "writer"` → pair a **reviewer** task (verify deliverable)
-   - Paired verification tasks are linked via `deps` to the original task
+   **Primary metric — artifact-coherence**: a well-scoped task targets a single artifact or a tightly coupled artifact cluster and makes a single coherent change. A change is coherent when (a) it can be described in one sentence, (b) reverting it leaves all other artifacts consistent, and (c) its acceptance can be verified by inspecting its outputs alone.
 
-   **DO/CHECK decomposition principle**: DO category agents (engineer, writer, researcher) and CHECK category agents (tester, reviewer) operate on artifact-level scope and accumulate less per-task context than HOW category agents. When a task involves multiple independent artifacts (several files, several verification targets, multiple research questions), decompose the task across multiple parallel DO/CHECK subagents rather than bundling them into a single subagent. Single-subagent bundles risk context exhaustion with no wall-clock benefit over parallel decomposition. HOW agents benefit from consolidated context and should generally remain as single sessions. Task granularity is assessed per-task by the plan author, not declared per-agent in meta.yml.
+   **Verification auto-pairing (conditional)** — create a CHECK task only when the DO task's acceptance includes the appropriate verification trigger:
+   - `owner: "engineer"` + acceptance contains a runtime-behavior criterion → pair a **tester** task.
+   - `owner: "writer"` + acceptance contains a verifiable deliverable criterion → pair a **reviewer** task.
+   - Exclusions: pure refactor (behavior-preserving), type-only changes, docs-adjacent tasks (.md or frontmatter-only, classified under `docs_only` entries in `vocabulary/task-exceptions.yml`), and researcher tasks. Researcher tasks never receive an auto-paired CHECK — research outputs feed Lead or HOW agents directly, not tester or reviewer.
+   - Paired verification tasks are linked via `deps` to the original task.
+
+   **Exception catalog**: task decomposition exceptions are defined in `vocabulary/task-exceptions.yml` (`docs_only.coherent`, `docs_only.independent`, `same_file_bundle`, `generated_artifacts`). When an exception applies to a task, record its id in the task's `context` field so downstream tooling can trace the classification.
+
+   **Dedup Layer 1 (plan-time static merge)**: before finalizing the task list, scan draft tasks for overlapping target_files. Overlapping tasks are merged into a single owner task via the `same_file_bundle` exception from `vocabulary/task-exceptions.yml` to prevent parallel write conflicts during execution.
+
+   **DO/CHECK decomposition principle**: DO agents (engineer, writer, researcher) and CHECK agents (tester, reviewer) accumulate less per-task context than HOW agents. When a task involves multiple independent artifacts, decompose across multiple parallel DO/CHECK subagents rather than bundling. HOW agents benefit from consolidated context and should generally remain as single sessions. Parallel decomposition is worthwhile when there are at least three independent artifacts; below that, bundling under one owner is preferable to avoid parallelization overhead.
+
+   **HOW decomposition rule**: split HOW analysis across multiple subagents only when the issue crosses different rows of the domain-agent mapping table (architect vs designer vs strategist vs postdoc). Sub-concerns within a single domain row belong in one HOW session.
 
 4. **Populate tasks.json** via `nx_task_add`:
    - Set `goal` from the plan topic

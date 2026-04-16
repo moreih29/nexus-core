@@ -21,6 +21,55 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.10.0] - 2026-04-16 — upstream proposal partial acceptance (GH #19/#20)
+
+This release implements the partial acceptance of two upstream proposals from claude-nexus Plan session #7: GH #19 (Plan/Run quantitative guidelines) and GH #20 (memory operational policy + access tracking). The accepted portions land as authoring-layer canonical assets (vocabulary, schemas, docs, boundaries principle). Rejected portions are dispatcher / runtime / consumer-local concerns that belong outside the Authoring layer per boundaries §Canonical specifics의 증거 기준 (newly introduced in this release).
+
+### BREAKING CHANGES
+<!-- nx-car:v0.10.0:start -->
+- **Impact**: claude-nexus, opencode-nexus — `skills/nx-plan/body.md` Step 7 prose restructured; `body_hash` changed. Two new canonical vocabulary files (`task-exceptions.yml`, `memory_policy.yml`) and one new state schema (`memory-access.schema.json`) are published. Consumers that `verifyBodyHash` will fail on v0.10.0 until they refresh their build artifacts. Consumers that import manifest vocabulary must accommodate two new sections (`task_exceptions` array, `memory_policy` object). Runtime behavior of existing consumer dispatchers is **not** affected by this release — all new canonical assets are additive or prose-only.
+- **Action required (claude-nexus)**:
+  1. `@moreih29/nexus-core` devDependency를 `^0.10.0`으로 업데이트.
+  2. `bun run dev` (또는 consumer 빌드 명령)로 재빌드 — 신규 `body_hash` 및 vocabulary entries를 수용.
+  3. conditional auto-pairing 규칙(engineer + runtime-behavior acceptance → tester / writer + verifiable deliverable acceptance → reviewer; researcher·순수 refactor·type-only·docs-adjacent 제외)을 local dispatcher에 반영. 기존 unconditional pairing 코드 제거.
+  4. Dedup Layer 1(plan-time static merge via `same_file_bundle`)을 task 생성 단계에 반영. Layer 2(wave-time intersection check), cap=5 hard enforcement, pair-wise streaming spawn 알고리즘, wave_id TUI grouping, escalation wave pause/resume, `tool-log.jsonl` wave recalibration — 모두 consumer-local dispatcher 결정 (canonical로 승격되지 않음).
+  5. memory-access observation hook은 선택적. 구현할 경우 `.nexus/state/claude-nexus/memory-access.jsonl`을 `conformance/state-schemas/memory-access.schema.json` 4-field schema로 기록. P1 자동 삭제 임계값(예: 일수·cycle 수·접근 횟수)은 프로젝트 cadence에 맞춰 consumer가 설정.
+  6. `vocabulary/task-exceptions.yml` 4 entries를 dispatcher가 인식하여 Step 7 static merge 및 CHECK pair skip 판단에 활용.
+- **Action required (opencode-nexus)**:
+  1. `@moreih29/nexus-core` devDependency를 `^0.10.0`으로 업데이트.
+  2. 빌드 재실행.
+  3. 동일 conditional auto-pairing 규칙을 opencode harness의 task 분해 로직에 반영.
+  4. memory-access observation hook 구현 여부는 프로젝트 필요에 따라 판단.
+- **Migration guide**: [MIGRATIONS/v0_9_to_v0_10.md](./MIGRATIONS/v0_9_to_v0_10.md) — 거부 항목 목록 + canonical specifics 증거 기준 근거 포함.
+- **Rationale (semver)**: pre-v1 minor + nx-car marker — v0.2.0/v0.4.0/v0.5.0/v0.6.0/v0.7.0/v0.8.0/v0.9.0 선례 일관. `body.md` prose 재구조화 + vocabulary 2종 추가 + state schema 1종 추가는 consumer 측 빌드 재실행을 요구하는 breaking change. additive-with-obligation 패턴.
+<!-- nx-car:v0.10.0:end -->
+
+### Added
+
+- `vocabulary/task-exceptions.yml` — canonical exception catalog. 4 entries: `docs_only.coherent`, `docs_only.independent`, `same_file_bundle`, `generated_artifacts`. 각 entry는 `id`, `description`, `applies_when`, `treatment`, `rationale` 5 필드.
+- `vocabulary/memory_policy.yml` — canonical memory operational policy. 5 섹션: `categories` (empirical / external / pattern 3종; primer는 context/ 소관이므로 제외), `naming` (structural contract — lowercase kebab-case `.md`, optional prefix), `access_tracking` (file_read observation primitive + 3 정보 축적 의미), `forgetting` (manual gate 기본값 + 3-signal intersection 구조, 수치는 consumer 재량), `merge` (merge-before-create 원칙).
+- `schema/task-exceptions.schema.json` — JSON Schema draft 2020-12 (`$defs` 통해 `vocabulary.schema.json`에서 $ref).
+- `schema/memory-policy.schema.json` — JSON Schema draft 2020-12 (`$defs` 통해 `vocabulary.schema.json`에서 $ref).
+- `conformance/state-schemas/memory-access.schema.json` — canonical state schema for `.nexus/state/{harness_id}/memory-access.jsonl`. 4 required fields: `path`, `last_accessed_ts`, `access_count`, `last_agent`. agent-tracker.json 선례 패턴 동일.
+- `docs/memory-lifecycle-contract.md` — behavioral contract 문서. 5 canonical principles + 3 category boundary + consumer responsibility (수치·commit 포맷·resume 규칙 consumer 재량 명시).
+- `vocabulary/invocations.yml` entries: `memory_read_observation` primitive (6 필드).
+- `.nexus/memory/pattern-upstream-proposal-review.md` — Plan session #6 판단 과정 기록.
+
+### Changed
+
+- `skills/nx-plan/body.md` Step 7 — "Verification auto-pairing" 섹션을 conditional rule로 재작성(researcher 제외, docs-adjacent 제외, 순수 refactor·type-only 제외). artifact-coherence primary metric prose, Exception catalog 참조, Dedup Layer 1 prose, HOW decomposition row-differ 규칙, parallel decomp ≥3 qualitative guidance 추가. 거부 항목(cap 수치, pair-wise streaming 알고리즘, Dedup Layer 2 wave-time, wave_id TUI, escalation wave pause/resume, tool-log recalibration) 본문 미포함.
+- `docs/nexus-outputs-contract.md` §Shared filename convention — `memory-access.jsonl` 항목 추가. agent-tracker entry와 포맷 동일.
+- `vocabulary/tags.yml` — `[m]`/`[m:gc]` entries에 `prose_guidance` 필드 추가. memory_policy.yml과 memory-lifecycle-contract.md 참조.
+- `schema/vocabulary.schema.json` — `tagEntry`에 optional `prose_guidance` 필드 허용. `taskExceptionEntry` / `taskExceptionFile` / `memoryPolicyFile` $defs 신설 ($ref via `task-exceptions.schema.json` / `memory-policy.schema.json`).
+- `schema/manifest.schema.json` — `vocabulary` 섹션에 `task_exceptions` 배열, `memory_policy` 객체 속성 추가. required에 포함.
+- `scripts/lib/validate.ts` — 신규 vocabulary 2종 validator 컴파일 + `loadVocab`에서 로드 + `generateManifest`에 반영.
+- `.nexus/context/boundaries.md` — §Canonical specifics의 증거 기준 신규 섹션(§거절 근거 6개 뒤, §Vocabulary 4종 앞). 3 적용 예시 포함(memory-access 4-field / P1 수치 / Plan Step 7 수치).
+- `VERSION`, `package.json` — 0.10.0으로 bump.
+
+### Rejected (documented in MIGRATIONS/v0_9_to_v0_10.md)
+
+GH #19에서 거부된 항목: `cap=5` hard 수치, pair-wise streaming spawn 알고리즘, Dedup Layer 2 (wave-time intersection), TUI `wave_id` grouping, escalation serialization의 wave pause/resume 상태 머신, `tool-log.jsonl` wave recalibration, `run_parallel_dispatch` harness_keys entry. GH #20에서 거부된 항목: `primer-` 범주(context/ 중복), `max_count: 1 primer`, 구체 수치(80/200/15/60KB/20 cycles/180 days/6 cycles/access=0), P1 자동 삭제의 수치 enforcement, git commit message 포맷 구체, resume 세션 미증분 규칙, 4-prefix enumeration regex의 강제. 모두 dispatcher·runtime·consumer-local 결정 영역.
+
 ## [0.9.0] - 2026-04-15 — task_close scope reduction + rule:neutral-tool-side-effect
 
 This release narrows `task_close` to the nexus-core owned state files only, removes a harness-specific return field, and formalizes the boundary as a new enforceable rule. A companion patch (Issue #17) corrects the `agent-tracker.json` array-of-entries narrative drift without breaking any consumer contract.

@@ -1,6 +1,6 @@
 {
-  "nexus_core_version": "0.9.0",
-  "nexus_core_commit": "9706c28",
+  "nexus_core_version": "0.10.0",
+  "nexus_core_commit": "ff5fb5d",
   "schema_contract_version": "2.0",
   "agents": [
     {
@@ -20,21 +20,6 @@
       "body_hash": "sha256:0254b4144a22c66209bd68119553d9057a4fb7f9b1ff7ebb9878687d99583465"
     },
     {
-      "name": "tester",
-      "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
-      "task": "Testing, verification, security review",
-      "alias_ko": "테스터",
-      "category": "check",
-      "resume_tier": "ephemeral",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "tester",
-      "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
-    },
-    {
       "name": "reviewer",
       "description": "Content verification — validates accuracy, checks facts, confirms grammar and format of non-code deliverables",
       "task": "Content verification, fact-checking, grammar review",
@@ -50,35 +35,18 @@
       "body_hash": "sha256:f04d15249601b14046e7e40a4475defb289436c4474afbd89986964f8c3e7c2f"
     },
     {
-      "name": "researcher",
-      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
-      "task": "Web search, independent investigation",
-      "alias_ko": "리서처",
+      "name": "engineer",
+      "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
+      "task": "Code implementation, edits, debugging",
+      "alias_ko": "엔지니어",
       "category": "do",
-      "resume_tier": "persistent",
+      "resume_tier": "bounded",
       "model_tier": "standard",
       "capabilities": [
-        "no_file_edit",
         "no_task_create"
       ],
-      "id": "researcher",
-      "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
-    },
-    {
-      "name": "postdoc",
-      "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
-      "task": "Research methodology, evidence synthesis",
-      "alias_ko": "포닥",
-      "category": "how",
-      "resume_tier": "persistent",
-      "model_tier": "high",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create",
-        "no_task_update"
-      ],
-      "id": "postdoc",
-      "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
+      "id": "engineer",
+      "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
     },
     {
       "name": "designer",
@@ -97,20 +65,6 @@
       "body_hash": "sha256:88ac56147d0e5bdf23fa591ce570a9c2d0eb1338df4ec2219f6238ddfcb65df4"
     },
     {
-      "name": "writer",
-      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
-      "task": "Technical writing, documentation, presentations",
-      "alias_ko": "라이터",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "writer",
-      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
-    },
-    {
       "name": "architect",
       "description": "Technical design — evaluates How, reviews architecture, advises on implementation approach",
       "task": "Architecture, technical design, code review",
@@ -127,21 +81,80 @@
       "body_hash": "sha256:85f9a3de419f32cdae284436eb1d902bff19a2230c50fe3068ffc642949a63b7"
     },
     {
-      "name": "engineer",
-      "description": "Implementation — writes code, debugs issues, follows specifications from Lead and architect",
-      "task": "Code implementation, edits, debugging",
-      "alias_ko": "엔지니어",
+      "name": "postdoc",
+      "description": "Research methodology and synthesis — designs investigation approach, evaluates evidence quality, writes synthesis documents",
+      "task": "Research methodology, evidence synthesis",
+      "alias_ko": "포닥",
+      "category": "how",
+      "resume_tier": "persistent",
+      "model_tier": "high",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create",
+        "no_task_update"
+      ],
+      "id": "postdoc",
+      "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
+    },
+    {
+      "name": "researcher",
+      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
+      "task": "Web search, independent investigation",
+      "alias_ko": "리서처",
+      "category": "do",
+      "resume_tier": "persistent",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "researcher",
+      "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
+    },
+    {
+      "name": "tester",
+      "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
+      "task": "Testing, verification, security review",
+      "alias_ko": "테스터",
+      "category": "check",
+      "resume_tier": "ephemeral",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create"
+      ],
+      "id": "tester",
+      "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
+    },
+    {
+      "name": "writer",
+      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
+      "task": "Technical writing, documentation, presentations",
+      "alias_ko": "라이터",
       "category": "do",
       "resume_tier": "bounded",
       "model_tier": "standard",
       "capabilities": [
         "no_task_create"
       ],
-      "id": "engineer",
-      "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
+      "id": "writer",
+      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
     }
   ],
   "skills": [
+    {
+      "name": "nx-run",
+      "description": "Execution — user-directed agent composition.",
+      "summary": "Execution — user-directed agent composition",
+      "triggers": [
+        "run"
+      ],
+      "harness_docs_refs": [
+        "resume_invocation"
+      ],
+      "id": "nx-run",
+      "body_hash": "sha256:0e2c443efceeab4621709a85cd4e2ba50471d2e850680c655d776cbb62814549"
+    },
     {
       "name": "nx-init",
       "description": "Project onboarding — scan, mission, essentials, context generation",
@@ -165,19 +178,6 @@
       "body_hash": "sha256:3ee8dd780d53f2e04472de6c701e16bc1fbde7f2ce9ed4e680b7cd2010530a22"
     },
     {
-      "name": "nx-run",
-      "description": "Execution — user-directed agent composition.",
-      "summary": "Execution — user-directed agent composition",
-      "triggers": [
-        "run"
-      ],
-      "harness_docs_refs": [
-        "resume_invocation"
-      ],
-      "id": "nx-run",
-      "body_hash": "sha256:0e2c443efceeab4621709a85cd4e2ba50471d2e850680c655d776cbb62814549"
-    },
-    {
       "name": "nx-plan",
       "description": "Structured multi-perspective analysis to decompose issues, align on decisions, and produce an enriched plan before execution. Plan only — does not execute.",
       "summary": "Structured planning — subagent-based analysis, deliberate decisions, produce execution plan",
@@ -188,7 +188,7 @@
         "resume_invocation"
       ],
       "id": "nx-plan",
-      "body_hash": "sha256:cd7a5fd1815530be6ffad18358a1295d1f74ef8a24132e75b73522c106eb6ae5"
+      "body_hash": "sha256:083ce49c06f8d3e4a0299aa8eb8e33460b68d6a277fe356b4db9635c21016aff"
     }
   ],
   "vocabulary": {
@@ -302,14 +302,16 @@
         "trigger": "[m]",
         "type": "inline_action",
         "handler": "memory_store",
-        "description": "Stores a lesson or reference to .nexus/memory/"
+        "description": "Stores a lesson or reference to .nexus/memory/",
+        "prose_guidance": "저장 admission 기준 — 코드/웹에서 다시 얻을 수 없는 정보만 저장한다. memory 파일의 naming, category, lifecycle 운영 정책은 vocabulary/memory_policy.yml과 docs/memory-lifecycle-contract.md를 canonical source로 참조한다.\n"
       },
       {
         "id": "m-gc",
         "trigger": "[m:gc]",
         "type": "inline_action",
         "handler": "memory_gc",
-        "description": "Garbage-collects .nexus/memory/ by merging or removing stale entries"
+        "description": "Garbage-collects .nexus/memory/ by merging or removing stale entries",
+        "prose_guidance": "gc 트리거 조건 평가, merge 판단, forgetting policy 집행은 vocabulary/memory_policy.yml에 정의된 원칙을 따르고 구체 임계값은 consumer-local 설정으로 결정한다.\n"
       },
       {
         "id": "rule",
@@ -346,7 +348,101 @@
         "description": "Ask the user a structured question with selectable options.",
         "intent": "structured_user_prompt",
         "fallback_behavior": "If the harness lacks a structured question tool (e.g., opencode-nexus),\npresent the question as prose followed by the options enumerated as a\nnumbered list, then await the user's free-form reply. The LLM is\nexpected to map the reply to the most appropriate option or treat it\nas a free-form answer if no options were given.\n"
+      },
+      {
+        "id": "memory_read_observation",
+        "description": "Harness-local observation of an agent reading a file under .nexus/memory/. This invocation captures the moment a memory file's content is loaded into an agent's context. It is not the read action itself — the read is performed by the harness's file-read primitive — but the observation event emitted by the harness after the read completes.\n",
+        "intent": "memory_read_observation",
+        "fallback_behavior": "If the harness cannot observe file-read events (no equivalent hook), memory access tracking is unavailable and forgetting decisions must rely on manual inspection via the [m:gc] tag. Automatic deletion policies requiring access metadata are consequently not enabled in such harnesses.\n"
       }
-    ]
+    ],
+    "task_exceptions": [
+      {
+        "id": "docs_only.coherent",
+        "description": "A batch of documentation files that all address the same scheme, decision, or structural change and should be treated as a single coherent unit.",
+        "applies_when": "all changed files are .md or frontmatter-only, and share one common scheme, decision, or structural change",
+        "treatment": "bundle into 1 writer task + 1 reviewer pair; file count / line count thresholds waived; state coherence claim in task approach field",
+        "rationale": "e.g., updating agent frontmatter files after a new field is introduced; files share the same change intent"
+      },
+      {
+        "id": "docs_only.independent",
+        "description": "A set of documentation files where each file addresses a distinct topic with no cross-reference dependency.",
+        "applies_when": "each .md file addresses a distinct topic with no cross-reference dependency",
+        "treatment": "N parallel writer tasks (one per file), each paired with 1 reviewer task; file count threshold waived per-task",
+        "rationale": "e.g., separate proposal drafts; each file is independently consumed"
+      },
+      {
+        "id": "same_file_bundle",
+        "description": "Two or more decomposed sub-tasks that would each modify the same target file, requiring merger to avoid conflicts.",
+        "applies_when": "two or more sub-tasks in the decomposition would each modify the same target file",
+        "treatment": "merge sub-tasks into a single task under one owner with a structured prompt listing each sub-task's requirements; the merged task counts as 1 task and 1 artifact cluster; does not apply when sub-tasks are sequenced (A's output feeds B) — those remain separate with a deps relationship",
+        "rationale": "parallel subagents targeting the same file cause merge conflicts"
+      },
+      {
+        "id": "generated_artifacts",
+        "description": "Files that are build output and do not represent independent authoring decisions.",
+        "applies_when": "files are build output (e.g., paths declared as build outputs in the harness's build configuration)",
+        "treatment": "excluded from task count, artifact cluster file count, and line count calculations; committed as part of the task that triggers their generation",
+        "rationale": "generated files do not represent independent authoring decisions"
+      }
+    ],
+    "memory_policy": {
+      "categories": [
+        {
+          "id": "empirical",
+          "prefix": "empirical-",
+          "description": "Empirically verified findings — observations and measurements that the project has confirmed through its own experimentation. Examples include runtime behavior observations, testing-derived structural facts, and operational measurements that cannot be inferred from documentation alone.\n"
+        },
+        {
+          "id": "external",
+          "prefix": "external-",
+          "description": "External constraints and references — requirements imposed by upstream dependencies, third-party API limits, vendor documentation quotations, and any knowledge that originates outside the project. May become stale if the upstream source changes.\n"
+        },
+        {
+          "id": "pattern",
+          "prefix": "pattern-",
+          "description": "Tactical operational patterns — recurring cycle-level recipes, routing heuristics, and procedural knowledge developed through work on the project. Architectural or design-level patterns belong in .nexus/context/, not here.\n"
+        }
+      ],
+      "naming": {
+        "pattern": "^[a-z0-9][a-z0-9-]*\\.md$",
+        "description": "Memory filenames are lowercase kebab-case .md files. The name should be a descriptive topic of 2–4 words. An optional category prefix from the categories section above may precede the topic. Version numbers and dates must not appear in filenames — temporal information belongs inside the file.\n",
+        "optional_prefix": true
+      },
+      "access_tracking": {
+        "observation_primitive": "file_read",
+        "scope": ".nexus/memory/",
+        "description": "Harnesses observe the moment an agent reads a memory file. Save events, directory scans (glob, grep), and mentions of the path in prose are not observation events. The set of events observed determines the accumulated access record.\n",
+        "information_accumulated": [
+          {
+            "name": "last_access_timestamp",
+            "meaning": "Wall-clock time of the most recent read event. Field name is harness-local; the canonical schema for storage is conformance/state-schemas/memory-access.schema.json.\n"
+          },
+          {
+            "name": "access_count",
+            "meaning": "Cumulative count of read events observed for this file since tracking began.\n"
+          },
+          {
+            "name": "last_reader_identity",
+            "meaning": "Identifier of the most recent reader (agent id or equivalent). Harness-local value domain.\n"
+          }
+        ],
+        "storage_contract_reference": "conformance/state-schemas/memory-access.schema.json"
+      },
+      "forgetting": {
+        "manual_gate_default": true,
+        "description": "Manual gc (triggered by the [m:gc] tag) is the default forgetting path. Automatic deletion is opt-in per consumer and never runs without explicit enablement.\n",
+        "automatic_deletion_structure": {
+          "principle": "minimum_three_signal_intersection",
+          "description": "If a consumer enables automatic deletion, the policy must require the simultaneous satisfaction of at least three independent signals — for example, elapsed time since last access, cycles since last read, and cumulative access count. Single-signal automatic deletion is prohibited. The specific signal thresholds are consumer-local and must be set to match the project's cycle cadence.\n"
+        },
+        "recoverable_deletion_requirement": "git_commit",
+        "recoverable_deletion_description": "Every memory file deletion must be recorded as a git commit. The commit message should include a recovery path that allows the file to be reconstructed via git history. Specific commit message format is consumer-local.\n"
+      },
+      "merge": {
+        "principle": "merge_before_create",
+        "description": "When a new memory save candidate substantively overlaps an existing file in topic and category, merging the new content into the existing file is preferred over creating a new file. Specific overlap-detection criteria (for example, keyword match thresholds) are consumer-local.\n"
+      }
+    }
   }
 }

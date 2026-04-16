@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moreih29/nexus-core/conformance/state-schemas/memory-access.schema.json",
+  "title": "Memory Access Record",
+  "description": "Schema for a single line in .nexus/state/{harness_id}/memory-access.jsonl — each JSONL line is a JSON object satisfying this schema. Upsert key is `path`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "last_accessed_ts", "access_count", "last_agent"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute path to the memory file that was read. Typically resolved under .nexus/memory/."
+    },
+    "last_accessed_ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the most recent read event for this file."
+    },
+    "access_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Cumulative count of read events observed for this file since tracking began in this harness."
+    },
+    "last_agent": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque harness-specific identifier for the agent (or equivalent subject) that performed the most recent read."
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Optional migration anchor, aligned with other state schemas introduced in v0.5.0."
+    }
+  }
+}

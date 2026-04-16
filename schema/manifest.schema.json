@@ -63,13 +63,15 @@
     "vocabulary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["capabilities", "categories", "resume_tiers", "tags", "invocations"],
+      "required": ["capabilities", "categories", "resume_tiers", "tags", "invocations", "task_exceptions", "memory_policy"],
       "properties": {
         "capabilities": { "type": "array" },
         "categories": { "type": "array" },
         "resume_tiers": { "type": "array" },
         "tags": { "type": "array" },
-        "invocations": { "type": "array" }
+        "invocations": { "type": "array" },
+        "task_exceptions": { "type": "array" },
+        "memory_policy": { "type": "object" }
       }
     }
   }
