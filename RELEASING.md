@@ -53,6 +53,31 @@ not attempt to fix silently.
 
 ---
 
+## 1.5. Create a feature branch
+
+All release work happens on a dedicated feature branch — never directly
+on main. The feature branch isolates in-progress release commits and
+allows multiple preparatory commits (version bump, CHANGELOG, manifest
+regen, context/memory updates) to accumulate before they land on main
+together. main is updated only via the `--no-ff` merge in §4b.
+
+Naming convention:
+
+```bash
+git checkout -b feat/vX_Y_Z-<short-slug>
+```
+
+Recent examples:
+- `feat/v0_11_0-hook-injection-governance`
+- `feat/v0_12_0-runtime-injection-withdrawal`
+
+The slug describes the release's primary theme. Use underscores between
+the version segments (`v0_12_0`, not `v0.12.0`) to avoid branch-name dots
+— both forms appear in older history, but underscore is the current
+convention.
+
+---
+
 ## 2. Decide the version number
 
 Read `.nexus/rules/semver-policy.md` — the 18-case table tells you whether
@@ -225,7 +250,9 @@ Fix any discrepancy before proceeding to §4.
 
 ---
 
-## 4. Commit, push, tag, push tag
+## 4. Commit, merge to main, tag, push tag
+
+### 4a. Commit on the feature branch
 
 Stage the **exact** files you modified (no `git add -A`):
 
@@ -240,20 +267,55 @@ git add package.json VERSION CHANGELOG.md manifest.json
 # git add .nexus/rules/*.md
 # git add .nexus/memory/pattern-*.md
 # git add MIGRATIONS/vA_to_vB.md MIGRATIONS/INDEX.md
-
-git commit -m "chore(release): vX.Y.Z — <short description>"
-git push origin main
 ```
 
-After the main push lands, create and push the tag:
+**Commit message convention**: use a Conventional Commits prefix chosen
+by the release's primary character, followed by `vX.Y.Z` and a short
+summary. Recent releases consistently use `feat:` when the release
+introduces or changes functionality (e.g. `feat: v0.12.0 — §9 runtime
+injection 메커니즘 회수`). Use `fix:` for pure bug-fix releases, `docs:`
+for docs-only patch bumps, `chore:` for mechanical version bumps with no
+user-visible behavior change.
 
 ```bash
+git commit -m "feat: vX.Y.Z — <short description>"
+```
+
+Multiple commits on the feature branch are acceptable; the `--no-ff`
+merge in §4b preserves them all in main's history. It is fine to split
+the release into e.g. a primary `feat:` commit and a follow-up `fix:` or
+`chore:` commit before merging.
+
+### 4b. Merge the feature branch into main
+
+```bash
+git checkout main
+git pull origin main                              # ensure up to date
+git merge --no-ff feat/vX_Y_Z-<slug> \
+  -m "Merge feat/vX_Y_Z-<slug> into main — vX.Y.Z"
+```
+
+The `--no-ff` flag **always** creates a merge commit — never
+fast-forward. This merge commit is the canonical release boundary in
+git history (every past release has one). Deleting the feature branch
+after merge is optional:
+
+```bash
+git branch -d feat/vX_Y_Z-<slug>                  # local
+git push origin --delete feat/vX_Y_Z-<slug>       # remote, if pushed
+```
+
+### 4c. Push main and create the tag
+
+```bash
+git push origin main
 git tag -a vX.Y.Z -m "vX.Y.Z: <short description>"
 git push origin vX.Y.Z
 ```
 
 The tag pattern `v[0-9]+.[0-9]+.[0-9]+` (pure semver, no prerelease)
-triggers `.github/workflows/publish-npm.yml`.
+triggers `.github/workflows/publish-npm.yml`. Tag the merge commit on
+main, not any intermediate commit on the feature branch.
 
 ---
 
