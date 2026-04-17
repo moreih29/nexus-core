@@ -5,4 +5,5 @@ triggers:
   - run
 harness_docs_refs:
   - resume_invocation
+  - nexus_hook_mapping
 id: nx-run

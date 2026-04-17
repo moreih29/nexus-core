@@ -1,4 +1,4 @@
-> 이 문서는 plan session #1(2026-04-10) 기반으로 시작, plan session #2(2026-04-11)의 구현 결정이 추가 반영되어 있다, plan session #3(2026-04-12)의 v0.2.0 harness-agnostic 재설계 결정이 추가 반영되어 있다, plan session #4(2026-04-13)의 conformance full-coverage 결정이 추가 반영되어 있다, plan session #5(2026-04-14)의 invocation abstraction 결정(Option A + Spec γ)이 추가 반영되어 있다, plan session #5(2026-04-15)의 agent-tracker docs drift 수정(GH #17) 및 task_close scope 축소(GH #18) 결정이 추가 반영되어 있다. 10 issues 결정 세부는 `.nexus/history.json` 참조. 원본 논의: `.nexus/memory/` 참조.
+> 이 문서는 plan session #1(2026-04-10) 기반으로 시작, plan session #2(2026-04-11)의 구현 결정이 추가 반영되어 있다, plan session #3(2026-04-12)의 v0.2.0 harness-agnostic 재설계 결정이 추가 반영되어 있다, plan session #4(2026-04-13)의 conformance full-coverage 결정이 추가 반영되어 있다, plan session #5(2026-04-14)의 invocation abstraction 결정(Option A + Spec γ)이 추가 반영되어 있다, plan session #5(2026-04-15)의 agent-tracker docs drift 수정(GH #17) 및 task_close scope 축소(GH #18) 결정이 추가 반영되어 있다, plan session #7(2026-04-17)의 3 consumer 체제 threshold 명시 및 §Issue #2 갱신이 추가 반영되어 있다. 10 issues 결정 세부는 `.nexus/history.json` 참조. 원본 논의: `.nexus/memory/` 참조.
 
 # 경계와 vocabulary
 
@@ -95,9 +95,9 @@ nexus-core는 Nexus 생태계의 Authoring layer다. 프롬프트 본문, neutra
 
 ### Issue #2 — 3 consumer single source of truth, ACP vocabulary 편입 거부
 
-nexus-core는 두 active consumer(claude-nexus, opencode-nexus)의 single source of truth다. 소비자 모두 read-only로 소비한다. ACP(Agent Client Protocol) vocabulary는 nexus-core에 편입하지 않는다.
+nexus-core는 세 active consumer(claude-nexus, opencode-nexus, codex-nexus)의 single source of truth다. 소비자 모두 read-only로 소비한다. ACP(Agent Client Protocol) vocabulary는 nexus-core에 편입하지 않는다.
 
-Plan session #1 Issue #2에서 nexus-code가 3번째 read-only consumer로 명시적으로 추가되었으나, 2026-04-14 해당 프로젝트가 archived되어 현재는 2 active consumer 상태다. ACP 편입 거부 근거는 §거절 근거 1 참조.
+Plan session #1 Issue #2에서 nexus-code가 3번째 read-only consumer로 명시적으로 추가되었으나, 2026-04-14 해당 프로젝트가 archived되었다. 현재는 claude-nexus·opencode-nexus·codex-nexus 3 active consumer 상태다. ACP 편입 거부 근거는 §거절 근거 1 참조.
 
 ### Issue #3 — 독립 레포 유지 + Forward-only 완화
 
@@ -194,16 +194,26 @@ ApprovalBridge, ProcessSupervisor, AgentHost 같은 Supervision 집행 인터페
 
 ## Canonical specifics의 증거 기준
 
-nexus-core에 canonical로 등록되는 구체 수치, enumerate된 값, 정확한 정규식, 고정 파일명은 두 active consumer(claude-nexus, opencode-nexus) 모두에서 empirical 필요성이 확인된 경우에만 박는다. 단일 consumer 증거만 있으면 **원칙·구조 수준** canonical화만 허용하고 구체 값은 consumer-local로 둔다. 이는 단일 harness의 cycle cadence·context window·운영 패턴에서 도출된 수치가 canonical로 오해되어 다른 consumer의 국소 최적을 구조적으로 박탈하는 상황을 방지한다.
+nexus-core에 canonical로 등록되는 구체 수치, enumerate된 값, 정확한 정규식, 고정 파일명은 세 active consumer(claude-nexus, opencode-nexus, codex-nexus) 모두에서 empirical 필요성이 확인된 경우에만 박는다. 단일 consumer 증거만 있으면 **원칙·구조 수준** canonical화만 허용하고 구체 값은 consumer-local로 둔다. 이는 단일 harness의 cycle cadence·context window·운영 패턴에서 도출된 수치가 canonical로 오해되어 다른 consumer의 국소 최적을 구조적으로 박탈하는 상황을 방지한다.
+
+**3 consumer 체제 canonical 승격 threshold** (Plan session #7, 2026-04-17):
+
+- **MUST** = 3-of-3 consumer 필요성 empirical 인정 AND conformance suite(`conformance/state-schemas/*` 또는 `conformance/lifecycle/*`)로 assertable
+- **SHOULD** = 2-of-3 consumer 필요성 인정 또는 consumer UX 권장
+- **MAY** = 1-of-3 관찰 또는 harness-local optimization
+
+이 threshold는 `docs/consumer-implementation-guide.md §9`의 hook lifecycle guidance에 RFC 2119 태그로 1차 적용된다.
+
+> **주석**: 이 threshold 도입 이전(2-of-2 기반)에 canonical 승격된 항목(예: `conformance/state-schemas/memory-access.schema.json`)에 대한 retroactive 재평가는 현 scope 밖이다. 해당 항목의 재평가 여부는 `.nexus/context/evolution.md §90일 재평가 지표`에 연동하여 결정한다.
 
 `model_tier: high | standard`만 허용하고 구체 model identifier(예: `opus`, `gpt-5`)를 금지하는 거절 3번의 논리와 동일한 축이다. 거절 3번이 구체 model이 harness 종속이라 금지하는 것처럼, 여기서는 구체 수치가 consumer cadence 종속이라 canonical 대상 아님을 선언한다.
 
 **적용 예시**:
-- `conformance/state-schemas/memory-access.schema.json`의 4-field schema(path/last_accessed_ts/access_count/last_agent)는 agent-tracker.json 선례로 두 consumer 모두 필요성 인정 → canonical.
-- P1 자동 삭제의 "180일·6 cycles·access=0" 수치는 claude-nexus cycle cadence(2-4 cycles/week) 단일 근거 → consumer-local, docs/memory-lifecycle-contract.md에 원칙만 canonical(3신호 교집합 구조).
-- Plan Step 7의 "≤3 files·≤150 lines·cap=5" 같은 task 분해 수치는 claude-nexus empirical data 기반, opencode-nexus 관점 부재 → canonical 아님, skills/nx-plan/body.md에 qualitative guidance만.
+- `conformance/state-schemas/memory-access.schema.json`의 4-field schema(path/last_accessed_ts/access_count/last_agent)는 agent-tracker.json 선례로 2-of-2 consumer 필요성 인정으로 canonical 승격됨 (2-of-2 기준 당시; 3 consumer 체제 재평가는 evolution.md §90일 재평가 지표 연동).
+- P1 자동 삭제의 "180일·6 cycles·access=0" 수치는 claude-nexus cycle cadence(2-4 cycles/week) 단일 근거 → 1-of-3 관찰 수준(MAY), consumer-local, docs/memory-lifecycle-contract.md에 원칙만 canonical(3신호 교집합 구조).
+- Plan Step 7의 "≤3 files·≤150 lines·cap=5" 같은 task 분해 수치는 claude-nexus empirical data 기반, 나머지 consumer 관점 부재 → 1-of-3 관찰 수준(MAY), canonical 아님, skills/nx-plan/body.md에 qualitative guidance만.
 
-**재확인 주기**: `.nexus/context/evolution.md §90일 재평가 윈도우`의 지표 3번 "opencode-nexus 추가 drift 발견 여부"와 함께 본 원칙을 주기적으로 재확인한다. 두 consumer 모두에서 같은 필요성이 확인된 수치는 후속 plan session을 통해 canonical 승격 검토 대상으로 올린다.
+**재확인 주기**: `.nexus/context/evolution.md §90일 재평가 윈도우`의 지표 3번 "opencode-nexus·codex-nexus 추가 drift 발견 여부"와 함께 본 원칙을 주기적으로 재확인한다. 3-of-3 consumer 모두에서 같은 필요성이 확인된 수치는 후속 plan session을 통해 MUST 등급 canonical 승격 검토 대상으로 올린다. (Plan session #7, 2026-04-17 갱신)
 
 ---
 

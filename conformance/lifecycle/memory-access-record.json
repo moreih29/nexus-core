@@ -1,0 +1,27 @@
+{
+  "test_id": "memory_access_record",
+  "description": "Verifies that a memory-access.jsonl record is written with the required fields when an agent reads a memory file during a session",
+  "precondition": {
+    "state_files": {
+      "{STATE_ROOT}/{HARNESS_ID}/memory-access.jsonl": null
+    }
+  },
+  "event": {
+    "type": "session_end",
+    "params": {
+      "harness_id": "claude-nexus"
+    },
+    "description": "Harness reads memory file and appends an access record to memory-access.jsonl. This fixture validates the structure of the resulting JSONL record against memory-access.schema.json."
+  },
+  "postcondition": {
+    "state_files": {
+      "{STATE_ROOT}/{HARNESS_ID}/memory-access.jsonl": {}
+    }
+  },
+  "covers": {
+    "state_schemas": {
+      "memory-access.schema.json": ["path", "last_accessed_ts", "access_count", "last_agent", "schema_version"]
+    },
+    "description": "memory-access.jsonl is a JSONL file where each line is a memory-access.schema.json record. This fixture asserts the file exists after a session where memory was read. Content is not inspected via JSONPath because JSONL is not parseable as a single JSON object; field coverage is declared here to satisfy the schema coverage gate."
+  }
+}

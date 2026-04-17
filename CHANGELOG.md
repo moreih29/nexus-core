@@ -21,6 +21,73 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.11.0] - 2026-04-17 — §9 hook neutralization + 3-consumer mapping obligation (GH #21/#22/#23)
+
+This release neutralizes §9 (lifecycle hook event catalogue) to harness-agnostic prose, introduces RFC 2119 conformance tags across all §9 bullets, establishes consumer-owned Hook Event Runtime Mapping as a canonical appendix obligation, and reflects the 3-consumer ecosystem (codex-nexus added). The breaking surface is one additive obligation: each consumer must author `harness-content/nexus-hook-mapping.md` and adopt the `nexus_hook_mapping` token in `harness_docs_refs`.
+
+### Consumer Action Required
+<!-- nx-car:v0.11.0:start -->
+Each of the three active consumers (`claude-nexus`, `opencode-nexus`, `codex-nexus`) MUST:
+
+1. **Create `harness-content/nexus-hook-mapping.md`** in their own repo — document how the 8 conceptual events defined in nexus-core §9 (`session_start`, `user_message`, `subagent_spawn`, `subagent_complete`, `pre_tool_use`, `post_tool_use`, `session_end`, `context_compact`) map onto the runtime hook surface of their harness.
+2. **Accept the `nexus_hook_mapping` token** in their skill expander — when `harness_docs_refs` lists `nexus_hook_mapping`, the consumer's skill build pipeline must resolve this token to the content of `harness-content/nexus-hook-mapping.md` and inject it as skill context.
+
+Full Consumer Action Checklist (step-by-step migration, Before/After examples, verification gate): [MIGRATIONS/v0_10_to_v0_11.md](./MIGRATIONS/v0_10_to_v0_11.md)
+
+- **Rationale (semver)**: pre-v1 minor + nx-car marker — v0.2.0/v0.4.0/v0.5.0/v0.6.0/v0.7.0/v0.8.0/v0.9.0/v0.10.0 선례 일관. `harness-content/nexus-hook-mapping.md` 신설 의무 + `nexus_hook_mapping` 토큰 수용은 consumer 측 능동 작업을 요구하는 additive-with-obligation breaking change.
+<!-- nx-car:v0.11.0:end -->
+
+### Added
+
+- `conformance/lifecycle/session-end.json` — new fixture asserting that `session_end` deletes the `agent-tracker.json` array entries while preserving `history/`, `memory/`, `context/`, and `rules/` directories (negative MUST: do-not-delete project files, conformance-assertable).
+- `conformance/schema/fixture.schema.json` `event.type` enum: `session_end` added (3 types → 4 types).
+- §9 preamble "Harness-native knowledge surfaces" paragraph (Issue 4 P3) — consumers may surface harness-native knowledge (project index, instruction file, prior conversation) into skill context; preamble documents the pattern without prescribing mechanism.
+- §9 Appendix "Hook Event Runtime Mapping (consumer-owned)" — normative pointer to `harness_docs_refs` token `nexus_hook_mapping`; registry entry declares that consumers resolve this token to `harness-content/nexus-hook-mapping.md`.
+- `skills/nx-run/meta.yml` `harness_docs_refs`: `nexus_hook_mapping` entry added (rationale: `context_compact` hook dependency requires harness-specific mapping context at runtime).
+- `boundaries.md §Canonical specifics`: MUST=3-of-3 / SHOULD=2-of-3 / MAY=1-of-3 consumer evidence threshold explicitly stated (previously implied by examples).
+- `evolution.md §v0.11.0` subsection + §90-day re-evaluation metric item 10 (`tool-log.jsonl` canonical promotion candidate, watchlist pending 3-of-3 adoption evidence).
+
+### Changed
+
+- §9 each event "When it fires" prose: rewritten in harness-agnostic tone; Claude Code tool-name examples annotated "(illustrative, non-normative)" where retained.
+- §9 per-bullet RFC 2119 tags attached throughout: MUST 5 bullets, SHOULD ~19 bullets, MAY ~6 bullets (Issue 1 Option C hybrid + MUST dual gate: conformance-assertable ∧ 3-of-3 consumer necessity).
+- §9 `pre_tool_use` capability gate: refactored from harness-specific enforcement prose to abstract invariant MUST + "enforcement layer is consumer choice" note (Issue 4 P5).
+- §9 `session_end` hook: P1 block reason promoted to SHOULD note; unfinished-task warning promoted to SHOULD bullet; all-tasks-completed close promoted to SHOULD bullet (Issue 4 P1/P2/P7).
+- `ecosystem.md`: `codex-nexus` sibling section added alongside `claude-nexus` and `opencode-nexus` — 3 active consumer state reflected.
+- `boundaries.md §Issue #2`: narrative updated to "3 active consumer state"; Issue #2 resolution note references codex-nexus alongside existing two consumers.
+- `README.md`: Status field updated v0.7.1 → v0.11.0; consumer table updated to 3 entries; Positioning diagram updated to 3 harnesses (resolves 2-harness expression drift at lines 29/31/37).
+- `CONSUMING.md §File Contracts`: `docs/memory-lifecycle-contract.md` and `docs/consumer-implementation-guide.md` rows added to table; Audience declaration updated to name all 3 consumers explicitly.
+- `evolution.md`: stale 2-consumer expression corrected (lines 60/251/257 — references updated to 3-consumer phrasing).
+
+### Removed
+
+- §9 DROP 9 bullets (Issue 3 narrow judgment — 0-of-3 or harness-specific, non-breaking removal):
+  - `session_start`: stale-state warning bullet
+  - `session_start`: knowledge index load bullet
+  - `user_message`: inline_action handler call bullet
+  - `user_message`: knowledge file counts bullet
+  - `subagent_spawn`: structured task context bullet
+  - `subagent_spawn`: agent-tracker `task_id` field mention
+  - `subagent_complete`: acceptance reminder bullet
+  - `subagent_complete`: `task_update` auto call bullet
+  - `session_end`: active plan warning bullet
+
+### Fixed
+
+- `CONSUMING.md §File Contracts`: `docs/memory-lifecycle-contract.md` row was absent (v0.10.0 drift — file was added to repo but not to the table).
+- `CONSUMING.md §File Contracts`: `docs/consumer-implementation-guide.md` row was absent (same drift).
+- `README.md` Status: version displayed as v0.7.1; corrected to reflect actual current release.
+- `README.md` Positioning: 2-harness expression in diagram and narrative corrected to 3-harness (lines 29/31/37).
+- `CONSUMING.md` Audience declaration: `codex-nexus` was absent from consumer enumeration.
+- `evolution.md`: 2-consumer expressions at lines 60/251/257 corrected to 3-consumer.
+
+### Related Issues
+
+- [GH #21](https://github.com/moreih29/nexus-core/issues/21) — §9 hook event neutralization + RFC 2119 tagging (Plan session #7, Issue 1+3)
+- [GH #22](https://github.com/moreih29/nexus-core/issues/22) — consumer-owned hook mapping obligation + nexus_hook_mapping token (Plan session #7, Issue 2+4)
+- [GH #23](https://github.com/moreih29/nexus-core/issues/23) — 3-consumer ecosystem update + boundaries/evolution drift correction (Plan session #7, Issue 5)
+- **Migration guide**: [MIGRATIONS/v0_10_to_v0_11.md](./MIGRATIONS/v0_10_to_v0_11.md)
+
 ## [0.10.0] - 2026-04-16 — upstream proposal partial acceptance (GH #19/#20)
 
 This release implements the partial acceptance of two upstream proposals from claude-nexus Plan session #7: GH #19 (Plan/Run quantitative guidelines) and GH #20 (memory operational policy + access tracking). The accepted portions land as authoring-layer canonical assets (vocabulary, schemas, docs, boundaries principle). Rejected portions are dispatcher / runtime / consumer-local concerns that belong outside the Authoring layer per boundaries §Canonical specifics의 증거 기준 (newly introduced in this release).
@@ -445,7 +512,10 @@ If your harness stored runtime-like configuration in `runtime.json`, move it to 
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/moreih29/nexus-core/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/moreih29/nexus-core/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/moreih29/nexus-core/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/moreih29/nexus-core/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/moreih29/nexus-core/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/moreih29/nexus-core/compare/v0.6.0...v0.7.0

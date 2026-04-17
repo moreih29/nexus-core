@@ -1,6 +1,6 @@
 # Consuming nexus-core
 
-> **Audience**: LLM agents in consumer repositories (claude-nexus, opencode-nexus).
+> **Audience**: LLM agents in consumer repositories (claude-nexus, opencode-nexus, codex-nexus).
 > Human readers should start with [README.md](./README.md).
 
 ## Internet Access Assumption
@@ -59,6 +59,8 @@ Replace `{X.Y.Z}` with the actual new version string (e.g., `v0.2.0`).
 | `conformance/lifecycle/*.json` | Event-based lifecycle conformance fixtures | Validate harness-managed file behavior (agent-tracker.json) |
 | `conformance/lifecycle/README.md` | Lifecycle fixture explanation | Reference for event trigger semantics |
 | `docs/nexus-outputs-contract.md` | Normative contract for harness outputs (tool-produced/harness-produced/agent-produced) | Must-read before implementing state persistence |
+| `docs/consumer-implementation-guide.md` | Consumer build guide — 9 required components + hook event lifecycle + subagent orchestration model | Cover-to-cover read before implementing any Nexus harness |
+| `docs/memory-lifecycle-contract.md` | Memory operational policy and 3-signal forgetting structure | Reference before implementing memory observation hooks |
 | `scripts/conformance-coverage.ts` | Schema-field × fixture.covers coverage validator | Consumer CI pipeline integration |
 | `.nexus/state/{harness-id}/*` (runtime) | Harness-local state namespace root | Create harness-specific files here (independent or extension) |
 | `.nexus/state/{harness-id}/{base}.extension.json` (runtime) | Extension of a common state file (e.g., plan.extension.json) | Pair writes with the common file; own lifecycle and schema |
@@ -166,3 +168,5 @@ This one-time setup lets your consumer repo's LLM agents discover the upgrade pr
 - plan session #2 Issue #8 (2026-04-11) — this protocol's design decisions
 - [docs/nexus-outputs-contract.md](./docs/nexus-outputs-contract.md) — normative outputs contract (tool-produced / harness-produced / agent-produced)
 - [conformance/lifecycle/README.md](./conformance/lifecycle/README.md) — lifecycle fixture reference and event trigger semantics
+- [docs/memory-lifecycle-contract.md](./docs/memory-lifecycle-contract.md) — memory operational policy and forgetting structure (v0.10.0 canonical)
+- [docs/consumer-implementation-guide.md](./docs/consumer-implementation-guide.md) — 9-component consumer build guide
