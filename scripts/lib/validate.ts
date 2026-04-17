@@ -645,6 +645,7 @@ export async function generateManifest(
       return { ...meta, body_hash };
     })
   );
+  agentEntries.sort((a, b) => a.id.localeCompare(b.id));
 
   const skillEntries: ManifestSkill[] = await Promise.all(
     skills.map(async ({ meta, dir }) => {
@@ -652,6 +653,7 @@ export async function generateManifest(
       return { ...meta, body_hash };
     })
   );
+  skillEntries.sort((a, b) => a.id.localeCompare(b.id));
 
   const invocationSummaries: ManifestInvocationEntry[] = vocab.invocations.map((inv) => ({
     id: inv.id,
