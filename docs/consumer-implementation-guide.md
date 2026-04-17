@@ -439,12 +439,19 @@ User types "[plan] analyze the architecture"
    - Also read skills/{skill_id}/meta.yml to check for harness_docs_refs
      |
      v
-4. LLM Context Injection
-   - Inject the body.md content into the LLM's operating context
-   - HOW to inject is consumer's decision:
-     a. System prompt injection — most common; replaces or appends to the system prompt
-     b. Tool-response injection — return body.md as a tool response the LLM reads
-     c. User-message prefix — prepend body.md to the next user message
+4. Skill Activation
+   - Consumers SHOULD prefer the harness's native skill-registration 
+     or command-dispatch primitive — any mechanism by which the harness 
+     natively exposes user-invocable behavioral modes to the LLM — 
+     over raw prompt concatenation. The skill body.md content becomes 
+     the registered skill's operating specification.
+   - Only when no such native primitive exists, fall back to context injection:
+     a. System prompt injection
+     b. Tool-response injection
+     c. User-message prefix
+   - The name and concrete shape of the native primitive are consumer-owned;
+     nexus-core specifies only that such a mechanism, when available, is 
+     the preferred activation path.
    - Also inject harness-specific context for any harness_docs_refs declared in meta.yml
    - The body.md content BECOMES the LLM's operating instructions for this skill
      |
@@ -505,16 +512,11 @@ Hooks are the consumer's mechanism for responding to lifecycle events. nexus-cor
 
 ### Relationship to harness-native knowledge surfaces
 
-Consumer harnesses typically maintain a harness-native primary knowledge surface — for example, a system-prompt layer, a persistent session notice, or a harness banner injected before every LLM call. The hook events and their guidance in §9 are **complementary to** this harness-native surface, not a replacement for it. When §9 says "inject X at hook Y", the concrete injection path may live in the harness-native surface if that produces an equivalent effect. What matters is that the described information reaches the agent at the described moment — the delivery mechanism is consumer-local.
+Consumer harnesses typically maintain a harness-native primary knowledge surface — for example, a system-prompt layer, a persistent session notice, or a harness banner injected before every LLM call. The hook events and their guidance in §9 are **complementary to** this harness-native surface, not a replacement for it. When §9 says "inject X at hook Y", the concrete injection path may live in the harness-native surface if that produces an equivalent effect. What matters is that the described information reaches the agent at the described moment — the delivery mechanism is consumer-local. Each bullet in §9 describes behavior the consumer implements in hook handler code — specifying what prompt context should be injected at the hook's firing moment. These specifications are authored for consumer developers; nexus-core does not inject §9 prose itself into LLM runtime context.
 
 ### Event mapping examples
 
-Different harnesses expose these events under different names:
-
-- **(illustrative, non-normative)** **Claude Code**: `SessionStart`, `UserPromptSubmit`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `Stop`, `PostCompact`
-- **OpenCode**: its own hook API names — map accordingly when building an OpenCode consumer
-
-Identify the equivalent events in your harness's plugin system and implement the expected behaviors below.
+Different harnesses expose these events under different names. Identify the equivalent events in your harness's plugin system and implement the expected behaviors below.
 
 ### 8 lifecycle events
 
@@ -564,7 +566,6 @@ Identify the equivalent events in your harness's plugin system and implement the
 **Expected consumer behavior:**
 - **MUST** update `.nexus/state/{harness-id}/agent-tracker.json`: set `status=completed`, record `stopped_at` timestamp.
 - **MUST** compute `files_touched` from your tool-log or the subagent's tool usage record. Record which files were created or modified in the `files_touched` array of the agent's `agent-tracker.json` entry. This field is the authoritative source for bounded-tier resume evaluation.
-- **MAY** maintain a separate `edit-tracker.json` for cross-session file-touch history, updating it here. This is not a nexus-core requirement; it is a harness-local optimization.
 - **SHOULD** surface an unfinished-task warning when the stopping agent has tasks left in `pending` or `in_progress` state. This pattern is observed across consumers and aids recovery; the warning may be injected into Lead's context or surfaced as a reminder.
 - **MAY** update the task status in `tasks.json` when the agent was assigned a specific task. Note: this responsibility may alternatively be fulfilled at the Lead or tool-contract layer rather than the hook surface.
 
@@ -590,8 +591,7 @@ Read-only tools (query tools, status reads) are never blocked by capability gate
 **When it fires:** A tool call has completed and a result is available (harness runtime may expose this as `PostToolUse`, `tool.after`, a post-call interceptor, or equivalent).
 
 **Expected consumer behavior:**
-- **SHOULD** append a log entry to `.nexus/state/tool-log.jsonl`: timestamp, agent_id, tool name, file path (if a file was touched), result status. (This practice is observed across all consumers; nexus-core does not yet define a schema for this file — tracked for v0.11.0.)
-- **MAY** record the file path and agent_id in `edit-tracker.json` if your harness maintains it for cross-session file-touch history. This is a harness-local optimization and is not required by nexus-core. The `files_touched` array in `agent-tracker.json` is the nexus-core-defined record of which files an agent touched.
+- **SHOULD** append a log entry to `.nexus/state/tool-log.jsonl`: timestamp, agent_id, tool name, file path (if a file was touched), result status. (This practice is observed across all consumers; nexus-core does not yet define a schema for this file — schema definition pending.)
 - **MAY** record the error in the log for diagnostic purposes if the tool result indicates an error. Do not suppress error results.
 
 ---
@@ -622,18 +622,6 @@ Read-only tools (query tools, status reads) are never blocked by capability gate
   - Active agent list: re-inject which subagents are currently tracked in `.nexus/state/{harness-id}/agent-tracker.json`.
 - **SHOULD** restore state from the state files on disk. Context compaction is a context loss event; the LLM cannot reconstruct session state from its compressed context alone.
 - **SHOULD** read state files fresh from disk — do not rely on in-memory caches that may also have been cleared.
-
----
-
-### 9.X Appendix: Hook Event Runtime Mapping (consumer-owned)
-
-Each consumer harness MUST publish a mapping document at `harness-content/nexus-hook-mapping.md` in its own repository, listing how its runtime hook surface maps to the 8 conceptual events in §9.
-
-nexus-core does not mirror these mappings — they are owned and maintained per consumer. This appendix is a registry pointer, not a copy.
-
-- **harness_docs_refs token**: `nexus_hook_mapping`
-- **Expected location in consumer repo**: `harness-content/nexus-hook-mapping.md`
-- **Descriptive, not normative**: the consumer mapping document reflects current harness implementation. Verify against the consumer repo for the current mapping — this appendix does not guarantee specific contents.
 
 ---
 

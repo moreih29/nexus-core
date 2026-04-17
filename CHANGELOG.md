@@ -21,6 +21,44 @@ Consumer LLM agents can extract these blocks via regex. See [CONSUMING.md](./CON
 
 (none)
 
+## [0.12.0] - 2026-04-17 — §9 runtime injection 메커니즘 회수
+
+This release retracts the three implementation surfaces introduced in v0.11.0 that prescribed runtime injection of hook mapping context. The underlying governance — §9 rewrite, RFC 2119 dual gate, DROP 9 narrow judgment, and the three-consumer conformance fixtures — is fully preserved. The retracted surfaces were write-only from the consumer perspective: no consumer had read the `nexus_hook_mapping` token at runtime, and the `harness-content/nexus-hook-mapping.md` file obligation had not been acted upon by any consumer. This matches the v0.6.0 precedent (runtime.json removed on write-only dead-context evidence) and is classified as a minor removal under that precedent.
+
+### Consumer Action Required
+<!-- nx-car:v0.12.0:start -->
+All three active consumers (`claude-nexus`, `opencode-nexus`, `codex-nexus`) MUST:
+
+1. **Bump devDependency** — update `@moreih29/nexus-core` to `^0.12.0` and rebuild.
+2. **Mapping document** — if `harness-content/nexus-hook-mapping.md` has not been authored yet (v0.11.0 obligation not yet acted upon), no further action is required for this surface. If authoring is in progress, it may be stopped; the file is no longer obligatory.
+3. **Expander dead-code** — remove the `nexus_hook_mapping` token resolution branch from the skill expander. The token no longer appears in any `harness_docs_refs` entry in nexus-core and will never be injected at runtime.
+
+Note: `codex-nexus` skipped v0.11.0 entirely (joined at v0.11.0 boundary but did not act on the mapping obligation). For `codex-nexus`, this release requires only the devDependency bump.
+
+Full Consumer Action Checklist (step-by-step migration, Before/After examples, verification gate): [MIGRATIONS/v0_11_to_v0_12.md](./MIGRATIONS/v0_11_to_v0_12.md)
+<!-- nx-car:v0.12.0:end -->
+
+### Removed
+
+- `skills/nx-run/meta.yml` `harness_docs_refs: nexus_hook_mapping` entry — the `context_compact` hook dependency rationale for this entry assumed consumers would resolve the token at runtime, but 0-of-3 consumers had implemented the resolution path. Write-only dead-context evidence per v0.6.0 precedent.
+- `docs/consumer-implementation-guide.md` §9.X Appendix "Hook Event Runtime Mapping (consumer-owned)" block — the normative pointer to `harness_docs_refs` token `nexus_hook_mapping` and the registry entry that declared the `harness-content/nexus-hook-mapping.md` resolution obligation. Removed alongside the token it described.
+- Consumer obligation to create `harness-content/nexus-hook-mapping.md` — the v0.11.0 additive-with-obligation surface that required each consumer to author a harness-to-nexus hook mapping file. Obligation is withdrawn; the file may remain in consumer repos as a voluntary local document but carries no nexus-core contract.
+
+### Preserved (from v0.11.0)
+
+- §9 full rewrite — harness-agnostic prose with "(illustrative, non-normative)" annotations retained.
+- RFC 2119 dual gate — MUST/SHOULD/MAY tagging throughout §9; `MUST inject` / `MUST NOT omit` invariants preserved.
+- Evidence threshold principle — MUST dual gate: conformance-assertable ∧ 3-of-3 consumer necessity (stated in `boundaries.md §Canonical specifics`).
+- DROP 9 narrow judgment — 9 bullets removed in v0.11.0 (0-of-3 or harness-specific) remain absent; no re-introduction.
+- `conformance/lifecycle/session-end.json` fixture — negative MUST asserting that `session_end` does not delete project files.
+- `conformance/schema/fixture.schema.json` `event.type` enum including `session_end`.
+- `conformance/state-schemas/memory-access-record.json` (added in v0.11.0 lineage) — retained.
+- Three-consumer ecosystem — `codex-nexus` as the third active consumer remains reflected in `ecosystem.md`, `boundaries.md`, and `README.md`.
+
+### Rationale (semver)
+
+pre-v1 minor bump. The retracted surfaces are a strict subset of what v0.11.0 introduced; no pre-v0.11.0 contract is altered. This removal is structurally identical to v0.6.0 (`runtime.json` removed after write-only dead-context evidence across all surveyed consumers). The consumer-facing obligation change — removing the `harness-content/nexus-hook-mapping.md` authoring requirement — requires a devDependency bump and expander dead-code removal, which constitutes a consumer-side action. pre-v1 semver policy classifies this as minor + nx-car marker, consistent with v0.2.0/v0.4.0/v0.5.0/v0.6.0/v0.7.0/v0.8.0/v0.9.0/v0.10.0/v0.11.0 precedent.
+
 ## [0.11.0] - 2026-04-17 — §9 hook neutralization + 3-consumer mapping obligation (GH #21/#22/#23)
 
 This release neutralizes §9 (lifecycle hook event catalogue) to harness-agnostic prose, introduces RFC 2119 conformance tags across all §9 bullets, establishes consumer-owned Hook Event Runtime Mapping as a canonical appendix obligation, and reflects the 3-consumer ecosystem (codex-nexus added). The breaking surface is one additive obligation: each consumer must author `harness-content/nexus-hook-mapping.md` and adopt the `nexus_hook_mapping` token in `harness_docs_refs`.
@@ -512,7 +550,8 @@ If your harness stored runtime-like configuration in `runtime.json`, move it to 
 
 ---
 
-[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/moreih29/nexus-core/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/moreih29/nexus-core/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/moreih29/nexus-core/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/moreih29/nexus-core/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/moreih29/nexus-core/compare/v0.8.0...v0.9.0
