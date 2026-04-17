@@ -503,11 +503,15 @@ The canonical trigger for every tag is the explicit bracket form in `vocabulary/
 
 Hooks are the consumer's mechanism for responding to lifecycle events. nexus-core defines 8 abstract events. The names are harness-neutral; each harness maps them to its own event API.
 
+### Relationship to harness-native knowledge surfaces
+
+Consumer harnesses typically maintain a harness-native primary knowledge surface — for example, a system-prompt layer, a persistent session notice, or a harness banner injected before every LLM call. The hook events and their guidance in §9 are **complementary to** this harness-native surface, not a replacement for it. When §9 says "inject X at hook Y", the concrete injection path may live in the harness-native surface if that produces an equivalent effect. What matters is that the described information reaches the agent at the described moment — the delivery mechanism is consumer-local.
+
 ### Event mapping examples
 
 Different harnesses expose these events under different names:
 
-- **Claude Code**: `SessionStart`, `UserPromptSubmit`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `Stop`, `PostCompact`
+- **(illustrative, non-normative)** **Claude Code**: `SessionStart`, `UserPromptSubmit`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `Stop`, `PostCompact`
 - **OpenCode**: its own hook API names — map accordingly when building an OpenCode consumer
 
 Identify the equivalent events in your harness's plugin system and implement the expected behaviors below.
@@ -516,69 +520,66 @@ Identify the equivalent events in your harness's plugin system and implement the
 
 #### `session_start`
 
-**When it fires:** The harness launches or the user begins a new session.
+**When it fires:** A new agent session begins (harness runtime may expose this as `SessionStart`, `session.created`, an init hook, or equivalent).
 
 **Expected consumer behavior:**
-- Create `.nexus/` and `.nexus/state/` directories if they do not exist.
-- Write `.nexus/.gitignore` with `state/` if it does not exist.
-- Create `.nexus/state/{harness-id}/` if it does not exist, then initialize `.nexus/state/{harness-id}/agent-tracker.json` as `[]`. `agent-tracker.json` is a shared-purpose session file whose path is namespaced per harness to prevent cross-harness collisions (see [nexus-outputs-contract.md §Shared filename convention](./nexus-outputs-contract.md)).
-- On v0.7.0+, harnesses SHOULD silently remove any legacy `.nexus/state/agent-tracker.json` (root) at session start. The file is session-scoped and legacy records are safely discarded.
-- Check for stale state from a prior crashed session: if `plan.json` or `tasks.json` exist, warn the user that these may be leftover from an unclean shutdown.
-- Load the knowledge index: list files in `.nexus/memory/`, `.nexus/context/`, and `.nexus/rules/` to build the reference index that will be injected into subagent spawns.
+- **SHOULD** create `.nexus/` and `.nexus/state/` directories if they do not exist.
+- **SHOULD** write `.nexus/.gitignore` with `state/` if it does not exist.
+- **MUST** create `.nexus/state/{harness-id}/` if it does not exist, then initialize `.nexus/state/{harness-id}/agent-tracker.json` as `[]`. `agent-tracker.json` is a shared-purpose session file whose path is namespaced per harness to prevent cross-harness collisions (see [nexus-outputs-contract.md §Shared filename convention](./nexus-outputs-contract.md)).
+- On v0.7.0+, harnesses **SHOULD** silently remove any legacy `.nexus/state/agent-tracker.json` (root) at session start. The file is session-scoped and legacy records are safely discarded.
 
 ---
 
 #### `user_message`
 
-**When it fires:** The user submits a message to Lead.
+**When it fires:** The user submits a message and it is about to be processed (harness runtime may expose this as `UserPromptSubmit`, `message.received`, an on-input hook, or equivalent).
 
 **Expected consumer behavior:**
-- Scan the message text for bracket tags. Match against all triggers defined in `vocabulary/tags.yml`.
+- **SHOULD** scan the message text for bracket tags. Match against all triggers defined in `vocabulary/tags.yml`.
 - For each matched tag:
-  - If `type=skill`: activate the skill (see §8, steps 3–5). Do not proceed with normal message handling for that tag.
-  - If `type=inline_action`: call the handler tool immediately. The user's message following the tag is the input.
-- After tag routing, inject contextual guidance into Lead's available context before LLM inference begins:
+  - **SHOULD** activate the skill if `type=skill` (see §8, steps 3–5). Do not proceed with normal message handling for that tag.
+- **SHOULD** inject contextual guidance into Lead's available context before LLM inference begins:
   - Current plan status: if `plan.json` exists, summarize pending vs. decided issues.
   - Task progress: if `tasks.json` exists, summarize total/completed/pending counts and the ready-task set.
-  - Knowledge file counts: number of files in `.nexus/memory/`, `.nexus/context/`, `.nexus/rules/`.
-- If no tags are matched, pass the message to Lead without modification.
+- **SHOULD** pass the message to Lead without modification if no tags are matched.
 
 ---
 
 #### `subagent_spawn`
 
-**When it fires:** Lead spawns a subagent to execute a task.
+**When it fires:** A subagent is created and about to begin execution (harness runtime may expose this as `SubagentStart`, `agent.spawned`, a subagent-init hook, or equivalent).
 
 **Expected consumer behavior:**
-- Record the new agent entry in `.nexus/state/{harness-id}/agent-tracker.json`: `{ harness_id, agent_name, agent_id, task_id, started_at }`.
-- Inject the knowledge index into the subagent's initial context: the list of files in `.nexus/memory/`, `.nexus/context/`, and `.nexus/rules/` so the agent knows what project knowledge is available.
-- Apply capability restrictions: resolve `effective_capabilities` for this agent type and configure the subagent's tool access accordingly (see §6).
-- Apply the resume evaluation: check `owner_reuse_policy` on the task and the agent's `resume_tier` to determine whether to spawn fresh or resume a prior session (see §10).
-- Pass the structured task context to the agent: title, context, approach, and acceptance criteria (see §10, Context Passing).
+- **MUST** record the new agent entry in `.nexus/state/{harness-id}/agent-tracker.json`: `{ harness_id, agent_name, agent_id, started_at }`.
+- **SHOULD** inject the knowledge index into the subagent's initial context: the list of files in `.nexus/memory/`, `.nexus/context/`, and `.nexus/rules/` so the agent knows what project knowledge is available.
+- **SHOULD** apply capability restrictions: resolve `effective_capabilities` for this agent type and configure the subagent's tool access accordingly (see §6).
+- **SHOULD** apply the resume evaluation: check `owner_reuse_policy` on the task and the agent's `resume_tier` to determine whether to spawn fresh or resume a prior session (see §10).
 
 ---
 
 #### `subagent_complete`
 
-**When it fires:** A subagent finishes its assigned work and returns control to Lead.
+**When it fires:** A subagent finishes its assigned work and returns control (harness runtime may expose this as `SubagentStop`, `agent.completed`, a subagent-exit hook, or equivalent).
 
 **Expected consumer behavior:**
-- Update `.nexus/state/{harness-id}/agent-tracker.json`: set `status=completed`, record `stopped_at` timestamp.
-- Compute `files_touched` from your tool-log or the subagent's tool usage record. Record which files were created or modified in the `files_touched` array of the agent's `agent-tracker.json` entry. This field is the authoritative source for bounded-tier resume evaluation.
-- (Optional, harness-local) If your harness maintains a separate `edit-tracker.json` for cross-session file-touch history, update it here. This is not a nexus-core requirement; it is a harness-local optimization.
-- Check if the completed task has pending acceptance criteria that were not verified. If the task has `acceptance` defined and no `tester` or `reviewer` subagent has been scheduled, surface a reminder to Lead.
-- Update the task status in `tasks.json` via the `task_update` tool: set to `completed`.
+- **MUST** update `.nexus/state/{harness-id}/agent-tracker.json`: set `status=completed`, record `stopped_at` timestamp.
+- **MUST** compute `files_touched` from your tool-log or the subagent's tool usage record. Record which files were created or modified in the `files_touched` array of the agent's `agent-tracker.json` entry. This field is the authoritative source for bounded-tier resume evaluation.
+- **MAY** maintain a separate `edit-tracker.json` for cross-session file-touch history, updating it here. This is not a nexus-core requirement; it is a harness-local optimization.
+- **SHOULD** surface an unfinished-task warning when the stopping agent has tasks left in `pending` or `in_progress` state. This pattern is observed across consumers and aids recovery; the warning may be injected into Lead's context or surfaced as a reminder.
+- **MAY** update the task status in `tasks.json` when the agent was assigned a specific task. Note: this responsibility may alternatively be fulfilled at the Lead or tool-contract layer rather than the hook surface.
 
 ---
 
 #### `pre_tool_use`
 
-**When it fires:** A tool is about to execute.
+**When it fires:** A tool call has been issued and is about to execute (harness runtime may expose this as `PreToolUse`, `tool.before`, a pre-call interceptor, or equivalent).
 
 **Expected consumer behavior:**
-- Gate enforcement for unplanned file edits: if `tasks.json` does not exist and the tool is a file-editing tool, block the call and return an error explaining that edits outside of a planned task cycle are disallowed. This prevents unplanned workspace changes.
-- Capability gate: check whether the current agent (Lead or a subagent) has the requested tool in its disallowed set. If so, block the call and return an appropriate error.
-- Any other pre-condition checks your harness requires (rate limits, sandbox policies, etc.).
+- **SHOULD** enforce a gate for unplanned file edits: if `tasks.json` does not exist and the tool is a file-editing tool, block the call and return an error explaining that edits outside of a planned task cycle are disallowed. This prevents unplanned workspace changes.
+- **Capability invariant (MUST)**: disallowed tools MUST NOT execute. **Enforcement layer (consumer choice)**: The abstract invariant holds regardless of enforcement layer. Consumers may enforce at the hook, in static agent config (frontmatter/TOML/disallowedTools), at a framework-level gate, or any combination — the choice is consumer-local. What nexus-core requires is the invariant, not the enforcement mechanism.
+- **MAY** apply any other pre-condition checks your harness requires (rate limits, sandbox policies, etc.).
+
+> **SHOULD note on block reason**: When a tool call is blocked, the `reason` field returned to the LLM is consumed as operational guidance for the next action. Consumers SHOULD compose the `reason` as actionable, directive text rather than a generic error message.
 
 Read-only tools (query tools, status reads) are never blocked by capability gates. Only tools with primary write effects are subject to capability restrictions.
 
@@ -586,41 +587,53 @@ Read-only tools (query tools, status reads) are never blocked by capability gate
 
 #### `post_tool_use`
 
-**When it fires:** A tool has executed and returned a result.
+**When it fires:** A tool call has completed and a result is available (harness runtime may expose this as `PostToolUse`, `tool.after`, a post-call interceptor, or equivalent).
 
 **Expected consumer behavior:**
-- Append a log entry to `.nexus/state/tool-log.jsonl`: timestamp, agent_id, tool name, file path (if a file was touched), result status.
-- (Optional, harness-local) If your harness maintains `edit-tracker.json`, record the file path and agent_id here. This is a harness-local optimization and is not required by nexus-core. The `files_touched` array in `agent-tracker.json` is the nexus-core-defined record of which files an agent touched.
-- If the tool result indicates an error, record the error in the log for diagnostic purposes. Do not suppress error results.
+- **SHOULD** append a log entry to `.nexus/state/tool-log.jsonl`: timestamp, agent_id, tool name, file path (if a file was touched), result status. (This practice is observed across all consumers; nexus-core does not yet define a schema for this file — tracked for v0.11.0.)
+- **MAY** record the file path and agent_id in `edit-tracker.json` if your harness maintains it for cross-session file-touch history. This is a harness-local optimization and is not required by nexus-core. The `files_touched` array in `agent-tracker.json` is the nexus-core-defined record of which files an agent touched.
+- **MAY** record the error in the log for diagnostic purposes if the tool result indicates an error. Do not suppress error results.
 
 ---
 
 #### `session_end`
 
-**When it fires:** The user closes the harness or the session terminates.
+**When it fires:** The session is terminating (harness runtime may expose this as `Stop`, `session.end`, a shutdown hook, or equivalent).
 
 **Expected consumer behavior:**
-- Check for pending tasks: if `tasks.json` exists and contains incomplete tasks (status `pending` or `in_progress`), warn the user that the session is ending with unfinished work and suggest calling `task_close` to archive before exiting.
-- Check for an active plan: if `plan.json` exists, warn that the plan session will be lost if not archived.
-- Delete `.nexus/state/{harness-id}/agent-tracker.json` (a session-scoped file that has no value beyond the session).
-- Optionally rotate or archive `tool-log.jsonl` if your harness supports log retention.
-- Do not delete `history.json`, `memory/`, `context/`, or `rules/` — these are project-scoped and must persist.
+- **SHOULD** warn the user if `tasks.json` exists and contains incomplete tasks (status `pending` or `in_progress`), that the session is ending with unfinished work and suggest calling `task_close` to archive before exiting.
+- **SHOULD** delete `.nexus/state/{harness-id}/agent-tracker.json` (a session-scoped file that has no value beyond the session).
+- **MAY** rotate or archive `tool-log.jsonl` if your harness supports log retention.
+- **MUST NOT** delete `history.json`, `memory/`, `context/`, or `rules/` — these are project-scoped and must persist across sessions.
+- **SHOULD** prompt or block with an "all tasks completed — call `task_close` to archive" reminder when `tasks.json` shows all tasks completed but the cycle has not been archived via `task_close`. Run-cycle closure is a recoverability boundary.
 
 ---
 
 #### `context_compact`
 
-**When it fires:** The LLM's context window is compressed (older messages are truncated to make room for new content).
+**When it fires:** The runtime compresses the context window (harness runtime may expose this as `PostCompact`, `context.compacted`, a post-compact hook, or equivalent).
 
 **Expected consumer behavior:**
-- Re-inject the critical session snapshot that was lost in compression:
+- **SHOULD** re-inject the critical session snapshot that was lost in compression:
   - Active skill/mode: which skill is currently active (plan, run, sync, or none).
   - Plan status: if `plan.json` exists, re-inject the issue list with pending/decided status.
   - Task progress: if `tasks.json` exists, re-inject the task list with status and ready-task set.
   - Knowledge file index: re-inject the list of files in `.nexus/memory/`, `.nexus/context/`, `.nexus/rules/`.
   - Active agent list: re-inject which subagents are currently tracked in `.nexus/state/{harness-id}/agent-tracker.json`.
-- Context compaction is a context loss event. The LLM cannot reconstruct session state from its compressed context alone. Your consumer must restore state from the state files on disk.
-- Read state files fresh from disk — do not rely on in-memory caches that may also have been cleared.
+- **SHOULD** restore state from the state files on disk. Context compaction is a context loss event; the LLM cannot reconstruct session state from its compressed context alone.
+- **SHOULD** read state files fresh from disk — do not rely on in-memory caches that may also have been cleared.
+
+---
+
+### 9.X Appendix: Hook Event Runtime Mapping (consumer-owned)
+
+Each consumer harness MUST publish a mapping document at `harness-content/nexus-hook-mapping.md` in its own repository, listing how its runtime hook surface maps to the 8 conceptual events in §9.
+
+nexus-core does not mirror these mappings — they are owned and maintained per consumer. This appendix is a registry pointer, not a copy.
+
+- **harness_docs_refs token**: `nexus_hook_mapping`
+- **Expected location in consumer repo**: `harness-content/nexus-hook-mapping.md`
+- **Descriptive, not normative**: the consumer mapping document reflects current harness implementation. Verify against the consumer repo for the current mapping — this appendix does not guarantee specific contents.
 
 ---
 

@@ -11,29 +11,30 @@ Nexus 생태계는 세 층위로 나뉩니다. `nexus-core`는 가장 아래, **
 ```
 Supervision   (reserved)
                 │  read-only
-Execution     claude-nexus ↔ opencode-nexus
+Execution     claude-nexus ↔ opencode-nexus ↔ codex-nexus
                 │  read-only
 Authoring     nexus-core   ← 이 저장소
 ```
 
-현재 active 소비자는 두 Execution layer 하네스(`claude-nexus`, `opencode-nexus`)이며, 모두 `nexus-core`를 **read-only**로 참조합니다. Supervision layer는 외부 감독자 consumer를 위해 예약된 자리입니다(과거 nexus-code 프로젝트가 이 layer를 구현했으나 2026-04-14 archived).
+현재 active 소비자는 세 Execution layer 하네스(`claude-nexus`, `opencode-nexus`, `codex-nexus`)이며, 모두 `nexus-core`를 **read-only**로 참조합니다. Supervision layer는 외부 감독자 consumer를 위해 예약된 자리입니다(과거 nexus-code 프로젝트가 이 layer를 구현했으나 2026-04-14 archived).
 
 | Consumer | Layer | 하는 일 |
 |---|---|---|
 | [`claude-nexus`](https://github.com/moreih29/claude-nexus) | Execution | Claude Code 하네스 위에서 에이전트 조립·디스패치 |
 | [`opencode-nexus`](https://github.com/moreih29/opencode-nexus) | Execution | OpenCode 하네스 위에서 에이전트 조립·디스패치 |
+| [`codex-nexus`](https://github.com/moreih29/codex-nexus) | Execution | Codex 하네스 위에서 에이전트 조립·디스패치 |
 
 ## For Consumer Repositories
 
-> 이 저장소는 **외부 사용자가 직접 설치하는 플러그인이 아닙니다**. Nexus 하네스(`claude-nexus`, `opencode-nexus`)를 사용하려면 해당 저장소의 안내를 따르세요.
+> 이 저장소는 **외부 사용자가 직접 설치하는 플러그인이 아닙니다**. Nexus 하네스(`claude-nexus`, `opencode-nexus`, `codex-nexus`)를 사용하려면 해당 저장소의 안내를 따르세요.
 
-Consumer 저장소(`claude-nexus`, `opencode-nexus`)의 LLM 에이전트가 `@moreih29/nexus-core` 버전 업그레이드를 처리해야 하는 경우, **[CONSUMING.md](./CONSUMING.md)**의 Upgrade Protocol을 참조하세요.
+Consumer 저장소(`claude-nexus`, `opencode-nexus`, `codex-nexus`)의 LLM 에이전트가 `@moreih29/nexus-core` 버전 업그레이드를 처리해야 하는 경우, **[CONSUMING.md](./CONSUMING.md)**의 Upgrade Protocol을 참조하세요.
 
 CONSUMING.md는 LLM 에이전트 전용 문서입니다. 사람 독자는 이 README가 더 유용합니다.
 
 ## 이 저장소는 무엇이 **아닌가**
 
-`nexus-core`는 **외부 사용자가 직접 설치하는 플러그인이 아닙니다.** Nexus 하네스(`claude-nexus`, `opencode-nexus`)를 사용하고 싶다면 해당 저장소의 안내를 따르세요. `nexus-core`는 그 두 하네스가 내부적으로 공유하는 자산입니다.
+`nexus-core`는 **외부 사용자가 직접 설치하는 플러그인이 아닙니다.** Nexus 하네스(`claude-nexus`, `opencode-nexus`, `codex-nexus`)를 사용하고 싶다면 해당 저장소의 안내를 따르세요. `nexus-core`는 그 세 하네스가 내부적으로 공유하는 자산입니다.
 
 ## 범위
 
@@ -69,7 +70,7 @@ CONSUMING.md는 LLM 에이전트 전용 문서입니다. 사람 독자는 이 RE
 
 ## Status
 
-v0.7.1 (2026-04-14). 최신 release: agent-tracker namespace isolation (v0.7.0, GH #16) + nexus-code archived cleanup (v0.7.1). 상세 변경 이력은 [CHANGELOG.md](./CHANGELOG.md) 참조.
+v0.11.0 (2026-04-17). 최신 release: 훅 컨텍스트 주입 가이드 governance 재정립 (GH #21/#22/#23 — 3 consumer drift 대응). 상세 변경 이력은 [CHANGELOG.md](./CHANGELOG.md) 참조.
 
 ## References
 

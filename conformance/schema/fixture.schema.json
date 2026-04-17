@@ -166,8 +166,8 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["agent_spawn", "agent_complete", "agent_resume"],
-          "description": "Lifecycle event type. agent_spawn/agent_complete/agent_resume: agent instance lifecycle."
+          "enum": ["agent_spawn", "agent_complete", "agent_resume", "session_end"],
+          "description": "Lifecycle event type. agent_spawn/agent_complete/agent_resume: agent instance lifecycle. session_end: session teardown — agent-tracker.json deleted, history/memory/context/rules preserved."
         },
         "params": {
           "type": "object",

@@ -1,6 +1,6 @@
 {
   "nexus_core_version": "0.10.0",
-  "nexus_core_commit": "ff5fb5d",
+  "nexus_core_commit": "23c72e5",
   "schema_contract_version": "2.0",
   "agents": [
     {
@@ -18,6 +18,36 @@
       ],
       "id": "strategist",
       "body_hash": "sha256:0254b4144a22c66209bd68119553d9057a4fb7f9b1ff7ebb9878687d99583465"
+    },
+    {
+      "name": "designer",
+      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
+      "task": "UI/UX design, interaction patterns, user experience",
+      "alias_ko": "디자이너",
+      "category": "how",
+      "resume_tier": "persistent",
+      "model_tier": "high",
+      "capabilities": [
+        "no_file_edit",
+        "no_task_create",
+        "no_task_update"
+      ],
+      "id": "designer",
+      "body_hash": "sha256:88ac56147d0e5bdf23fa591ce570a9c2d0eb1338df4ec2219f6238ddfcb65df4"
+    },
+    {
+      "name": "writer",
+      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
+      "task": "Technical writing, documentation, presentations",
+      "alias_ko": "라이터",
+      "category": "do",
+      "resume_tier": "bounded",
+      "model_tier": "standard",
+      "capabilities": [
+        "no_task_create"
+      ],
+      "id": "writer",
+      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
     },
     {
       "name": "reviewer",
@@ -49,36 +79,34 @@
       "body_hash": "sha256:3d58b1b490c2f93cace2eedd0f04ec000f84514388eb086768cf53f8fa33db01"
     },
     {
-      "name": "designer",
-      "description": "UX/UI design — evaluates user experience, interaction patterns, and how users will experience the product",
-      "task": "UI/UX design, interaction patterns, user experience",
-      "alias_ko": "디자이너",
-      "category": "how",
-      "resume_tier": "persistent",
-      "model_tier": "high",
+      "name": "tester",
+      "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
+      "task": "Testing, verification, security review",
+      "alias_ko": "테스터",
+      "category": "check",
+      "resume_tier": "ephemeral",
+      "model_tier": "standard",
       "capabilities": [
         "no_file_edit",
-        "no_task_create",
-        "no_task_update"
+        "no_task_create"
       ],
-      "id": "designer",
-      "body_hash": "sha256:88ac56147d0e5bdf23fa591ce570a9c2d0eb1338df4ec2219f6238ddfcb65df4"
+      "id": "tester",
+      "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
     },
     {
-      "name": "architect",
-      "description": "Technical design — evaluates How, reviews architecture, advises on implementation approach",
-      "task": "Architecture, technical design, code review",
-      "alias_ko": "아키텍트",
-      "category": "how",
+      "name": "researcher",
+      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
+      "task": "Web search, independent investigation",
+      "alias_ko": "리서처",
+      "category": "do",
       "resume_tier": "persistent",
-      "model_tier": "high",
+      "model_tier": "standard",
       "capabilities": [
         "no_file_edit",
-        "no_task_create",
-        "no_task_update"
+        "no_task_create"
       ],
-      "id": "architect",
-      "body_hash": "sha256:85f9a3de419f32cdae284436eb1d902bff19a2230c50fe3068ffc642949a63b7"
+      "id": "researcher",
+      "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
     },
     {
       "name": "postdoc",
@@ -97,76 +125,23 @@
       "body_hash": "sha256:da9b8c2568b8b5812abed6d6324139f814379d48dc63cdc5d0b5b263f5407814"
     },
     {
-      "name": "researcher",
-      "description": "Independent investigation — conducts web searches, gathers evidence, and reports findings with citations",
-      "task": "Web search, independent investigation",
-      "alias_ko": "리서처",
-      "category": "do",
+      "name": "architect",
+      "description": "Technical design — evaluates How, reviews architecture, advises on implementation approach",
+      "task": "Architecture, technical design, code review",
+      "alias_ko": "아키텍트",
+      "category": "how",
       "resume_tier": "persistent",
-      "model_tier": "standard",
+      "model_tier": "high",
       "capabilities": [
         "no_file_edit",
-        "no_task_create"
+        "no_task_create",
+        "no_task_update"
       ],
-      "id": "researcher",
-      "body_hash": "sha256:fc79bafec05503327bd51a0b84b6e642d304bd79c45b78db6448b112793c143e"
-    },
-    {
-      "name": "tester",
-      "description": "Testing and verification — tests, verifies, validates stability and security of implementations",
-      "task": "Testing, verification, security review",
-      "alias_ko": "테스터",
-      "category": "check",
-      "resume_tier": "ephemeral",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_file_edit",
-        "no_task_create"
-      ],
-      "id": "tester",
-      "body_hash": "sha256:4dd04e1c93ff9c0c9fa6aebb60ece3f9719e82f9714b13feea01b6163633caec"
-    },
-    {
-      "name": "writer",
-      "description": "Technical writing — transforms research findings, code, and analysis into clear documents and presentations for the intended audience",
-      "task": "Technical writing, documentation, presentations",
-      "alias_ko": "라이터",
-      "category": "do",
-      "resume_tier": "bounded",
-      "model_tier": "standard",
-      "capabilities": [
-        "no_task_create"
-      ],
-      "id": "writer",
-      "body_hash": "sha256:2edd9bf52e537c446b5ebfaafab214ebaaad2491f019aa8534453bff3f1cd37b"
+      "id": "architect",
+      "body_hash": "sha256:85f9a3de419f32cdae284436eb1d902bff19a2230c50fe3068ffc642949a63b7"
     }
   ],
   "skills": [
-    {
-      "name": "nx-run",
-      "description": "Execution — user-directed agent composition.",
-      "summary": "Execution — user-directed agent composition",
-      "triggers": [
-        "run"
-      ],
-      "harness_docs_refs": [
-        "resume_invocation"
-      ],
-      "id": "nx-run",
-      "body_hash": "sha256:0e2c443efceeab4621709a85cd4e2ba50471d2e850680c655d776cbb62814549"
-    },
-    {
-      "name": "nx-init",
-      "description": "Project onboarding — scan, mission, essentials, context generation",
-      "summary": "Project onboarding — scan, mission, essentials, context generation",
-      "manual_only": true,
-      "harness_docs_refs": [
-        "instruction_file",
-        "slash_command_display"
-      ],
-      "id": "nx-init",
-      "body_hash": "sha256:b828a974ab4722dd7f1d15a4338d1380fdae47cd42c1bd4a5539277075efb6fc"
-    },
     {
       "name": "nx-sync",
       "description": "Context knowledge synchronization — scans project state and updates .nexus/context/ design documents",
@@ -189,6 +164,32 @@
       ],
       "id": "nx-plan",
       "body_hash": "sha256:083ce49c06f8d3e4a0299aa8eb8e33460b68d6a277fe356b4db9635c21016aff"
+    },
+    {
+      "name": "nx-run",
+      "description": "Execution — user-directed agent composition.",
+      "summary": "Execution — user-directed agent composition",
+      "triggers": [
+        "run"
+      ],
+      "harness_docs_refs": [
+        "resume_invocation",
+        "nexus_hook_mapping"
+      ],
+      "id": "nx-run",
+      "body_hash": "sha256:0e2c443efceeab4621709a85cd4e2ba50471d2e850680c655d776cbb62814549"
+    },
+    {
+      "name": "nx-init",
+      "description": "Project onboarding — scan, mission, essentials, context generation",
+      "summary": "Project onboarding — scan, mission, essentials, context generation",
+      "manual_only": true,
+      "harness_docs_refs": [
+        "instruction_file",
+        "slash_command_display"
+      ],
+      "id": "nx-init",
+      "body_hash": "sha256:b828a974ab4722dd7f1d15a4338d1380fdae47cd42c1bd4a5539277075efb6fc"
     }
   ],
   "vocabulary": {
