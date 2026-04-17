@@ -3228,6 +3228,447 @@
           "created_at": "2026-04-16T08:28:20.934Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-17T03:59:32.575Z",
+      "branch": "feat/v0_11_0-hook-injection-governance",
+      "plan": {
+        "id": 7,
+        "topic": "훅 컨텍스트 주입 가이드 governance 재정립 (GH #21/#22/#23 대응)",
+        "issues": [
+          {
+            "id": 1,
+            "title": "§9 가이드의 normative 등급 명시 (normative contract vs reference/aspirational 구분)",
+            "status": "decided",
+            "decision": "Option C (RFC 2119 hybrid) 채택. MUST dual gate: (A) conformance/state-schemas/* 또는 conformance/lifecycle/*로 assertable AND (B) 3-of-3 consumer 필요성 인정 → MUST. 2-of-3 consumer 또는 consumer UX 권장 → SHOULD. 1-of-3 관찰 또는 harness-local optimization → MAY. 기각: A(집행 불가 MUST 양산, evolution.md §완화 근거와 충돌), B(conformance schema와 prose 일관성 파괴), D(premature structure, 1인 유지 부담). D-lite(Event mapping table만 appendix 분리) 여부는 Issue 2에서 재검토. v0.10.0 Canonical specifics 증거 기준의 '원칙·구조 canonical, 수치 consumer' 축과 동형, 3 consumer 이슈가 공통 요청한 '등급 명시'에 정확히 답한다.",
+            "how_agents": [
+              "architect",
+              "strategist"
+            ],
+            "how_summary": {
+              "architect": "C + D-lite appendix. MUST gate를 conformance suite assertability로 묶어 rule:no-runtime 하 집행 불가 contract 방지. Issue 3이 gate 못 지키면 C가 A로 퇴행 경고. Issue 2·3·4 frame 제공.",
+              "strategist": "C 순수. 세 consumer의 4 possible outcomes 공통 패턴 = 등급 명시 요구(절차적 불만). A는 evolution.md §완화 근거와 충돌. MUST=3-of-3, SHOULD=2-of-3 제안. D는 1인 유지 drift 소스 증가."
+            },
+            "how_agent_ids": {
+              "architect": "a869d1c707cbeed05",
+              "strategist": "ac875fa9e7717f614"
+            }
+          },
+          {
+            "id": 2,
+            "title": "8 conceptual hook 추상 단위 재정의 — 하네스 runtime surface와의 매핑 전략",
+            "status": "decided",
+            "decision": "Option A+2 채택. 구조: (1) §9 본문은 8 conceptual event 이름 유지 — 이미 harness-neutral snake_case. (2) \"When it fires\" 서술을 harness-agnostic tone으로 가벼운 rewrite (Claude-bias 부분 해소). (3) Mapping appendix는 신설하되 **mapping 자체는 consumer가 소유** — nexus-core는 레지스트리 포인터만. (4) v0.8.0 harness_docs_refs 메커니즘 재사용하여 각 consumer가 harness-content/nexus-hook-mapping.md를 canonical source로 유지. 기각: A 순수(nexus-core가 consumer 구조 지식 소유 함의 → neutrality 침식·drift 비용), B 전면 rewrite(R1-R3 자인, primary complaint 간접 해결), C dual-view(boundaries.md 거절 2 정면 충돌), D 외부 위임(registry 없으면 cross-repo onboarding 비용). A+2는 사용자 지적(\"nexus-core가 consumer 구조를 안다는 가정\")을 회피하면서 primary complaint(mapping 부재)를 해결. opencode experimental.* 변동·새 consumer 편입·Codex context_compact 부재 모두 consumer repo 자치로 흡수. Issue 1 MUST dual gate의 assertability 보존.",
+            "how_agents": [
+              "architect",
+              "strategist"
+            ],
+            "how_summary": {
+              "architect": "A 권고. rule:no-harness-tool의 docs scope 제외 확인. C-degenerate 재발 경고(runtime surface canonical 흡수 시 MUST 판정 ambiguity). boundaries.md 거절 2 정면 충돌 지적. Issue 1 MUST dual gate assertability 보존 위해 event 단위 유지. Issue 3·4 파급: event 기준 naming은 lifecycle fixture 확장 경로 보존, Issue 4는 patch-grade로 흡수.",
+              "strategist": "B 권고. Phase 2 근접 시점에 Claude-bias 구조적 해소 = sibling 대칭 정합. opencode experimental.* decouple은 canonical 본문이 event(안정)만 담아야 가능. R1(rewrite 비용) R2(8 hook frame 자체 Claude 유래) R3(note가 canonical 오인) 자인. Issue 5 codex 편입 시 event-based가 대칭 신호 최대.",
+              "lead_synthesis": "두 agent 입장 + 사용자 질문이 '구조 지식 가정' blind spot 지적. A+2로 재구성 — A 골격에 v0.8.0 harness_docs_refs 패턴으로 mapping 위임. Architect의 neutrality 안전 + Strategist의 consumer 대칭 신호를 동시 충족하면서 drift 비용은 consumer로 이관."
+            },
+            "how_agent_ids": {
+              "architect": "a48011411cb7cd4df",
+              "strategist": "a84bd7bf965c51422"
+            }
+          },
+          {
+            "id": 3,
+            "title": "§9 Expected behavior 항목별 canonical MUST / SHOULD / consumer-local MAY 재분류",
+            "status": "decided",
+            "decision": "§9 각 bullet dual gate 적용 결과. [1] Narrow(shape-matching) 판정 기준 채택 — broad는 §9를 hook-level 계약이 아닌 capability wish-list로 전락시킴. [2] MUST 5 bullet 확정: session_start:524(agent-tracker init as []), subagent_spawn:553(tracker entry), subagent_complete:566(status=completed+stopped_at), subagent_complete:567(files_touched), session_end:607(do-not-delete history/memory/context/rules as Negative MUST). [3] Negative MUST 범주 신설 — assertable via postcondition.state_files[path]!=null 패턴, prevention invariant(pre_tool_use block)와 구분. [4] DROP 8 bullet: session_start:526(stale-state warning), 527(knowledge index 로드 재배치), user_message:539(inline_action handler 직접 호출), 543(knowledge file count), subagent_spawn:557(structured task context — skill 책무), subagent_complete:569(acceptance reminder), 570(task_update 자동 호출 — Gate A pass · B 0-of-3의 dual gate AND 작동 첫 실전 사례, Architect의 C-degenerate 경고 회피), session_end:604(active plan warning). [5] Canonical 승격 watchlist 3건 Issue 4 이관: tool-log.schema.json 신설, lifecycle/session-end.json fixture 신설, agent-tracker task_id field gap 해결. [6] 3 consumer 공통 \"§9 외부 패턴\" 5개 Issue 4 이관(3-of-3 empirical): block reason as prompt fragment, unfinished-task warning injection, Lead system-prompt layer as primary knowledge surface, skill body as harness-specific injection vehicle, static agent config for capability restrictions. SHOULD ~9 bullet, MAY ~10 bullet은 §9 rewrite 시 각 bullet inline RFC 2119 태그로 표시. MUST 밀도 5/40=12.5% — Issue 1 MUST 희소화 원칙과 정합.",
+            "how_agents": [
+              "architect",
+              "postdoc"
+            ],
+            "how_summary": {
+              "architect": "Gate A 분석. ~20% bullet만 mechanically assertable(7/35). MUST-A: agent-tracker init(524), spawn entry(553), complete status(566), files_touched(567), task_update call(570 — Gate A pass but B fail — dual gate 정확 작동 예시), Negative MUST(607). 4가지 판단: tool-log=Gate A auto-fail(canonical 승격 후보), memory-access=schema-only pass, Negative MUST 별도 범주 필요, vocabulary(tags.yml)=non-anchor. 승격 watchlist: tool-log.schema.json, lifecycle/session-end.json fixture, task_id field.",
+              "postdoc": "Gate B 분포(narrow): 3-of-3 ~10, 2-of-3 ~10, 1-of-3 ~8, 0-of-3 ~7. Narrow 권고 — broad는 §9를 capability wish-list로 전락. 0-of-3 drop candidates 식별. §9 외부 공통 패턴 5개 3-of-3: block reason as prompt / unfinished-task warning / Lead system-prompt layer / skill body injection vehicle / static capability config. Evidence: moderate (issue 본문 self-report 기반, consumer repo 직접 검증 없음 — Lead sampling 권고). Issue 1 dual gate에 주는 signal: MUST 5개에 불과, 3-of-3 bullet도 A와 교집합 시 희소화 경향.",
+              "lead_synthesis": "두 gate 교집합으로 MUST 5 확정. task_update:570이 'Gate A pass + B 0-of-3'의 DROP 선언은 Issue 1·2의 consistent 논리 실행. Postdoc 5 공통 패턴은 Issue 4에서 MUST/SHOULD/MAY 재분류(empirical evidence 3-of-3이므로 승격 검토 필수). Narrow 기준 채택은 forward-only 정책과 정합."
+            },
+            "how_agent_ids": {
+              "architect": "ae5ebc36fd96ffac8",
+              "postdoc": "ab6781fe895db0378"
+            }
+          },
+          {
+            "id": 4,
+            "title": "3 consumer 공통 발견 실무 nudge 패턴 처리 (Stop 경고, block reason = prompt fragment, harness-native injection surface)",
+            "status": "decided",
+            "decision": "11개 항목 일괄 처리. Issue 3 postdoc+architect 산출물 기반 Lead synthesis. §9 rewrite 반영: (1) P3 preamble 신설 — \"harness-native knowledge surfaces are complementary to §9 hook events\". (2) P1 pre_tool_use에 SHOULD note — block reason이 LLM 운영 지시로 소비됨을 명시. (3) P2 subagent_complete에 SHOULD bullet — unfinished-task warning injection (3-of-3 empirical, Gate A fail로 SHOULD 한정). (4) P7 session_end에 SHOULD bullet — all-tasks-completed close prompt (2-of-3). (5) P5 pre_tool_use:580 refine — abstract invariant는 MUST(\"disallowed tools MUST NOT execute\"), enforcement layer(hook/static config/framework)는 consumer choice. (6) P4 §8 cross-ref만 — skill body injection vehicle은 v0.8.0 harness_docs_refs 재사용. (7) P6 sync nudge·P8 harness banner — MAY 분류. (8) A3 agent-tracker task_id field 가이드 제거 (subagent_spawn:553) — schema에 없고 consumer evidence 불충분, schema 확장은 premature. Conformance 확장: (9) A2 lifecycle/session-end.json fixture 신설 — Issue 5 chore scope 포함, agent-tracker 삭제(→null) + history/memory/context/rules 보존(!=null) postcondition. Watchlist: (10) A1 tool-log.schema.json 승격은 보류 — 3 consumer shape 상이, canonical 확정 premature. evolution.md §90일 재평가 지표에 항목 추가. Issue 3 DROP 8 + A3 = 총 9 bullet 제거 또는 MAY 강등. Issue 3 MUST 5개 중 605·607의 Gate A가 fixture 신설로 prose-only에서 mechanically assertable로 승격.",
+            "how_agents": [
+              "architect",
+              "postdoc"
+            ],
+            "how_summary": {
+              "architect": "Issue 3 Gate A 분석과 canonical 승격 watchlist 3건(tool-log 스키마, session-end fixture, task_id field) 제안이 Issue 4의 A1·A2·A3 판정 근거가 됨. tool-log는 premature로 보류, session-end fixture는 채택, task_id는 제거 방향.",
+              "postdoc": "Issue 3 Gate B 공통 패턴 8건(5 × 3-of-3, 3 × 2-of-3) 식별이 Issue 4 P1-P8 처리안의 empirical 근거. Narrow 판정 유지 + P5 refine이 'enforcement layer consumer choice'로 해석되어 reality와 원칙이 동시 보존.",
+              "lead_synthesis": "Issue 3의 classification framework 위에 Pattern/watchlist 처리를 엌어 §9 rewrite + conformance 신설 + watchlist 3구분 확정. A2 fixture 신설은 Issue 3 MUST 5 중 Negative MUST(607)의 Gate A를 보강하여 dual gate 증명력 완성. Issue 5에서 실행 계획화."
+            }
+          },
+          {
+            "id": 5,
+            "title": "codex-nexus 공식 편입 + ecosystem/boundaries/evolution 문서 업데이트 (chore)",
+            "status": "decided",
+            "decision": "Issue 1-4 결정 실행을 단일 v0.11.0 minor + nx-car marker로 통합. Scope 24 sub-task 확정. (A) Consumer 구성 반영 6건: ecosystem.md 3-layer diagram·Consumer 관계·Co-run scenarios / boundaries.md §Issue #2 · §Canonical specifics 증거 기준(MUST=3-of-3, SHOULD=2-of-3 threshold 명시) / evolution.md §90일 재평가 지표 #3. (B) §9 rewrite 9건: preamble 신설(P3), RFC 2119 per-bullet 태그, DROP 9 bullet 처리, P1·P2·P7 SHOULD 추가, P5 refine(abstract invariant MUST + enforcement layer consumer choice), \"When it fires\" harness-agnostic rewrite, Mapping appendix 신설(A+2 — consumer repo 레지스트리 포인터), skills/*/meta.yml harness_docs_refs에 nexus_hook_mapping 추가, vocabulary/invocations.yml(또는 관련 vocabulary)에 nexus_hook_mapping semantic 등록. (C) Conformance 확장 1건: lifecycle/session-end.json fixture 신설. (D) 문서 drift 수정 4건: README.md Status 업데이트·consumer 표에 codex 추가 / CONSUMING.md §File Contracts·§References에 memory-lifecycle-contract.md 추가. (E) Watchlist 1건: evolution.md §90일 지표에 tool-log canonical 승격 후보 추가. (F) Release 메타 3건: CHANGELOG.md nx-car marker block, MIGRATIONS/v0_10_to_v0_11.md, VERSION. 버전 전략: breaking 요소는 Mapping appendix 작성 의무 1건뿐(§9 rewrite·MUST dual gate는 실질 non-breaking since 3-of-3 consumer 이미 구현 중). pre-v1 minor + nx-car (v0.2.0~v0.10.0 선례 일관). v0.9.0 급 major bump는 해당 없음.",
+            "how_agents": [
+              "architect",
+              "strategist",
+              "postdoc"
+            ],
+            "how_summary": {
+              "architect": "Issue 2·3의 A+2 구조 설계·MUST dual gate testability·session-end fixture 신설 제안이 Issue 5 실행 scope의 기반. rule:no-harness-tool docs scope 제외 확인은 Mapping appendix 신설 안전성 근거.",
+              "strategist": "Issue 1 3-of-3 승격 기준을 boundaries.md §Canonical specifics에 명시적으로 반영해야 한다는 권고가 Issue 5 A5에 정착. 3 consumer 혼서에서 2-of-2를 3-of-3로 삹격함으로써 canonical threshold의 과거 몰race 방지. codex 편입 신호가 생태계 문서 전반 업데이트로 전파.",
+              "postdoc": "Issue 3 Gate B 3-of-3 패턴 5건 식별이 Issue 4 P1-P5 반영으로 Issue 5 §9 rewrite scope 구체화. Narrow 판정 + P5 refine의 'enforcement layer consumer choice' 표현이 reality와 원칙 동시 보존.",
+              "lead_synthesis": "Issue 5는 ¹1-4 결정들의 단일 release 실행으로 통합. v0.11.0 minor + nx-car로 breaking surface 최소화(Mapping appendix 작성 의무 1건만 consumer action). 진짜 non-breaking인 부분은 §9 rewrite가 DROP한 9 bullet 중 아무도 실제 구현하지 않던 항목이라 consumer code 영향 0. User 지적한 README/CONSUMING drift도 동일 scope에 통합."
+            }
+          }
+        ],
+        "research_summary": "3 consumer(claude@0.27.0, opencode@0.8.0, codex@0.1.0) drift 이슈 #21/#22/#23 병렬 발생 — 셋 다 동일한 4 possible outcomes 제시(모호성의 독립 감지). 공통 발견: (1) 가이드 §9 핵심 항목(knowledge index 로드, subagent_spawn 4종 주입, context_compact 5종 재주입)은 어떤 consumer도 정확히 구현 안 함. (2) \"주입 없음\"으로 기술된 Stop/SubagentStop/PreToolUse에서 3 consumer 모두 경고·nudge·block-reason을 prompt처럼 주입 중. (3) harness-native 보조 surface(opencode system-transform, claude UserPromptSubmit 태그 dispatcher, codex SessionStart banner)가 실질 injection 핵심인데 §9 8-hook 모델 바깥. 기존 원칙: boundaries.md §Canonical specifics 증거 기준(v0.10.0)으로 원칙·구조 canonical 수치 consumer-local; evolution.md §90일 지표 #3이 opencode drift 감지 trigger로 설정돼 있었고 지금 발화됨. nexus-code archived(2026-04-14) + codex 합류로 consumer 구성 replaced — ecosystem.md 업데이트 pending. pattern-upstream-proposal-review.md 교훈: §Questions for maintainer에 명시적 응답이 회신 기본 구조.",
+        "created_at": "2026-04-17T01:41:18.820Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "ecosystem.md 업데이트 — 3 active consumer (codex 편입) 반영",
+          "context": "nexus-code archived(2026-04-14) + codex-nexus@0.1.0 합류로 3 active consumer 체제 확립. ecosystem.md가 \"2 active consumer\" 전제로 쓰여 있어 drift.",
+          "approach": "(1) line 14-18 3-layer diagram 주석에 codex 추가. (2) §Consumer 관계 line 151-169에 \"codex-nexus — Codex 하네스 (sibling)\" 섹션 신설, claude·opencode와 동등한 sibling. (3) §Co-run scenarios line 60-72의 \"두 Execution layer\" 서술을 3 harness 가정으로 확장. (4) nexus-code archived 언급은 유지.",
+          "acceptance": "3 active consumer(claude-nexus/opencode-nexus/codex-nexus) 명시. codex-nexus sibling 섹션 존재. Co-run 서술에 3 harness 반영. nexus-code archived 표기 유지.",
+          "risk": "Sibling 대칭성이 3 consumer에서도 유지되는지 — 각 섹션에서 claude-bias 주의.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:00:27.513Z"
+        },
+        {
+          "id": 2,
+          "title": "boundaries.md 업데이트 — 3 consumer threshold + Canonical specifics 증거 기준 명시",
+          "context": "Issue 5 결정으로 boundaries.md §Issue #2(line 96-101)의 \"2 active consumer\"를 3으로 조정, §Canonical specifics 증거 기준(line 195-206)에 MUST=3-of-3·SHOULD=2-of-3 threshold를 명시해야 함. v0.10.0에서 \"원칙·구조 canonical, 수치 consumer\" 원칙 확립 후 Issue 1·3 결정이 이 threshold 축을 구체화.",
+          "approach": "(1) §Issue #2 line 96-101의 \"2 active consumer 상태\" 서술을 \"3 active consumer 상태 (claude-nexus·opencode-nexus·codex-nexus)\"로 업데이트. (2) §Canonical specifics 증거 기준 line 195-206에 \"MUST = 3-of-3 consumer 필요성 인정, SHOULD = 2-of-3, MAY = 1-of-3\" threshold 명시 문구 추가. (3) 기존 적용 예시(memory-access.jsonl, P1 자동 삭제 수치 등)와의 일관성 재검토.",
+          "acceptance": "§Issue #2 consumer 수 3으로 갱신. §Canonical specifics에 RFC 2119 threshold 규칙 텍스트 명시. 기존 canonical 적용 사례 3건(memory-access 4-field schema / P1 수치 consumer-local / Plan Step 7 수치)이 새 threshold와 정합하는지 확인.",
+          "risk": "기존 canonical이 2-of-2 기반으로 승격됐다면 3-of-3 retroactive 적용 여부 판단 필요 — out of scope 주석으로 처리하되 evolution.md 재평가 지표와 연동.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:00:38.147Z"
+        },
+        {
+          "id": 3,
+          "title": "evolution.md 업데이트 — §90일 지표 #3 발화 기록 + tool-log watchlist 추가",
+          "context": "evolution.md §90일 재평가 지표 #3(\"opencode-nexus 추가 drift 발견 여부\")이 GH #21로 발화됨. 지표 자체를 3 consumer drift로 확장 + Issue 4 Architect 제안 A1(tool-log canonical 승격)을 watchlist 항목으로 추가.",
+          "approach": "(1) §90일 재평가 지표 #3 업데이트: \"opencode-nexus 추가 drift 발견 여부\"를 \"3 consumer hook injection drift 관찰 결과 및 후속 조정 필요성\"으로 확장, GH #21/#22/#23 참조 명시. (2) 지표 목록에 신규 항목 \"tool-log.jsonl canonical 승격 후보 검토(3 consumer shape 수렴 여부)\" 추가. (3) v0.11.0 릴리스 서브섹션 신설 — §v0.10.0 바로 뒤, Issue 1-5 결정 요약·실행 원칙·breaking surface(Mapping appendix) 기록.",
+          "acceptance": "§90일 지표 #3에 발화 기록 및 확장 서술. 새 지표 항목(tool-log watchlist) 추가. §v0.11.0 서브섹션 존재하며 Issue 1-5 결정 요지 포함.",
+          "risk": "v0.11.0 서브섹션 scope가 다른 §v*.* 서브섹션과 포맷·분량 일관성 유지. 90일 지표 재계수 혼선(9번째 또는 10번째?) 주의.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:00:47.957Z"
+        },
+        {
+          "id": 4,
+          "title": "§9 structural rewrite — preamble + When-it-fires neutralize + Mapping appendix + P5 refine",
+          "context": "Issue 2 A+2 + Issue 4 P3/P5 반영. §9 hook event lifecycle의 구조적 재편 — preamble 신설, 각 event 'When it fires' 서술의 Claude-bias 제거, consumer-owned mapping appendix 신설, pre_tool_use:580 capability gate를 abstract invariant + enforcement layer consumer choice로 refine.",
+          "approach": "(1) §9 최상단에 preamble(P3) 신설 — \"Harness-native knowledge surfaces are complementary to §9 hook events, not replacement\". (2) 각 event 'When it fires' 서술을 Claude timing 특정성에서 harness-agnostic tone으로 가벼운 rewrite(전면 rewrite 아님 — Issue 2 A+2 선택 근거와 정합). (3) §9.X Mapping appendix 신설: \"consumer가 harness-content/nexus-hook-mapping.md 소유, nexus-core는 레지스트리 포인터만\" 서술 + harness_docs_refs: nexus_hook_mapping 토큰 명시 + disclaimer \"Descriptive, not normative\". (4) pre_tool_use:580 bullet refine: \"abstract invariant = disallowed tools MUST NOT execute; enforcement layer(hook/static config/framework)는 consumer choice\".",
+          "acceptance": "preamble이 harness-native surface complementary clause 포함. 각 event 'When it fires'에 Claude hook 이름 직접 참조 부재. Mapping appendix 신설 + consumer 소유 원칙 명시 + harness_docs_refs 토큰 nexus_hook_mapping. pre_tool_use:580 abstract invariant + enforcement layer 서술. T5 per-bullet tagging과 충돌 없이 병행 가능.",
+          "risk": "T5와 같은 파일(§9)을 수정하므로 merge 순서 관리 필요. preamble 문구가 Issue 1 MUST dual gate와 seman tic 충돌하지 않아야 함.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:01:01.497Z"
+        },
+        {
+          "id": 5,
+          "title": "§9 per-bullet RFC 2119 tagging + DROP 처리 + P1/P2/P7 SHOULD 추가 + task_id 제거",
+          "context": "Issue 3 classification + Issue 4 공통 패턴 SHOULD 추가 실행. §9의 ~40 bullet에 MUST/SHOULD/MAY 태그 부착, 0-of-3 DROP candidate 9건 제거 또는 MAY 강등, 3-of-3 공통 패턴 중 P1·P2·P7을 새 SHOULD bullet·note로 추가, subagent_spawn:553의 task_id 언급 제거.",
+          "approach": "(1) MUST 5 bullet 확정: session_start:524, subagent_spawn:553(task_id 제외), subagent_complete:566·567, session_end:607(Negative MUST). RFC 2119 MUST 태그 부착. (2) SHOULD ~9, MAY ~10, DROP 9 bullet: DROP = session_start:526·527 / user_message:539·543 / subagent_spawn:557(task_id 포함) / subagent_complete:569·570 / session_end:604. (3) P1 pre_tool_use에 SHOULD note: \"reason field는 LLM 운영 지시로 소비됨, consumer는 actionable 문구로 작성\". (4) P2 subagent_complete에 SHOULD bullet: \"unfinished-task warning injection\". (5) P7 session_end에 SHOULD bullet: \"all-tasks-completed close prompt\". (6) subagent_spawn:553에서 task_id 토큰 제거.",
+          "acceptance": "모든 bullet에 MUST/SHOULD/MAY 태그 부착. MUST 정확히 5건(Negative MUST 포함). DROP 9 bullet 삭제 또는 MAY로 강등됨. P1/P2/P7 신규 항목 존재. task_id 언급 제거. Issue 3 dual gate 근거가 §9 해당 항목 주석 또는 사이드 노트로 추적 가능.",
+          "risk": "MUST/SHOULD/MAY 경계 판정 오류 가능성 — Issue 3 분류표를 재확인. T4와 같은 파일이므로 merge 순서 설계 필요.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:01:13.908Z"
+        },
+        {
+          "id": 6,
+          "title": "skills/*/meta.yml harness_docs_refs에 nexus_hook_mapping 추가",
+          "context": "Issue 2 A+2 실행 — consumer-owned hook mapping 문서를 skill이 참조하도록 harness_docs_refs 메커니즘 확장. 어느 skill이 hook-mapping 참조 대상인지 식별 후 meta.yml 수정.",
+          "approach": "(1) skills/nx-plan, nx-run, nx-sync, nx-init body.md를 스캔하여 hook event timing에 의존하는 skill 식별. (2) 해당 skill의 meta.yml harness_docs_refs 필드에 'nexus_hook_mapping' 토큰 추가(기존 배열 append). (3) validate.ts 통과 확인. (4) manifest.json 재생성.",
+          "acceptance": "hook-mapping 참조 대상 skill 식별 근거 문서화(task 출력). 해당 skill meta.yml에 nexus_hook_mapping 토큰 추가. validate.ts PASS. manifest.json의 skill entry에 새 harness_docs_refs 반영. over-inclusion 방지 — 참조 불필요한 skill에는 추가 안 함.",
+          "risk": "어느 skill이 실제 참조 대상인지 식별 오류 — conservative하게 필요 skill만 포함. nx-init은 항상 instruction_file·slash_command_display만 — hook_mapping은 부적합 가능성.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-17T03:01:22.769Z"
+        },
+        {
+          "id": 7,
+          "title": "vocabulary 또는 harness_docs_refs registry에 nexus_hook_mapping semantic 등록",
+          "context": "Issue 2 A+2 완성을 위해 nexus_hook_mapping 토큰을 nexus-core vocabulary에 정의. T6 skills/*/meta.yml가 이를 참조하려면 semantic이 먼저 canonical로 등록되어야 함. 현재 invocations.yml은 positive invocation primitive 공간(skill_activation 등)이라 hook_mapping은 위치 부적합 가능성 — 대안 위치 조사 후 결정.",
+          "approach": "(1) 현재 harness_docs_refs 토큰이 canonical로 등록된 위치 조사 — skills 스키마 정의 / vocabulary 별도 파일 / manifest generation 로직. (2) nexus_hook_mapping을 기존 registry(예: harness_docs_refs.schema.json 또는 관련 vocabulary) 에 추가하거나 새 registry 신설. (3) 등록된 토큰 목록에 instruction_file/slash_command_display와 함께 나열. (4) schema validation 및 manifest 재생성.",
+          "acceptance": "nexus_hook_mapping 토큰이 canonical registry에 등록(기존 토큰과 같은 위치·포맷). schema validate 통과. manifest.json에 반영. 문서화된 위치가 boundaries.md 또는 ecosystem.md의 Authoring layer 자산 목록과 정합.",
+          "risk": "harness_docs_refs 토큰의 canonical registry가 암묵적이거나 분산되어 있을 수 있음 — schema·vocabulary·boundaries.md cross-ref 확인 필요. semantic 위치 판단 오류 시 T6과 circular dependency 발생.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-17T03:01:33.013Z"
+        },
+        {
+          "id": 8,
+          "title": "conformance/lifecycle/session-end.json fixture 신설",
+          "context": "Issue 4 A2 — Issue 3 MUST 5 중 session_end:605(agent-tracker 삭제)와 session_end:607(Negative MUST: do-not-delete history/memory/context/rules)의 Gate A를 prose-only에서 mechanically assertable로 승격. v0.6.0에서 session-start/session-end fixture 제거된 선례 있으나 당시 runtime.schema.json 의존이 문제였고, 현재는 agent-tracker.schema.json + history.schema.json만 참조하면 됨.",
+          "approach": "(1) fixture.schema.json event.type enum 확장: 현재 3종(agent_spawn/agent_complete/agent_resume) → 4종(+ session_end). (2) conformance/lifecycle/session-end.json 신설: event={type:session_end,params:{harness_id:...}}, precondition={agent-tracker.json: [entries]}, postcondition={agent-tracker.json: null(삭제됨), history.json: !=null, memory/context/rules: (디렉토리 보존 간접 표현)}. Architect 제안 'postcondition.state_files[path] != null' 패턴. (3) covers 필드에 agent-tracker.schema.json required fields + history.schema.json 커버. (4) conformance/lifecycle/README.md에 새 fixture 설명 추가.",
+          "acceptance": "session-end.json fixture 파일 존재. fixture.schema.json event.type enum에 session_end 추가. bun run validate:conformance 통과. covers 필드가 agent-tracker·history schema 필드 포함. lifecycle/README.md 업데이트.",
+          "risk": "v0.6.0에서 session-start/session-end 제거 선례 있음 — 이번 재도입이 그 결정을 번복하는 것 아닌지 명시. runtime.schema.json 의존 없이 구성되어야 v0.6.0 제거 근거와 정합.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 4,
+          "owner": "engineer",
+          "created_at": "2026-04-17T03:01:46.009Z"
+        },
+        {
+          "id": 9,
+          "title": "README.md 업데이트 — Status 버전 + consumer 표에 codex 추가",
+          "context": "사용자가 식별한 README drift: line 72 Status가 v0.7.1 (2026-04-14) — 실제는 v0.10.0 release됨 + v0.11.0 이번 릴리스. Line 21-24 consumer 표에 codex 부재.",
+          "approach": "(1) line 72 Status 문구를 \"v0.11.0 (YYYY-MM-DD). 최신 release: 훅 컨텍스트 주입 가이드 governance 재정립 (GH #21/#22/#23 대응)\"으로 업데이트. (2) line 21-24 consumer 표에 codex-nexus 행 추가: [`codex-nexus`](https://github.com/moreih29/codex-nexus) | Execution | Codex 하네스 위에서 에이전트 조립·디스패치. (3) Positioning 섹션(line 14-18)의 \"claude-nexus ↔ opencode-nexus\"를 codex 포함 형태로 재검토.",
+          "acceptance": "Status 버전 현재 실제 버전과 일치. consumer 표 3 entries. Positioning 섹션이 3 consumer 대칭 반영. nexus-code archived 표기 유지.",
+          "risk": "consumer 표 레이아웃 확장 시 markdown rendering 확인 필요. Positioning diagram(코드블록)에 codex 시각 배치 간결 유지.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:01:55.772Z"
+        },
+        {
+          "id": 10,
+          "title": "CONSUMING.md 업데이트 — File Contracts·References에 memory-lifecycle-contract.md 추가",
+          "context": "사용자가 식별한 CONSUMING.md drift: v0.10.0 canonical 추가 문서 docs/memory-lifecycle-contract.md가 §File Contracts 표와 §References에 모두 누락. upgrade protocol로 v0.9→v0.10 이행하는 consumer가 우연히 발견해야 하는 구조.",
+          "approach": "(1) §File Contracts 표에 새 행 추가: `docs/memory-lifecycle-contract.md` | Memory operational policy + 3-signal forgetting structure | Reference before implementing memory observation hooks. (2) §References에 링크 추가: [docs/memory-lifecycle-contract.md](./docs/memory-lifecycle-contract.md). (3) Upgrade Protocol 단계에 memory-lifecycle-contract.md 읽기 권고 포함 여부 검토.",
+          "acceptance": "§File Contracts 표에 memory-lifecycle-contract.md 행 존재. §References에 링크. Upgrade Protocol에 관련 참조 (필요 시).",
+          "risk": "나머지 docs/ 파일 중 CONSUMING.md에 누락된 것이 추가로 있는지 sanity check — docs 디렉토리와 표 대조.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:02:03.294Z"
+        },
+        {
+          "id": 11,
+          "title": "Consumer 구성 문서 리뷰 (ecosystem/boundaries/evolution 3건 joint)",
+          "context": "T1-T3이 3 active consumer 체제 반영 + Canonical specifics threshold 명시 + 90일 지표 발화 기록을 서로 다른 문서에 분산 수행. 세 문서 간 내용 정합성(consumer 수, threshold 문구, drift 기록 해석)이 매끄러운지 joint review 필요. docs_only.independent exception 적용 — 1 joint reviewer.",
+          "approach": "(1) ecosystem.md·boundaries.md·evolution.md 세 파일을 cross-read, consumer 수 언급(2→3)이 모든 파일에서 일관되게 변경됐는지 확인. (2) Canonical specifics threshold 문구(MUST=3-of-3, SHOULD=2-of-3)가 boundaries.md에 등록된 것과 evolution.md의 90일 지표 서술에 모순 없는지 확인. (3) codex-nexus sibling 언급이 각 섹션에서 harness-neutral tone 유지하는지 확인. (4) nexus-code archived 표기가 세 문서 모두에서 일관되게 유지되는지 확인.",
+          "acceptance": "세 문서 cross-reference 일관성 확인(consumer 수·threshold·drift 해석·nexus-code 표기). Claude-bias 재발 없음. 발견된 불일치 reviewer feedback으로 writer에 회신.",
+          "risk": "joint review scope가 커서 한 파일의 미묘한 표현 차이를 놓칠 수 있음 — checklist 기반 진행 권장.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3
+          ],
+          "plan_issue": 5,
+          "owner": "reviewer",
+          "created_at": "2026-04-17T03:02:34.920Z"
+        },
+        {
+          "id": 12,
+          "title": "§9 rewrite 리뷰 (T4 structural + T5 per-bullet tagging coherent)",
+          "context": "T4와 T5가 같은 파일(docs/consumer-implementation-guide.md §9)을 수정. docs_only.coherent exception 적용 — 1 reviewer가 두 작업 결과를 coherent 단일 문서로 검토. Issue 1·2·3·4 결정 전부가 §9에 집약되므로 consistency 확인이 critical.",
+          "approach": "(1) preamble(P3)이 MUST dual gate와 semantic 충돌 없는지 확인. (2) 각 event 'When it fires' 서술에 Claude hook 이름(SessionStart/UserPromptSubmit 등) 직접 참조 부재 확인 — rule:no-harness-tool은 docs scope 제외지만 neutrality tone 체크. (3) MUST 5 bullet이 Issue 3 결정과 정확히 일치(session_start:524, spawn:553, complete:566·567, session_end:607). (4) DROP 9 bullet 제거·MAY 강등 확인. task_id 토큰 subagent_spawn:553에서 제거됨 확인. (5) P1/P2/P7 새 항목 존재·tone 검증. (6) Mapping appendix가 consumer-owned 원칙·harness_docs_refs 토큰·disclaimer 포함. (7) pre_tool_use:580 refine 문구가 abstract invariant(MUST) + enforcement layer(consumer choice) 두 축 명시.",
+          "acceptance": "§9 전체 단일 문서로 일관된 흐름. MUST/SHOULD/MAY 분포가 Issue 3 결정표와 일치(MUST=5, DROP=9 제거됨). Preamble·appendix·P1/P2/P7·P5 refine 모두 Issue 결정과 정합. neutrality tone 유지. 불일치 발견 시 writer에 feedback.",
+          "risk": "Issue 3 분류 세부 bullet이 ~40개로 많아 per-bullet check 부담. Issue 3 결정 기록을 checklist로 변환해 사용.",
+          "status": "completed",
+          "deps": [
+            4,
+            5
+          ],
+          "plan_issue": 3,
+          "owner": "reviewer",
+          "created_at": "2026-04-17T03:02:50.192Z"
+        },
+        {
+          "id": 13,
+          "title": "Engineer 변경 테스트 (T6 skills meta + T7 vocabulary registry + T8 session-end fixture joint)",
+          "context": "T6·T7·T8이 schema·validation·conformance 영향. joint tester가 bun run validate + bun run validate:conformance + manifest 재생성 후 snapshot 비교로 검증. engineer + runtime-behavior acceptance → tester pair 규칙(v0.10.0 conditional auto-pairing).",
+          "approach": "(1) bun run validate 실행 — T6 skills/*/meta.yml harness_docs_refs 변경·T7 vocabulary 또는 registry 변경이 schema validation 통과. (2) bun run validate:conformance 실행 — T8 fixture.schema.json event.type enum 확장·session-end.json fixture가 coverage 검증 통과. (3) manifest.json 재생성 후 diff 확인 — skill harness_docs_refs·vocabulary entry가 정확히 반영되고 over-inclusion 없음. (4) fixture.schema.json 확장이 기존 3 fixture(agent-spawn/complete/resume)의 validation을 깨뜨리지 않음 확인. (5) runtime.schema.json 의존 재도입 없음 확인 (v0.6.0 제거 결정 유지).",
+          "acceptance": "bun run validate 및 bun run validate:conformance 모두 exit 0. manifest.json diff가 예상 범위(skill harness_docs_refs + registry entry + fixture 신설)만 포함. 기존 3 lifecycle fixture 파괴 없음. 보안·schema 회귀 없음.",
+          "risk": "T6·T7 순서 잘못으로 circular dependency 발생 시 tester가 재시도 판단. conformance fixture의 event.type enum 변경이 consumer runner에 영향(소폭) — MIGRATIONS에 명시되어야 breaking 아님.",
+          "status": "completed",
+          "deps": [
+            6,
+            7,
+            8
+          ],
+          "plan_issue": 2,
+          "owner": "tester",
+          "created_at": "2026-04-17T03:03:01.351Z"
+        },
+        {
+          "id": 14,
+          "title": "Drift 문서 리뷰 (T9 README + T10 CONSUMING joint)",
+          "context": "T9 README와 T10 CONSUMING은 사용자가 직접 식별한 drift 수정. docs_only.independent but small — 1 joint reviewer로 처리. nexus-core 존재 이유 표현이 외부 독자에게 명확한지·v0.11.0 scope 요약이 정확한지 검증.",
+          "approach": "(1) README.md Status 문구가 실제 배포 버전과 일치(VERSION 파일 기준). (2) consumer 표 3 entries 중 링크 유효성 확인(GitHub 경로 존재 여부). (3) Positioning 섹션 diagram이 sibling 대칭 유지. (4) CONSUMING.md §File Contracts 표의 memory-lifecycle-contract.md 행이 기존 다른 docs 엔트리와 포맷 일관. (5) §References 섹션 링크가 상대경로(./...)로 기존 컨벤션 준수. (6) docs/ 디렉토리와 §File Contracts 표 교차 — 다른 누락 문서 없음 sanity check.",
+          "acceptance": "README·CONSUMING 두 문서가 일관되게 3 consumer 체제 반영. docs/ 누락 없이 표 완전. 링크 유효. 외부 독자에게 nexus-core 포지셔닝 명확.",
+          "risk": "VERSION 파일 업데이트(T18)가 T17 이후라서 reviewer 시점에 Status 버전이 아직 전(前) 버전일 수 있음 — T9에서는 최종 버전으로 선기재, VERSION도 동일 버전으로 업데이트됨을 전제로 검증.",
+          "status": "completed",
+          "deps": [
+            9,
+            10
+          ],
+          "plan_issue": 5,
+          "owner": "reviewer",
+          "created_at": "2026-04-17T03:03:11.350Z"
+        },
+        {
+          "id": 15,
+          "title": "CHANGELOG.md v0.11.0 entry 작성 + nx-car marker",
+          "context": "Issue 5 결정: v0.11.0 minor + nx-car marker. breaking surface = Mapping appendix 작성 의무. v0.2.0~v0.10.0 선례 일관. CHANGELOG가 Consumer Action Required 섹션을 포함해야 하고, scope 전체를 간결히 포괄해야 함.",
+          "approach": "(1) Keep a Changelog 포맷의 ## [0.11.0] - YYYY-MM-DD entry 작성. (2) nx-car:v0.11.0:start/end marker로 Consumer Action Required 섹션 래핑 — \"각 consumer(claude-nexus/opencode-nexus/codex-nexus)는 harness-content/nexus-hook-mapping.md 작성 + harness_docs_refs: nexus_hook_mapping 토큰 수용\". (3) Added/Changed/Removed/Breaking 세부: Added(lifecycle/session-end.json, Mapping appendix, preamble, harness_docs_refs nexus_hook_mapping registry, canonical specifics threshold 명시), Changed(§9 per-bullet RFC 2119 태깅, 'When it fires' harness-agnostic tone, pre_tool_use:580 refine, 3 consumer 반영), Removed(§9 DROP 9 bullet 포함 task_id 언급), Fixed(CONSUMING.md memory-lifecycle-contract.md 누락, README status drift). (4) MIGRATIONS/v0_10_to_v0_11.md 링크. (5) ecosystem/boundaries/evolution 업데이트 요약.",
+          "acceptance": "## [0.11.0] entry 존재. nx-car:v0.11.0:start/end marker 정확한 포맷. Consumer Action Required 섹션이 nx-car marker 내 가장 먼저 위치. Added/Changed/Removed/Breaking/Fixed 구분 존재. MIGRATIONS 링크 포함. scope 누락 없음.",
+          "risk": "scope 완성도 — T1~T10 모두 완료된 상태에서 작성되어야 미실행 변경이 포함되지 않음. 이에 따라 deps=[1..10].",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:03:24.912Z"
+        },
+        {
+          "id": 16,
+          "title": "MIGRATIONS/v0_10_to_v0_11.md 작성",
+          "context": "v0.10.0 → v0.11.0 migration guide. 변경 surface가 ≥50줄 예상이므로 별도 MIGRATIONS 파일 필수(evolution.md §CHANGELOG Canonical 포맷). 각 consumer별 Consumer Action Checklist + Rejected Items Reference 섹션 포함.",
+          "approach": "(1) MIGRATIONS/v0_10_to_v0_11.md 신설 — 이전 migration 파일(v0_9_to_v0_10.md) 포맷 준수. (2) Summary: 훅 컨텍스트 주입 가이드 governance 재정립 + 3 active consumer 반영. (3) Breaking Change Surface: Mapping appendix 작성 의무 단 1건. (4) 각 consumer별 Consumer Action Checklist: harness-content/nexus-hook-mapping.md 작성 template + nexus-core §9의 conceptual event 8종에 자기 runtime surface 매핑. (5) Classification framework 섹션: MUST dual gate, Narrow 판정 기준, Negative MUST 범주, 3-of-3 threshold. (6) Rejected Items Reference: A1 tool-log 보류, full event rewrite 거부, full dual-view canonical 거부 — pattern-upstream-proposal-review.md 패턴 준수. (7) Link Back: CHANGELOG nx-car block, boundaries.md §Canonical specifics, lifecycle/session-end.json, GH #21/#22/#23.",
+          "acceptance": "파일 존재. Summary·Breaking Change Surface·consumer별 Checklist(3개)·Classification framework·Rejected Items·Link Back 섹션 존재. v0_9_to_v0_10.md 대비 포맷 일관. \"GH #21/#22/#23 close 응답 템플릿\"으로도 재사용 가능.",
+          "risk": "scope 완결성 — T15 CHANGELOG와 동일 근거로 deps=[1..10]. 3 consumer별 action 서술이 harness-neutral 원칙 침식하지 않도록 abstract expression 유지.",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:03:38.789Z"
+        },
+        {
+          "id": 17,
+          "title": "Release meta 리뷰 (T15 CHANGELOG + T16 MIGRATIONS coherent)",
+          "context": "T15와 T16이 서로를 참조하는 단일 release 서술. Keep a Changelog 규약 + nx-car marker 규약 + consumer action 서술의 정합성 확인. docs_only.coherent — 1 reviewer.",
+          "approach": "(1) nx-car:v0.11.0 marker 정확성 — start/end 쌍 + CHANGELOG와 MIGRATIONS 간 cross-link. (2) Consumer Action Required 섹션 순서 — nx-car block 최상단. (3) Breaking Change Surface가 CHANGELOG·MIGRATIONS에서 같은 문구로 일관(Mapping appendix 1건). (4) 3 consumer 각자의 checklist가 harness-neutral 원칙 침식하지 않음. (5) Rejected Items Reference가 pattern-upstream-proposal-review.md 패턴 준수 + GH #21/#22/#23 possible outcomes에 대한 명시적 응답 매핑. (6) Link Back이 실제 파일·이슈에 연결됨.",
+          "acceptance": "CHANGELOG·MIGRATIONS consistency 확인. nx-car marker 규약 준수. consumer action 서술 neutral. rejected items 섹션 존재 및 이슈 응답 매핑 가능. link back 유효.",
+          "risk": "nx-car marker 중첩 금지(.nexus/rules/semver-policy.md) 위반 여부 확인. marker 정규식(CONSUMING.md §CHANGELOG Marker Regex)에 부합하는지 매칭 테스트.",
+          "status": "completed",
+          "deps": [
+            15,
+            16
+          ],
+          "plan_issue": 5,
+          "owner": "reviewer",
+          "created_at": "2026-04-17T03:03:48.015Z"
+        },
+        {
+          "id": 18,
+          "title": "VERSION 0.11.0 업데이트 + package.json 동기화",
+          "context": "semver major/minor/patch 판정은 완료(minor). VERSION 파일과 package.json의 version 필드 동기화. 단순 작업이므로 lead 처리.",
+          "approach": "(1) VERSION 파일을 0.10.0 → 0.11.0 교체. (2) package.json \"version\" 필드를 동일 버전으로 교체. (3) 두 파일이 동일 버전 문자열 유지 확인.",
+          "acceptance": "VERSION 파일 = \"0.11.0\". package.json version = \"0.11.0\". semver-policy.md §pre-v1 상태 준수. 두 파일 version 문자열 일치.",
+          "risk": "없음.",
+          "status": "completed",
+          "deps": [
+            15,
+            16,
+            17
+          ],
+          "plan_issue": 5,
+          "owner": "lead",
+          "created_at": "2026-04-17T03:03:52.204Z"
+        },
+        {
+          "id": 19,
+          "title": "GH #21/#22/#23 응답 코멘트 + close",
+          "context": "세 consumer drift 이슈의 §Possible Outcomes(각 4가지) 및 §Questions for maintainer에 대한 명시적 응답 — pattern-upstream-proposal-review.md 패턴 4번(\"저자가 §Questions 섹션을 남겼다면 각 질문에 대한 명시적 응답이 회신 기본 구조\"). v0.11.0 release 이후 close.",
+          "approach": "(1) 각 이슈별로 응답 코멘트 작성 — Plan session #7 결정 요약(Issue 1-5) + \"possible outcomes\" 4가지 중 어느 방향을 택했는지 명시 + Mapping appendix 작성 의무를 consumer action으로 안내 + v0.11.0 CHANGELOG/MIGRATIONS 링크. (2) GH #21 opencode, #22 claude, #23 codex 각각의 개별 맥락(특히 §관찰 부분)에 대해 per-issue 세부 응답 — \"§9 재편 후 실제 consumer behavior가 어떻게 해석되는지\". (3) 각 이슈에 respond-and-close. (4) Rejected Items Reference 섹션과 cross-link.",
+          "acceptance": "GH #21/#22/#23 모두 응답 코멘트 존재 + closed. 응답이 pattern-upstream-proposal-review.md 패턴 준수(각 §Questions/Possible Outcomes 항목에 명시적 응답). v0.11.0 CHANGELOG/MIGRATIONS 링크 포함.",
+          "risk": "release 전 close하면 premature — deps=[18] (VERSION·package.json 동기화 이후). v0.11.0 태그/배포는 이 task 완료 후 별도.",
+          "status": "completed",
+          "deps": [
+            18
+          ],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:04:03.878Z"
+        },
+        {
+          "id": 20,
+          "title": "GH 응답 리뷰",
+          "context": "GH #21/#22/#23 응답 코멘트의 (a) §Possible Outcomes·§Questions 각 항목에 대한 명시적 응답 커버리지, (b) neutrality tone 유지(특정 consumer에 편향되지 않음), (c) CHANGELOG·MIGRATIONS 링크 유효성 검증.",
+          "approach": "(1) 각 이슈 원본 본문의 §Possible Outcomes(4가지)와 §Questions 섹션을 checklist로 추출. (2) T19 응답 코멘트가 각 항목에 직접 응답했는지 확인. (3) 3 consumer 대칭 tone 검증 — 한 consumer를 reference로 두고 다른 consumer를 비교하는 형태 회피. (4) 링크·참조 유효성 확인. (5) close 시점이 v0.11.0 release 이후인지 확인.",
+          "acceptance": "세 이슈 응답이 pattern-upstream-proposal-review.md 패턴 4번 준수. 각 §Possible Outcomes/§Questions 항목 응답 coverage 100%. neutrality tone. close timing 정확.",
+          "risk": "reviewer가 응답의 기술적 정확성도 판정해야 함 — Plan session #7 decisions.json을 primary reference로 사용.",
+          "status": "completed",
+          "deps": [
+            19
+          ],
+          "plan_issue": 5,
+          "owner": "reviewer",
+          "created_at": "2026-04-17T03:04:10.688Z"
+        },
+        {
+          "id": 21,
+          "title": "evolution.md stale 2-consumer 3건 수정 (T11 REVISION)",
+          "context": "T11 review 결과 evolution.md 3 line에 stale \"2 active consumer\" 표현 발견. Plan session #7 3-consumer 체제와 정합 필요.",
+          "approach": "(1) Line 60 §Breaking Change 대응 절차 항목 3: \"(claude-nexus, opencode-nexus)\" → \"(claude-nexus, opencode-nexus, codex-nexus)\". (2) Line 251 §Phase 2 정의: \"2 active consumer(claude-nexus, opencode-nexus)\" → \"3 active consumer(claude-nexus, opencode-nexus, codex-nexus)\". (3) Line 257 §Phase 2 진입 Signal: \"2 active consumer repo\" 역시 3으로 갱신 + codex-nexus 언급 추가. (4) 다른 섹션 미수정 — 위 3 line만.",
+          "acceptance": "3 line 모두 3 consumer 체제로 갱신. 다른 섹션 변경 없음. Plan session #7 맥락 유지.",
+          "risk": "Phase 2 진입 판정 로직 의미 변화 — codex 편입으로 Phase 2가 이미 완성된 것으로 읽힐 수 있음. \"2026-04-17 기준: 3 consumer 체제 완성\" 같은 annotation 추가 권장.",
+          "status": "completed",
+          "deps": [
+            3
+          ],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:32:33.611Z"
+        },
+        {
+          "id": 22,
+          "title": "README/CONSUMING drift extension (T14 WARNING 4건 처리)",
+          "context": "T14 review 결과 4 WARNING: (1) README line 29·37 \"For Consumer Repositories\"·\"이 저장소는 무엇이 아닌가\" 2-harness drift, (2) README line 31 CONSUMING.md 참조가 2 harness만, (3) CONSUMING.md line 3 Audience 선언에 codex-nexus 누락, (4) CONSUMING.md §File Contracts에 docs/consumer-implementation-guide.md 행 누락. T9/T10 scope 외 발견으로 신규 task로 처리.",
+          "approach": "(1) README.md line 29: \"Nexus 하네스(`claude-nexus`, `opencode-nexus`)를 사용하려면\" → 3 harness 열거. (2) README.md line 31: CONSUMING.md 참조 instruction 3 harness 반영. (3) README.md line 37 \"이 저장소는 무엇이 아닌가\": \"그 두 하네스\" → \"세 하네스\" + 3 harness 열거. (4) CONSUMING.md line 3 Audience: \"LLM agents in consumer repositories (claude-nexus, opencode-nexus)\" → 3 consumer. (5) CONSUMING.md §File Contracts에 `docs/consumer-implementation-guide.md` 행 추가 — Purpose: \"9-component consumer build guide + hook event lifecycle\", Consumer Use: \"cover-to-cover read before implementing any harness\". (6) §References에 consumer-implementation-guide.md 링크 추가.",
+          "acceptance": "README 3곳 drift 정리 (line 29, 31, 37). CONSUMING.md Audience 3 consumer 명시. §File Contracts에 consumer-implementation-guide.md 행 존재. §References 링크 존재. 표·선언문 포맷 기존 일관.",
+          "risk": "문서 여러 파일 수정이지만 각 line 수정은 작고 독립. race 없음.",
+          "status": "completed",
+          "deps": [
+            9,
+            10
+          ],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-17T03:32:44.723Z"
+        }
+      ]
     }
   ]
 }
