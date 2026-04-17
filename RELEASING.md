@@ -77,12 +77,23 @@ decision.
 
 ## 3. Prepare the release commit
 
-### 3a. Bump `package.json`
+### 3a. Bump version strings (`package.json` + `VERSION`)
+
+Update **both** files to the same `X.Y.Z` value. The CI publish workflow
+runs a version-match check that fails if `package.json.version` and the
+git tag disagree, and `VERSION` is the plain-text single-line source of
+truth consumed by tooling and documentation. The two must never drift.
 
 Edit `package.json`:
 
 ```json
 "version": "X.Y.Z"
+```
+
+Edit `VERSION` (repo root, single line):
+
+```
+X.Y.Z
 ```
 
 ### 3b. Update `CHANGELOG.md`
@@ -127,17 +138,59 @@ Fill in every subsection that has changes; keep the subsection heading and
 write `(none)` if there is nothing in that category. Keep the heading
 order consistent with the existing file.
 
-### 3c. Large migrations (50+ lines)
+Also update the CHANGELOG footer comparison links (Keep a Changelog
+convention). Failing to do so leaves consumers without a `vX.Y.Z` compare
+link and a stale `[Unreleased]` pointer:
+
+- `[Unreleased]` → `compare/vX.Y.Z...HEAD` (repoint to the new version)
+- Insert `[X.Y.Z]: compare/v<prev>...vX.Y.Z` above the previous version's
+  entry
+
+### 3c. Large migrations (50+ lines) and `MIGRATIONS/INDEX.md`
 
 If the BREAKING CHANGES block would exceed ~50 lines, create a separate
 file at `MIGRATIONS/v{from_major.minor}_to_v{to_major.minor}.md` with the
 full guide, and reference it from the nx-car block (`- **migration**: See
-MIGRATIONS/v0.1_to_v0.2.md`). Also add an entry to `MIGRATIONS/INDEX.md`.
+MIGRATIONS/v0.1_to_v0.2.md`).
+
+**Whenever you create a new `MIGRATIONS/vA_to_vB.md` file, you MUST also
+add a matching entry to `MIGRATIONS/INDEX.md` in the same commit.** The
+index is the chronological release → migration mapping that consumer LLM
+agents use as the entry point for migration discovery. Deferring the
+index update has caused multi-release drift in the past; treat it as a
+non-optional step, not a follow-up.
 
 **MIGRATIONS is append-only** — never modify an existing migration file
 after its release has shipped.
 
-### 3d. Regenerate `manifest.json`
+### 3d. Release-affected file inventory (cycle-dependent)
+
+Beyond the minimum files in §3a–§3c, review whether this release cycle
+modified any of the following. If so, they must be staged in the release
+commit (§4) — omitting them leaves the context/memory/rules layer out of
+sync with the published version:
+
+- [ ] `.nexus/context/evolution.md` — append a `### vX.Y.Z — <summary>
+  (YYYY-MM-DD)` subsection describing the release's governance rationale.
+  Convention: every release gets a subsection here for historical
+  archaeology. If the current release reverses or amends a prior
+  release's decision, also append a regression-noting paragraph to the
+  affected prior subsection (e.g. `§v0.11.0`).
+- [ ] `.nexus/context/boundaries.md` — stage if this release introduces
+  or modifies a domain boundary, canonical specifics threshold, or
+  rejection rule.
+- [ ] `.nexus/context/ecosystem.md` — stage if consumer list, layer
+  structure, or core relationship model changed.
+- [ ] `.nexus/rules/*.md` — stage if a new enforceable rule was added or
+  an existing one was amended.
+- [ ] `.nexus/memory/pattern-*.md` — stage new pattern memos produced
+  during the plan/release cycle (retrospectives, design-time checklists).
+
+Not every release touches all of the above; stage only the files with
+real diffs. Running `git status --short` before §4 confirms the exact
+set.
+
+### 3e. Regenerate `manifest.json`
 
 `manifest.json` contains `nexus_core_version` and the git commit SHA plus
 a `body_hash` for each agent and skill. It is regenerated automatically
@@ -153,6 +206,23 @@ Verify the top of `manifest.json`:
   the release commit will itself include the updated manifest, and CI
   regenerates it again on tag push from within the tag commit)
 
+### 3f. Pre-commit sanity check
+
+Before staging, verify the release's internal references agree. Any
+mismatch here will either fail the CI `Version match check` step or
+leave consumer-facing references broken:
+
+- `cat VERSION` == `package.json.version` == new `X.Y.Z`
+- `CHANGELOG.md` top entry heading starts with `## [X.Y.Z]`
+- `manifest.json.nexus_core_version` == new `X.Y.Z`
+- CHANGELOG footer `[Unreleased]` and `[X.Y.Z]` links point to the new
+  version
+- If a new `MIGRATIONS/vA_to_vB.md` file was created in this cycle, a
+  matching row exists in `MIGRATIONS/INDEX.md`
+- Every file in §3d whose diff is non-empty is about to be staged
+
+Fix any discrepancy before proceeding to §4.
+
 ---
 
 ## 4. Commit, push, tag, push tag
@@ -160,8 +230,15 @@ Verify the top of `manifest.json`:
 Stage the **exact** files you modified (no `git add -A`):
 
 ```bash
-git add package.json CHANGELOG.md manifest.json
-# If you added a MIGRATIONS file:
+# Minimum — every release bumps these four:
+git add package.json VERSION CHANGELOG.md manifest.json
+
+# Conditional — stage if modified in this cycle (see §3d):
+# git add .nexus/context/evolution.md
+# git add .nexus/context/boundaries.md
+# git add .nexus/context/ecosystem.md
+# git add .nexus/rules/*.md
+# git add .nexus/memory/pattern-*.md
 # git add MIGRATIONS/vA_to_vB.md MIGRATIONS/INDEX.md
 
 git commit -m "chore(release): vX.Y.Z — <short description>"
