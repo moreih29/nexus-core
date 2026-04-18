@@ -4100,6 +4100,340 @@
           "created_at": "2026-04-17T13:33:03.235Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-18T09:26:24.739Z",
+      "branch": "feat/v0_13_0-content",
+      "plan": {
+        "id": 11,
+        "topic": "v0.13.0 — nexus-core MCP 서버 구현 (TDD 기반)",
+        "issues": [
+          {
+            "id": 1,
+            "title": "테스트 프레임워크 + TDD 사이클 단위 (bun test vs vitest / 인프라-우선 vs 도구별)",
+            "status": "decided",
+            "decision": "**bun test 채택 + 도구 카테고리 단위 TDD 사이클 + co-located test (src/foo.ts + src/foo.test.ts)**. 이미 @types/bun·bun.lock 보유, claude-nexus 동일 패턴, vitest는 추가 의존성·설정 부담. 인프라 모듈은 첫 도구 구현 시 함께 추출(YAGNI). co-located는 import 경로 짧고 추적성 높음 — dist 빌드 시 *.test.ts exclude. 기각: vitest(의존성 추가 가치 없음), test/ 분리 디렉토리(추적성 손해).",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "bun test + 도구별 TDD 1 사이클 + co-located test 권장. 사전 인프라-only 작업은 YAGNI."
+            },
+            "how_agent_ids": {
+              "architect": "a1aac0a4e930b1740"
+            }
+          },
+          {
+            "id": 2,
+            "title": "src/ 디렉토리 구조 설계 (mcp/ shared/ lsp/ types/ 등 모듈 분해)",
+            "status": "decided",
+            "decision": "**src/{mcp/{server.ts, tools/}, lsp/, shared/, types/} 모듈 분리** — claude-nexus 패턴 차용하되 `code-intel` → `lsp` 명명 일관화 (도구명 nx_lsp_* 정합). `src/mcp/tools/` 내부는 plan.ts/task.ts/history.ts/artifact.ts/lsp.ts (카테고리 1 파일). LSP 본체 로직(client/detect/cache)은 src/lsp/로 분리해 도구 register 파일 비대화 방지. types/state.ts 단일 파일. 기각: opencode-nexus 평탄 src/tools/*.ts (LSP 비중 큼), types 카테고리별 분리 (단일이 import 단순).",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "claude-nexus 패턴 차용, code-intel → lsp 명명 일관화. types 단일 파일."
+            },
+            "how_agent_ids": {
+              "architect": "a1aac0a4e930b1740"
+            }
+          },
+          {
+            "id": 3,
+            "title": "history 파일 형식 통일 (json 배열 vs jsonl, architecture.md와의 충돌 해결)",
+            "status": "decided",
+            "decision": "**history.json (cycles 배열) 채택 + architecture.md 정정 task 발행**. 자매 3 프로젝트(claude·codex·opencode-nexus) 모두 history.json 사용, 로드맵 HistoryCycle 정의도 cycles 배열 전제. nx_task_close가 read-modify-write로 cycles[].push 후 전체 재작성 → jsonl 추가전용과 의미 충돌. nx_history_search의 full-text JSON.stringify 검색도 cycle 객체 단위가 자연. architecture.md 2-1 표 history.jsonl 행 + 2-3 누적 jsonl 예시에서 history 제거 (writer task로 등록). 기각: jsonl 유지(파일 형식·검색 의미·자매 정합 모두 손해).",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "history.json (cycles 배열) — 자매 프로젝트 다 동일, task_close 동작과 일치. architecture.md 정정 필요."
+            },
+            "how_agent_ids": {
+              "architect": "a1aac0a4e930b1740"
+            }
+          },
+          {
+            "id": 4,
+            "title": "MCP 서버 진입점·실행 패턴 (bin entry, bunx 실행, package.json exports 갱신)",
+            "status": "decided",
+            "decision": "**bin entry `nexus-mcp` → `./dist/mcp/server.js`, exports `./mcp` 노출, tsc emit 빌드 (esbuild 미채택)**. tsconfig include에 `\"src/**/*.ts\"` 추가, exclude에 `\"src/**/*.test.ts\"` 추가. 빌드 스크립트는 `tsc --outDir dist --noEmit false` (별도 build:dist script). package.json files 배열에 \"dist\" 추가 (현재 누락 — npm 배포 시 코드 누락 위험). esbuild bundle은 over-engineering — 의존성 적고 (MCP SDK + zod), tsc emit으로 시작 후 필요 시 전환. 기각: 직접 ts 실행(배포 산출물 일관성 위배), esbuild bundle(현 시점 가치 < 도구 추가 부담).",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "bin nexus-mcp + tsc emit + files 배열에 dist 추가. esbuild는 의존성 적으니 우선 불필요."
+            },
+            "how_agent_ids": {
+              "architect": "a1aac0a4e930b1740"
+            }
+          },
+          {
+            "id": 5,
+            "title": "공통 인프라 모듈 분해 (paths/json-store with lock/textResult/MCP 호출 로그)",
+            "status": "decided",
+            "decision": "**shared/{paths, json-store, mcp-utils, tool-log}.ts + types/state.ts**. paths.ts: claude-nexus의 findProjectRoot/NEXUS_ROOT/STATE_ROOT/getCurrentBranch/ensureDir 이식 (단 HARNESS_ID/HARNESS_STATE_ROOT 제외 — nexus-core는 하네스 무관). json-store.ts: opencode-nexus updateJsonFileLocked + readJsonFile + writeJsonFile (atomic rename 포함). mcp-utils.ts: textResult 1 함수만. tool-log.ts: 세션별 .nexus/state/sessions/<session_id>/tool-log.jsonl (architecture 2-2 준수). session_id는 env var NEXUS_SESSION_ID 우선 + `<branch>-<process_pid>` fallback (hook 단계에서 재검토). best-effort 로깅 (실패 시 throw 안 함).",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "claude-nexus paths + opencode-nexus json-store 락 조합. session_id env var fallback. tool-log best-effort."
+            },
+            "how_agent_ids": {
+              "architect": "a1aac0a4e930b1740"
+            }
+          },
+          {
+            "id": 6,
+            "title": "LSP 통합 깊이 (LspClient 위치, lsp-servers.json 위치, 파일 캐시·idle timer 모듈 분리)",
+            "status": "decided",
+            "decision": "**src/lsp/{client, detect, cache}.ts + assets/lsp-servers.json (consumer override 가능). 5 도구 register는 src/mcp/tools/lsp.ts 한 파일 (claude-nexus 패턴)**. client.ts: LspClient 클래스(JSON-RPC 통신, didOpen/didChange 관리). detect.ts: 언어 감지·languageId 매핑·서버 매핑 로더 (assets/lsp-servers.json 동적 읽기 — `new URL('../../assets/lsp-servers.json', import.meta.url)`). cache.ts: idle timer (5분)·failCount(3회)·workspace_root 키·SIGINT/SIGTERM cleanup 핸들러. 도구 본체 로직 얇음(LspClient 호출 + 결과 변환)이라 5 도구 한 파일이 자연. unresolved: nx_lsp_rename WorkspaceEdit 응답 평탄화 vs LSP spec 그대로 — T13 시작 전 결정.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "src/lsp/{client,detect,cache}.ts + assets/lsp-servers.json. 5 도구 한 파일 (claude-nexus 패턴)."
+            },
+            "how_agent_ids": {
+              "architect": "a1aac0a4e930b1740"
+            }
+          }
+        ],
+        "research_summary": "로드맵 파일 .nexus/memory/roadmap-build-order.md에 26 도구 검토 → 14 채택 / 11 미채택 결정 완료 (plan 6, task 5, history 1, artifact 1, lsp 5). 데이터 타입(PlanIssue/TaskItem/HistoryCycle), 권한(agent denylist 단일), resume_tier(persistent/bounded/ephemeral), agent_id(opaque) 통일 결정 완료. LSP 6 논점(서버 의존성·언어 감지·서버 수명·파일 캐시·권한·호출 트리거) 모두 결정 완료. 현재 nexus-core 상태: src/ 비어있음(legacy 백업), bun 1.3.12 + node ≥20, tsc --noEmit만, package.json exports는 assets만 노출(MCP 서버 진입점 없음), tsconfig는 scripts만 include. .nexus/context/architecture.md에 history.jsonl로 명시 — 로드맵의 history.json (cycles 배열)과 충돌. 자매 프로젝트(claude-nexus·codex-nexus·opencode-nexus) 모두 history.json 사용. 테스트 인프라 부재 (현재 의존성에 vitest/bun test 모두 없음).",
+        "created_at": "2026-04-18T08:27:19.808Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "architecture.md history 형식 정정 (jsonl → json)",
+          "context": ".nexus/context/architecture.md 2-1 표 `.nexus/history.jsonl` 행과 2-3 \"누적 jsonl\" 예시에서 history 표기를 정정. 자매 3 프로젝트 모두 history.json 사용, 로드맵 HistoryCycle도 cycles 배열 전제. 이 정정 없이 nx_task_close·nx_history_search acceptance 정의가 모호해짐",
+          "approach": "2-1 표의 `.nexus/history.jsonl` 행을 `.nexus/history.json` (스냅샷·전체 cycles 배열)로 수정. 변경 빈도/형식 칸도 갱신. 2-3 \"누적 = jsonl\" 예시에서 history.jsonl 제거, tool-log·memory-access만 남김",
+          "acceptance": "architecture.md 2-1 표에 history.json 명시, 2-3 예시에서 history.jsonl 자취 없음, 2-3 \"스냅샷 = json\" 카테고리에 history 추가됨. 다른 자매 프로젝트(history.json 사용)와 의미적 정합",
+          "risk": "2-3의 json/jsonl 분류 원칙이 흐려질 수 있음 — history는 추가 전용성이 jsonl 후보였으나 task_close가 read-modify-write라 json 채택. 분류 의미를 보존하는 표현 필요",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-18T08:33:08.915Z"
+        },
+        {
+          "id": 2,
+          "title": "tsconfig include + package.json bin/exports/files/scripts/devDeps 셋업",
+          "context": "현재 tsconfig.json의 include는 scripts/만, src/ 인식 못함. package.json은 assets만 노출, MCP 서버 진입점·dist 빌드 흐름 부재. 후속 모든 task의 typecheck/build 의존성",
+          "approach": "tsconfig.json: include에 \"src/**/*.ts\" 추가, exclude에 \"src/**/*.test.ts\" 추가, \"noEmit\": true는 typecheck용 유지. package.json: bin \"nexus-mcp\": \"./dist/mcp/server.js\" 추가, exports \"./mcp\": \"./dist/mcp/server.js\" 추가, files 배열에 \"dist\" 추가, scripts에 \"build\": \"tsc -p tsconfig.build.json\" + \"test\": \"bun test src/\" 추가, devDependencies에 @modelcontextprotocol/sdk + zod 추가. tsconfig.build.json: extends + outDir dist + noEmit false + declaration true 별도 파일",
+          "acceptance": "`bun run typecheck` src/ 인식, `bun run build` dist/ 생성 (.js + .d.ts), `bun test` 빈 결과라도 종료코드 0, `bunx ./dist/mcp/server.js` (구현 후) stdio 응답 가능 상태",
+          "risk": "@modelcontextprotocol/sdk 버전 호환성 (자매 프로젝트 0.5+ 사용). bun + node 양립 — bun.lock 우선이지만 npm install도 가능해야",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 4,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:33:22.613Z"
+        },
+        {
+          "id": 3,
+          "title": "src/shared/paths.ts + 단위 테스트",
+          "context": "claude-nexus의 src/shared/paths.ts 이식. nexus-core는 하네스 무관 라이브러리이므로 HARNESS_ID·HARNESS_STATE_ROOT는 제외. 모든 후속 도구가 이 모듈에 의존",
+          "approach": "findProjectRoot() (git rev-parse fallback to cwd 상승 탐색), NEXUS_ROOT, STATE_ROOT, getCurrentBranch() (git symbolic-ref fallback), ensureDir() (재귀 mkdir). claude-nexus src/shared/paths.ts 패턴 참고하되 HARNESS_* 제거. test: tmp dir에 가짜 git 트리 만들어 findProjectRoot 동작 검증, ensureDir 멱등성 검증",
+          "acceptance": "bun test src/shared/paths.test.ts 통과, 8개 이상 테스트 케이스 (각 export 함수 + edge case: not in git, deeply nested cwd, branch detached HEAD)",
+          "risk": "findProjectRoot가 git 없는 환경에서 어떻게 동작할지 — claude-nexus는 fallback 명확. detached HEAD는 getCurrentBranch가 빈 문자열 반환",
+          "status": "completed",
+          "deps": [
+            2
+          ],
+          "plan_issue": 5,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:33:32.876Z"
+        },
+        {
+          "id": 4,
+          "title": "src/shared/json-store.ts (file lock 포함) + 단위 테스트",
+          "context": "opencode-nexus의 updateJsonFileLocked 패턴 이식. plan/task/history 모든 도구의 read-modify-write 동시성 안전성 보장 핵심 모듈",
+          "approach": "readJsonFile<T>(path, default) — 파일 없으면 default 반환, JSON 파싱. writeJsonFile<T>(path, data) — atomic rename (tmp 파일 → rename). updateJsonFileLocked<T>(path, default, updater) — proper-lockfile 또는 fs flock으로 락 획득 → read → updater 호출 → atomic write → 락 해제. opencode-nexus src/shared/json-store.ts 참고. test: 동시 호출 100회 race 통과 (counter 정확히 100), atomic rename 도중 crash 시뮬레이션",
+          "acceptance": "bun test src/shared/json-store.test.ts 통과, race 테스트 (Promise.all 100회 update가 정확한 결과), atomic rename 검증, 락 timeout 동작",
+          "risk": "proper-lockfile dependency 추가 vs fs.constants.O_EXCL 직접 구현. atomic rename은 같은 파일시스템 가정 (cross-device 실패). 락 stale 처리",
+          "status": "completed",
+          "deps": [
+            2
+          ],
+          "plan_issue": 5,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:33:46.835Z"
+        },
+        {
+          "id": 5,
+          "title": "src/shared/{mcp-utils,tool-log}.ts + src/types/state.ts",
+          "context": "MCP textResult 헬퍼, 세션별 도구 호출 로그(best-effort), 공통 타입 정의 (PlanIssue·TaskItem·HistoryCycle 등). plan/task/history/artifact/lsp 도구 모두 import",
+          "approach": "mcp-utils.ts: textResult(obj) — JSON.stringify + content[]형 반환. 1 함수 그 이상 추가 금지. tool-log.ts: logToolCall({tool, args, response, duration_ms}) — sessionId 결정(env NEXUS_SESSION_ID 우선 → fallback `${branch}-${process.pid}`) → .nexus/state/sessions/<sid>/tool-log.jsonl에 append. try-catch로 best-effort. types/state.ts: PlanIssue (analysis 배열 포함, how_agents/how_summary/how_agent_ids legacy 필드 제외), TaskItem (owner 객체), HistoryCycle (memoryHint 제거), HistoryFile, PlanFile, TasksFile zod schema + TS 타입 export",
+          "acceptance": "bun test src/shared/mcp-utils.test.ts·tool-log.test.ts 통과, types/state.ts는 zod parse round-trip 검증 (PlanIssue·TaskItem·HistoryCycle 각각 1+ 케이스), tool-log가 디렉토리 미존재 시 자동 생성 + write 실패 시 throw 안 함",
+          "risk": "tool-log의 sessionId fallback이 hook 단계에서 변경될 수 있음 — 모듈 inner 구현 캡슐화 필수. types에 zod schema와 TS 타입 동기화 자동(z.infer)",
+          "status": "completed",
+          "deps": [
+            2,
+            3
+          ],
+          "plan_issue": 5,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:34:03.732Z"
+        },
+        {
+          "id": 6,
+          "title": "src/mcp/server.ts skeleton + bin 동작 확인",
+          "context": "MCP 서버 진입점. 도구 등록 함수(registerXxxTools)를 import만 해두고 빈 register로 시작. stdio handshake 동작 검증",
+          "approach": "@modelcontextprotocol/sdk Server + StdioServerTransport 사용. server.ts: McpServer 생성 → registerPlanTools/registerTaskTools 등 import (현재 빈 함수) → server.connect(transport). #!/usr/bin/env node shebang. main이 import.meta.url === url 패턴으로 직접 실행 시만 동작. test: spawn dist/mcp/server.js + initialize handshake JSON-RPC 응답 검증",
+          "acceptance": "bun run build → dist/mcp/server.js 생성, `node dist/mcp/server.js` 실행 + initialize 요청 보내면 정상 응답, tools/list 결과 빈 배열 (도구 미등록 단계라 정상), bun test src/mcp/server.test.ts 통과",
+          "risk": "@modelcontextprotocol/sdk API 버전 호환성. shebang이 bun이 아닌 node 가리키지만 bunx는 node 흉내냄. 빈 register 함수의 ts 타입 만족",
+          "status": "completed",
+          "deps": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "plan_issue": 4,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:34:14.686Z"
+        },
+        {
+          "id": 7,
+          "title": "src/mcp/tools/plan.ts — 6 plan 도구 + 단위 테스트",
+          "context": "nx_plan_start, nx_plan_status, nx_plan_update, nx_plan_decide, nx_plan_resume, nx_plan_analysis_add (신규). plan.json 단일 소스. analysis 배열 append-only, decision 인라인. caller 검증 제거",
+          "approach": "registerPlanTools(server) export. 각 도구는 zod schema + handler. updateJsonFileLocked로 plan.json 모든 read-modify-write. nx_plan_start(topic, issues, research_summary) — 기존 plan.json 있으면 자동 archive. nx_plan_status — 현재 issue/decision 상태. nx_plan_update(action, ...) — add/remove/modify/reopen 4 액션. nx_plan_decide(issue_id, decision) — analysis 분리, status='decided' 변경 + decision 인라인. re-decide throw. nx_plan_resume(role) — analysis에서 같은 role 최신 entry의 agent_id로 재개 후보 5필드 반환. nx_plan_analysis_add(issue_id, role, agent_id?, summary) — recorded_at 서버 자동. test: 각 도구 happy path + edge case (재시작·동시 update·재결정 throw·미존재 issue_id)",
+          "acceptance": "bun test src/mcp/tools/plan.test.ts 통과 (24+ 테스트), plan.json 동시 update race 통과, analysis append-only 보장, re-decide throw 검증, archive 시 history.json (T9 후) 또는 plan.json 보존 확인",
+          "risk": "archive 동작이 history.json에 의존 — T9 미완 시 archive 없이 unlink만. resume의 agent_id resolve 로직 — analysis 빈 경우 처리. caller 검증 제거 후 잘못된 호출자 (e.g. researcher가 plan_decide) 막을 수 없음 — agent denylist 의존",
+          "status": "completed",
+          "deps": [
+            1,
+            6
+          ],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:34:29.845Z"
+        },
+        {
+          "id": 8,
+          "title": "src/mcp/tools/task.ts — 5 task 도구 + 단위 테스트",
+          "context": "nx_task_add, nx_task_list, nx_task_update, nx_task_resume, nx_task_close. owner는 객체 {role, agent_id?, resume_tier?}. acceptance 필수. caller 검증 제거. close가 history.json cycles 누적",
+          "approach": "registerTaskTools(server). nx_task_add(title, context, acceptance, approach?, risk?, plan_issue?, deps?, owner) — owner 객체 검증, deps 미존재 throw, goal/decisions 인자 유지. nx_task_list(include_completed=true) — partition summary {in_progress, completed, blocked, ready} + total. summary는 항상 full. goal 포함 decisions 미포함. nx_task_update(id, status?, owner?: {agent_id?, resume_tier?}) — partial, role 갱신 불가, agent_id null/\"\" 삭제. nx_task_close — 인자 없음. caller 검증 없음. plan.json + tasks.json → history.json cycles[].push. 미완료 task warning. 응답 평탄 4필드 {closed, plan_id, task_count, incomplete_count}. nx_task_resume(id) — owner.resume_tier hard 강제, 4필드 응답. test: owner 검증·partition·close cycle 추가·resume tier 분기",
+          "acceptance": "bun test src/mcp/tools/task.test.ts 통과 (20+ 테스트), tasks.json 동시 update race 통과, close가 history.json에 cycle append + plan.json·tasks.json 삭제, partition summary mutually exclusive, deps throw, owner role 갱신 throw",
+          "risk": "close가 plan.json 없을 때 동작 — plan 없이 task만 있는 단계 발생. memoryHint 분리 — close 응답에는 없고 cycle 안에 어떻게 들어가나 (T1 결정 따라 미포함)",
+          "status": "completed",
+          "deps": [
+            7
+          ],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:34:45.299Z"
+        },
+        {
+          "id": 9,
+          "title": "src/mcp/tools/history.ts — nx_history_search + 단위 테스트",
+          "context": "history.json에서 cycle 검색. 입력 {query?, last_n?: number = 10}. 응답 {total, showing, cycles[]} — full HistoryCycle, 최신→오래 reverse, memoryHint 제거",
+          "approach": "registerHistoryTools(server). nx_history_search 핸들러: history.json read → query면 JSON.stringify(c).toLowerCase().includes(q) 필터 → reverse() → slice(0, last_n||10) → {total, showing, cycles}. test: 빈 history, query 매칭/미매칭, last_n 적용·기본값, reverse 순서 검증, memoryHint 제거 확인",
+          "acceptance": "bun test src/mcp/tools/history.test.ts 통과 (10+ 테스트), reverse 순서·last_n=10 기본값·full-text 검색·total/showing 모두 검증",
+          "risk": "history.json 부재 시 응답 — 빈 배열로 처리. 큰 history 파일에서 JSON.stringify 비용 — 일단 KISS, 추후 indexing 고려",
+          "status": "completed",
+          "deps": [
+            1,
+            8
+          ],
+          "plan_issue": 3,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:34:58.806Z"
+        },
+        {
+          "id": 10,
+          "title": "src/mcp/tools/artifact.ts — nx_artifact_write + 단위 테스트",
+          "context": "writer/researcher/tester/postdoc/reviewer 5 에이전트 표준 산출물 도구. 입력 {filename, content}. 결정론적 위치 .nexus/state/<harness>/artifacts/. filename sanitize·자동 mkdir·덮어쓰기·상대경로 응답",
+          "approach": "registerArtifactTools(server). nx_artifact_write 핸들러: sanitizeName(filename) — `..`, `\\\\`, leading `/` 차단. mkdir(dirname, recursive: true). writeFile(out, content) 덮어쓰기. 응답 {success: true, path: relative(PROJECT_ROOT, out)}. test: 정상 case, traversal 차단(`../etc/passwd`, `..\\\\foo`), 하위 디렉토리 자동 생성, 덮어쓰기, leading slash 제거",
+          "acceptance": "bun test src/mcp/tools/artifact.test.ts 통과 (8+ 테스트), traversal 시도 모두 차단, subdir/file.md 자동 mkdir, 응답 path는 PROJECT_ROOT 상대",
+          "risk": ".nexus/state/<harness>/ 경로의 <harness> 부분 — nexus-core는 하네스 무관이라 그냥 .nexus/state/artifacts/ 단순화 권장. 결정 필요",
+          "status": "completed",
+          "deps": [
+            6
+          ],
+          "plan_issue": 5,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:35:12.678Z"
+        },
+        {
+          "id": 11,
+          "title": "assets/lsp-servers.json + JSON Schema",
+          "context": "LSP 5 도구가 의존하는 데이터 파일. 4 언어(typescript/python/rust/go) 매핑 + 서버 명령 + install hint. consumer override 가능",
+          "approach": "assets/lsp-servers.json 작성: languages 객체 — typescript(extensions {ts:typescript, tsx:typescriptreact, js,jsx,mjs,cjs,mts,cts}, server.command_chain [bunx, npx], server.args [typescript-language-server, --stdio], install_hint \"npm i -g typescript-language-server\"), python(extensions {py, pyi:python}, command_chain [bunx, npx], args [pyright-langserver, --stdio], install_hint \"npm i -g pyright\"), rust(extensions {rs}, command_chain [rust-analyzer], search_paths [~/.cargo/bin/rust-analyzer], args [], install_hint \"rustup component add rust-analyzer\"), go(extensions {go}, command_chain [gopls], search_paths [~/go/bin/gopls, /usr/local/go/bin/gopls], args [serve], install_hint \"go install golang.org/x/tools/gopls@latest\"). assets/schema/lsp-servers.schema.json — JSON Schema draft 2020-12로 형식 검증",
+          "acceptance": "assets/lsp-servers.json 4 언어 모두 채워짐, assets/schema/lsp-servers.schema.json으로 검증 통과 (ajv), package.json exports에 ./assets/lsp-servers.json 노출",
+          "risk": "command_chain 순서 의미 — 첫 성공까지 시도. 미발견 시 install_hint 반환. 데이터 파일이라 docs_only 분류 — reviewer pair 불필요",
+          "status": "completed",
+          "deps": [
+            2
+          ],
+          "plan_issue": 6,
+          "owner": "writer",
+          "created_at": "2026-04-18T08:35:25.505Z"
+        },
+        {
+          "id": 12,
+          "title": "src/lsp/{client,detect,cache}.ts + 단위 테스트",
+          "context": "LSP 인프라 3 모듈. claude-nexus의 LspClient 이식 + 로드맵 결정 6 논점 모두 반영 (lazy spawn, workspace_root key, 5분 idle, failCount 3회, mtime sync, full text didChange)",
+          "approach": "client.ts: LspClient 클래스 — child_process spawn, JSON-RPC over stdio, initialize handshake, request/notify, on(event) 이벤트 디스패치, isReady(), shutdown(). claude-nexus src/code-intel/lsp-client.ts 그대로 이식. detect.ts: assets/lsp-servers.json 동적 로드 (`new URL('../../assets/lsp-servers.json', import.meta.url)`), getLanguageFromExt(file), getLanguageId(file), getLspConfig(language) — command_chain 순회로 첫 성공 명령 결정 + install_hint 미발견 시. cache.ts: clientsByKey Map<`${lang}:${root}`, {client, mtime: Map<uri, {mtime,version}>, lastUsed, failCount}>, ensureClient(file) — workspace_root 결정(tsconfig 등 가장 가까운 디렉토리) + cache hit/miss/dead 처리, ensureFileSync(client, file) — mtime 비교 후 didOpen/didChange, scheduleIdleCleanup(5분), SIGINT/SIGTERM cleanup. test: spawn mock, 동시 호출 캐시, mtime 변경 → didChange, 5분 idle → cleanup, 3회 fail → permanently_failed",
+          "acceptance": "bun test src/lsp/{client,detect,cache}.test.ts 통과 (각 8+ 테스트), 실제 typescript-language-server 통합 테스트 1+ (skip 가능: env가 없으면), idle timer + failCount + mtime 모두 검증",
+          "risk": "child_process spawn 테스트는 OS 환경 의존 — mock 또는 통합 테스트 분리. JSON-RPC 응답 파싱 — header `Content-Length` 처리. SIGINT/SIGTERM 핸들러는 process-global이라 test 격리 어려움",
+          "status": "completed",
+          "deps": [
+            11
+          ],
+          "plan_issue": 6,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:35:42.770Z"
+        },
+        {
+          "id": 13,
+          "title": "src/mcp/tools/lsp.ts — 5 LSP 도구 + 단위 테스트",
+          "context": "nx_lsp_hover, nx_lsp_diagnostics, nx_lsp_find_references, nx_lsp_rename, nx_lsp_code_actions. 모두 read-only. cache 모듈 통한 LspClient 호출 + 결과 변환",
+          "approach": "registerLspTools(server). 각 도구: zod schema (file, line/character·startLine/endLine·newName) → cache.ensureClient(file) → cache.ensureFileSync(client, file) → lsp.request(method, params) → 결과 변환. hover: contents formatMarkupContent. diagnostics: publishDiagnostics 이벤트 2초 수집 (cache 모듈 helper로 위임). find_references: locations 변환. rename: WorkspaceEdit → 평탄 edit 목록 (T13 시작 전 결정 필요한 응답 형식 — claude-nexus 패턴 채택, file별 line/newText 평탄). code_actions: range 내 diagnostics 수집 + codeAction 요청. 미발견 LSP 서버 시 install_hint 응답. test: mock LspClient로 happy path 5개, install_hint 시나리오, mtime sync 트리거",
+          "acceptance": "bun test src/mcp/tools/lsp.test.ts 통과 (15+ 테스트), 5 도구 모두 read-only 보장 (파일 변경 없음), install_hint 응답 형식 일관, mtime 변경 후 호출이 신선한 결과 반환",
+          "risk": "rename WorkspaceEdit 평탄화는 LSP spec 손실 — 일단 claude-nexus 패턴(file/line/newText) 채택, 추후 필요 시 spec 그대로 노출 옵션 추가. diagnostics 2초 대기 비용 — test에서 수동 mock",
+          "status": "completed",
+          "deps": [
+            12
+          ],
+          "plan_issue": 6,
+          "owner": "engineer",
+          "created_at": "2026-04-18T08:35:58.628Z"
+        },
+        {
+          "id": 14,
+          "title": "tester 횡단 검토 — 14 도구 코드 스타일·안정성·미래 이슈·edge case",
+          "context": "사용자 명시 instruction: \"tester는 그런 기본적인 테스트는 또하지말고, 코드 스타일/안정성/미래 이슈들 위주로 검사할 것\". engineer가 이미 단위 테스트 작성한 14 도구 + 인프라 + LSP에 대해 별도 횡단 분석",
+          "approach": "기본 단위 테스트 결과는 신뢰 — 기본 happy/edge path는 조사 안 함. 대신:\n1) 코드 스타일 일관성 (자매 프로젝트 비교, naming convention, error message 패턴, import 순서)\n2) 안정성: 동시성 경로 (file lock 누락 가능성, race condition, memory leak — LSP 클라이언트·SIGINT 누수, child_process 좀비 프로세스)\n3) 미래 이슈: API 변경 위험 (MCP SDK 의존성 lock, @ast-grep 스타일 native binary 부재로 portability 안전), 확장성 (5분 idle은 큰 프로젝트에서 짧은가, failCount 3회 너무 적은가, sessionId fallback의 중복 가능성)\n4) edge case: 빈 plan.json, 손상 JSON, 디스크 풀, 권한 없는 디렉토리, 매우 긴 filename, traversal 우회 시도 (URL 인코딩·심볼릭 링크), LSP 서버 응답 timeout, JSON-RPC 비정상 응답, multi-byte filename, large content artifact_write\n5) 보안: tool-log에 민감정보 누출, artifact_write 경로 우회, MCP 서버 실행 권한\nnx_artifact_write로 검토 보고서 작성. nx_lsp_code_actions로 quick fix 일괄 적용 가능 항목 발견.",
+          "acceptance": "검토 보고서가 .nexus/state/artifacts/v0_13_0-tester-review.md로 작성됨. 발견 사항 분류 (critical/warning/suggestion) 포함. 각 critical/warning에 대해 구체적 파일:line + 권장 조치 제시. 발견 0건일 경우 그 자체를 명시 + 검토 범위 명확화",
+          "risk": "사용자 의도 — 기본 테스트 중복 회피. 동일한 테스트 케이스 추가는 명시적으로 금지. 발견사항이 새 코드 변경을 요구하면 별도 task로 escalate (이 task에서는 발견·보고만)",
+          "status": "completed",
+          "deps": [
+            7,
+            8,
+            9,
+            10,
+            13
+          ],
+          "plan_issue": 1,
+          "owner": "tester",
+          "created_at": "2026-04-18T08:36:17.157Z"
+        },
+        {
+          "id": 15,
+          "title": "tester 리뷰 fix 4건 — C1 + W2 + W4 + W6",
+          "context": "v0.13.0 tester 횡단 검토에서 발견된 critical 1 + warning 3 즉시 fix. Lead 직접 처리 (4건 모두 작은 변경)",
+          "approach": "C1: src/mcp/tools/plan.ts:64-86 — history.json archive를 updateJsonFileLocked로 감싸기. W2: src/lsp/detect.ts:42 — require('node:fs').readFileSync → import. W6: package.json version 0.12.0 → 0.13.0. W4: src/shared/tool-log.ts:12 — branch sanitize (`/`, special chars → `_`)",
+          "acceptance": "4 fix 적용. bun test src/ 222+ pass / 0 fail 회귀, bun run typecheck 0 error, bun run build 성공",
+          "risk": "plan.ts archive 로직이 락 안에서 동작 시 약간 느려짐 — race 안전성 우선. detect.ts import 위치 정확히. tool-log sanitize가 기존 sessionId 형식 깨면 기존 jsonl 위치 변경 — 신규 세션부터 적용",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "lead",
+          "created_at": "2026-04-18T09:24:45.676Z"
+        }
+      ]
     }
   ]
 }
