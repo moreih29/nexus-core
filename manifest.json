@@ -1,6 +1,6 @@
 {
   "nexus_core_version": "0.12.0",
-  "nexus_core_commit": "aa644ff",
+  "nexus_core_commit": "f2aae48",
   "schema_contract_version": "2.0",
   "agents": [
     {
