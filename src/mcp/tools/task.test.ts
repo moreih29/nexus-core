@@ -541,6 +541,48 @@ describe("nx_task_resume", () => {
       server.call("nx_task_resume", { id: 99 })
     ).rejects.toThrow("not found");
   });
+
+  it("task_resume 응답 정확히 4 필드 (resumable true)", async () => {
+    writeTasksFixture({
+      tasks: [
+        {
+          id: 10,
+          title: "Shape Task",
+          status: "pending",
+          context: "c",
+          acceptance: "a",
+          owner: { role: "engineer", agent_id: "shape-agent-001", resume_tier: "persistent" },
+          created_at: new Date().toISOString(),
+        },
+      ],
+    });
+
+    const server = makeTestServer();
+    const result = await server.call("nx_task_resume", { id: 10 }) as Record<string, unknown>;
+    const keys = Object.keys(result).sort();
+    expect(keys).toEqual(["agent_id", "resumable", "resume_tier", "task_id"]);
+  });
+
+  it("task_resume 응답 정확히 4 필드 (resumable false)", async () => {
+    writeTasksFixture({
+      tasks: [
+        {
+          id: 11,
+          title: "Shape Task No Tier",
+          status: "pending",
+          context: "c",
+          acceptance: "a",
+          owner: { role: "engineer" },
+          created_at: new Date().toISOString(),
+        },
+      ],
+    });
+
+    const server = makeTestServer();
+    const result = await server.call("nx_task_resume", { id: 11 }) as Record<string, unknown>;
+    const keys = Object.keys(result).sort();
+    expect(keys).toEqual(["agent_id", "resumable", "resume_tier", "task_id"]);
+  });
 });
 
 // ---------------------------------------------------------------------------

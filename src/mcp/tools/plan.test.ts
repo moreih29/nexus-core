@@ -405,6 +405,46 @@ describe("nx_plan_resume", () => {
     expect(result.resume_tier).toBeNull();
     expect(result.issue_id).toBeNull();
   });
+
+  it("plan_resume 응답 정확히 5 필드 (매칭 있음)", async () => {
+    writePlanFixture({
+      id: 1,
+      topic: "Shape Test",
+      issues: [
+        {
+          id: 1,
+          title: "Issue A",
+          status: "decided",
+          decision: "Done",
+          analysis: [
+            { role: "architect", agent_id: "agent-shape-001", summary: "Shape check", recorded_at: "2024-06-01T00:00:00.000Z" },
+          ],
+        },
+      ],
+      research_summary: "Summary.",
+      created_at: new Date().toISOString(),
+    });
+
+    const server = makeTestServer();
+    const result = await server.call("nx_plan_resume", { role: "architect" }) as Record<string, unknown>;
+    const keys = Object.keys(result).sort();
+    expect(keys).toEqual(["agent_id", "issue_id", "resumable", "resume_tier", "role"]);
+  });
+
+  it("plan_resume 응답 정확히 5 필드 (매칭 없음)", async () => {
+    writePlanFixture({
+      id: 1,
+      topic: "Shape Test No Match",
+      issues: [{ id: 1, title: "Issue B", status: "pending" }],
+      research_summary: "Summary.",
+      created_at: new Date().toISOString(),
+    });
+
+    const server = makeTestServer();
+    const result = await server.call("nx_plan_resume", { role: "designer" }) as Record<string, unknown>;
+    const keys = Object.keys(result).sort();
+    expect(keys).toEqual(["agent_id", "issue_id", "resumable", "resume_tier", "role"]);
+  });
 });
 
 describe("nx_plan_analysis_add", () => {

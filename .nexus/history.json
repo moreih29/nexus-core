@@ -4434,6 +4434,27 @@
           "created_at": "2026-04-18T09:24:45.676Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-18T09:42:59.659Z",
+      "branch": "feat/v0_13_0-content",
+      "plan": null,
+      "tasks": [
+        {
+          "id": 1,
+          "title": "통합 시나리오 + 보안 edge + 응답 shape 회귀 테스트 4건",
+          "context": "v0.13.0 14 도구는 단위 테스트 222 통과지만 통합 시나리오·보안 edge·응답 shape 정확성 4 항목 누락. release 안전성 위해 follow-up",
+          "approach": "한 engineer가 4 항목 처리:\n1) src/mcp/server.test.ts 갱신 — 14 도구 등록 검증 (in-process + spawn 후 tools/list 14개 응답)\n2) src/mcp/e2e.test.ts 신규 — spawn dist/mcp/server.js + JSON-RPC client. 시나리오: plan_start → analysis_add → decide → task_add → task_close → history_search. tmp dir 격리\n3) src/mcp/tools/artifact.test.ts 추가 — URL 인코딩 (`%2E%2E%2F...`), NULL byte (`\\x00...`), symlink escape 회귀 테스트\n4) src/mcp/tools/{plan,task}.test.ts 추가 — plan_resume 5필드·task_resume 4필드 정확한 키 명시 검증 (Object.keys 비교)",
+          "acceptance": "bun test src/ 회귀 0 fail. server.test.ts에 14 도구 등록 검증, e2e 시나리오 1개 통과, artifact 보안 3 케이스 통과, resume 응답 shape 검증 추가. 추가 테스트 케이스 ~12개",
+          "risk": "e2e가 spawn 의존이라 환경에 따라 flaky 가능. symlink escape는 fs.realpath 추가 코드 변경 동반 가능 (sanitize만으로 막기 부족하면 코드 fix 필요)",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-18T09:34:39.814Z"
+        }
+      ]
     }
   ]
 }

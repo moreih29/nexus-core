@@ -232,3 +232,104 @@ describe("nx_artifact_write handler", () => {
     expect(fs.readFileSync(fullPath, "utf-8")).toBe(largeContent);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 보안 edge — URL 인코딩, NULL byte, symlink escape
+// ---------------------------------------------------------------------------
+
+describe("보안 edge", () => {
+  let tmpDir: string;
+  let invoke: (args: { filename: string; content: string }) => Promise<CallToolResult>;
+
+  beforeEach(() => {
+    tmpDir = makeTmpGitRepo();
+    invoke = buildHandler(tmpDir);
+  });
+
+  afterEach(async () => {
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  test("URL 인코딩 입력 — %2E%2E%2Fetc%2Fpasswd: artifactsDir 외부 escape 없음", async () => {
+    const result = await invoke({ filename: "%2E%2E%2Fetc%2Fpasswd", content: "url-encoded" });
+    const parsed = parseResult(result);
+    expect(parsed.success).toBe(true);
+    // path must stay inside .nexus/state/artifacts
+    expect(parsed.path).toContain(path.join(".nexus", "state", "artifacts"));
+    expect(parsed.path).not.toContain("..");
+    // %2E%2E is NOT decoded by sanitizeName — it's treated as a literal segment name
+    const writtenPath = path.join(tmpDir, parsed.path);
+    expect(fs.existsSync(writtenPath)).toBe(true);
+  });
+
+  test("NULL byte filename — fs 레이어 차단 또는 정상 (traversal escape 없음)", async () => {
+    const filename = "\x00etc/passwd";
+    let threwError = false;
+    let parsedPath: string | undefined;
+
+    try {
+      const result = await invoke({ filename, content: "null-byte" });
+      const parsed = parseResult(result);
+      parsedPath = parsed.path;
+    } catch {
+      threwError = true;
+    }
+
+    if (!threwError && parsedPath !== undefined) {
+      // If it didn't throw, the written path must be inside artifactsDir
+      expect(parsedPath).toContain(path.join(".nexus", "state", "artifacts"));
+      expect(parsedPath).not.toContain("..");
+      // Must NOT have written outside tmpDir
+      const writtenFull = path.join(tmpDir, parsedPath);
+      const artifactsDir = path.join(tmpDir, ".nexus", "state", "artifacts");
+      expect(writtenFull.startsWith(artifactsDir)).toBe(true);
+    }
+    // Either throw or safe path — both are acceptable outcomes
+    expect(threwError || parsedPath !== undefined).toBe(true);
+  });
+
+  test("symlink escape — artifactsDir 안 symlink → 외부 escape 차단", async () => {
+    const artifactsDir = path.join(tmpDir, ".nexus", "state", "artifacts");
+    fs.mkdirSync(artifactsDir, { recursive: true });
+
+    // Create a symlink inside artifactsDir pointing to /tmp (an external directory)
+    const externalTarget = os.tmpdir();
+    const symlinkPath = path.join(artifactsDir, "evil-link");
+    fs.symlinkSync(externalTarget, symlinkPath);
+
+    let threwError = false;
+    let parsedPath: string | undefined;
+
+    try {
+      const result = await invoke({ filename: "evil-link/escape.md", content: "escaped" });
+      const parsed = parseResult(result);
+      parsedPath = parsed.path;
+    } catch {
+      threwError = true;
+    }
+
+    if (!threwError && parsedPath !== undefined) {
+      // Resolve the actual written file's real path and verify it's inside tmpDir
+      const writtenFull = path.join(tmpDir, parsedPath);
+      let realWritten: string;
+      try {
+        realWritten = fs.realpathSync(writtenFull);
+      } catch {
+        // File may not exist yet (ENOTDIR scenario) — that's fine, no escape
+        realWritten = writtenFull;
+      }
+      const realArtifactsDir = fs.realpathSync(artifactsDir);
+      const realTmpDir = fs.realpathSync(tmpDir);
+      // The written file must be within tmpDir (not escaped to externalTarget)
+      const escapedToExternal = realWritten.startsWith(externalTarget + path.sep) ||
+        realWritten === externalTarget;
+      expect(escapedToExternal).toBe(false);
+      // Acceptable: written inside tmpDir/artifacts or throw
+      const staysInProject = realWritten.startsWith(realTmpDir);
+      const staysInArtifacts = realWritten.startsWith(realArtifactsDir);
+      expect(staysInProject || staysInArtifacts).toBe(true);
+    }
+    // throw or safe write — both acceptable
+    expect(threwError || parsedPath !== undefined).toBe(true);
+  });
+});

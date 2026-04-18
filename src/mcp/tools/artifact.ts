@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { findProjectRoot, getNexusRoot } from "../../shared/paths.js";
 import { textResult } from "../../shared/mcp-utils.js";
@@ -26,7 +26,14 @@ export function registerArtifactTools(server: McpServer): void {
       const safeName = sanitizeName(filename);
       const artifactsDir = join(getNexusRoot(), "state", "artifacts");
       const outputPath = join(artifactsDir, safeName);
-      await mkdir(dirname(outputPath), { recursive: true });
+      const outputDir = dirname(outputPath);
+      await mkdir(outputDir, { recursive: true });
+      // Resolve symlinks in the output directory and verify it stays inside artifactsDir
+      const realOutputDir = await realpath(outputDir);
+      const realArtifactsDir = await realpath(artifactsDir);
+      if (!realOutputDir.startsWith(realArtifactsDir + "/") && realOutputDir !== realArtifactsDir) {
+        throw new Error("Security: resolved path escapes artifactsDir");
+      }
       await writeFile(outputPath, content, "utf-8");
       const projectRoot = findProjectRoot();
       const relPath = relative(projectRoot, outputPath);

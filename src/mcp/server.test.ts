@@ -7,6 +7,27 @@ import { createServer } from "./server.ts";
 const PROJECT_ROOT = process.cwd();
 const SERVER_DIST = join(PROJECT_ROOT, "dist", "mcp", "server.js");
 
+const EXPECTED_TOOLS = [
+  "nx_artifact_write",
+  "nx_history_search",
+  "nx_lsp_code_actions",
+  "nx_lsp_diagnostics",
+  "nx_lsp_find_references",
+  "nx_lsp_hover",
+  "nx_lsp_rename",
+  "nx_plan_analysis_add",
+  "nx_plan_decide",
+  "nx_plan_resume",
+  "nx_plan_start",
+  "nx_plan_status",
+  "nx_plan_update",
+  "nx_task_add",
+  "nx_task_close",
+  "nx_task_list",
+  "nx_task_resume",
+  "nx_task_update",
+].sort();
+
 describe("createServer (in-process)", () => {
   test("returns an McpServer instance with name and version", () => {
     const server = createServer();
@@ -14,9 +35,19 @@ describe("createServer (in-process)", () => {
     expect(typeof server.connect).toBe("function");
   });
 
-  test("registers tools (currently empty placeholders)", () => {
+  test("registers all 18 tools", () => {
     const server = createServer();
-    expect(server).toBeDefined();
+    const registered = (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools;
+    const names = Object.keys(registered).sort();
+    expect(names).toEqual(EXPECTED_TOOLS);
+  });
+
+  test("each registered tool has an inputSchema", () => {
+    const server = createServer();
+    const registered = (server as unknown as { _registeredTools: Record<string, { inputSchema: unknown }> })._registeredTools;
+    for (const [, tool] of Object.entries(registered)) {
+      expect(tool.inputSchema).toBeDefined();
+    }
   });
 });
 
@@ -100,21 +131,27 @@ describe("server.js stdio handshake (spawn)", () => {
     }
   });
 
-  test("server responds (id-correlated) to tools/list", async () => {
-    // Placeholder phase: 0 tools registered, so McpServer may not advertise
-    // tools capability — JSON-RPC error (method not found) is also valid.
-    // What matters is the server is alive and id-correlates the response.
+  test("tools/list returns all 18 tools", async () => {
     const resp = (await send("tools/list", {})) as {
-      result?: unknown;
-      error?: { code: number; message: string };
+      result: { tools: { name: string }[] };
     };
-    expect(resp.result !== undefined || resp.error !== undefined).toBe(true);
+    const names = resp.result.tools.map((t) => t.name).sort();
+    expect(names).toEqual(EXPECTED_TOOLS);
+  });
+
+  test("each tool has inputSchema", async () => {
+    const resp = (await send("tools/list", {})) as {
+      result: { tools: { name: string; inputSchema: unknown }[] };
+    };
+    for (const t of resp.result.tools) {
+      expect(t.inputSchema).toBeDefined();
+    }
   });
 
   test("server responds to multiple sequential requests", async () => {
-    const r1 = (await send("tools/list", {})) as { result?: unknown; error?: unknown };
-    const r2 = (await send("tools/list", {})) as { result?: unknown; error?: unknown };
-    expect(r1.result !== undefined || r1.error !== undefined).toBe(true);
-    expect(r2.result !== undefined || r2.error !== undefined).toBe(true);
+    const r1 = (await send("tools/list", {})) as { result: { tools: unknown[] } };
+    const r2 = (await send("tools/list", {})) as { result: { tools: unknown[] } };
+    expect(r1.result.tools.length).toBe(18);
+    expect(r2.result.tools.length).toBe(18);
   });
 });
