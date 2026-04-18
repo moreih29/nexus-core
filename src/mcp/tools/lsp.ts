@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { resolve } from 'node:path';
+import { resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { LspClient } from '../../lsp/client.js';
@@ -48,14 +48,20 @@ async function withClient(
   file: string,
   op: (client: LspClient, uri: string) => Promise<unknown>,
 ): Promise<ReturnType<typeof textResult>> {
+  // Path escape guard: file must resolve inside project root.
+  const root = findProjectRoot();
+  const absFile = resolve(root, file);
+  if (absFile !== root && !absFile.startsWith(root + sep)) {
+    return textResult({ error: `File path escapes project root: ${file}` });
+  }
+
   const result = await ensureClient(file);
   if ('error' in result) {
     return textResult(result);
   }
   const client = result;
   await ensureFileSync(client, file);
-  const root = findProjectRoot();
-  const uri = pathToFileURL(resolve(root, file)).href;
+  const uri = pathToFileURL(absFile).href;
   try {
     return textResult(await op(client, uri));
   } catch (err) {

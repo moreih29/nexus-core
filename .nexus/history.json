@@ -4455,6 +4455,27 @@
           "created_at": "2026-04-18T09:34:39.814Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-18T09:48:45.267Z",
+      "branch": "feat/v0_13_0-content",
+      "plan": null,
+      "tasks": [
+        {
+          "id": 1,
+          "title": "S4 LSP file path escape 보안 fix",
+          "context": "tester 보고서 S4 — 5 LSP 도구 모두 file 인자가 project root escape 가능 (`../../../etc/passwd`). LSP 서버 권한 내 외부 파일 정보 leak 위험. artifact symlink와 동질의 보안 취약점",
+          "approach": "src/mcp/tools/lsp.ts withClient 헬퍼에 path escape 검증 추가. resolve(root, file)이 root + sep로 시작하는지 검증, 미일치 시 error 응답 (throw 대신 textResult로 LSP 미발견 패턴과 일관). 한 곳 fix로 5 도구 모두 cover. 회귀 테스트 1+ 케이스 추가 (artifact 보안 패턴 따라)",
+          "acceptance": "lsp.ts withClient에 escape 검증 추가, lsp.test.ts에 escape 차단 테스트 1+ 케이스. bun test src/ 240+ pass / 0 fail. typecheck 0. build OK",
+          "risk": "withClient 변경이 기존 5 도구 동작에 영향 — escape 정상 file은 기존대로 통과해야 함 (회귀 위험 작음, 단순 prefix 체크)",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "lead",
+          "created_at": "2026-04-18T09:46:31.608Z"
+        }
+      ]
     }
   ]
 }

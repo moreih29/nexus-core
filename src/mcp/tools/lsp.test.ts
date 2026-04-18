@@ -702,3 +702,94 @@ describe('mtime change → ensureFileSync', () => {
     expect(client.didChangeCalled).toBe(true);
   });
 });
+
+describe('path escape guard (S4 security fix)', () => {
+  test('22a. hover rejects file that escapes project root via traversal', async () => {
+    const client = makeMockClient({ 'textDocument/hover': { contents: 'should not reach' } });
+    mockClientResult = client;
+    ensureFileSyncCalls = [];
+
+    const server = makeTestServer();
+    const result = (await server.call('nx_lsp_hover', {
+      file: '../../../etc/passwd',
+      line: 1,
+      character: 1,
+    })) as Record<string, unknown>;
+
+    expect(result).toHaveProperty('error');
+    expect(String(result.error)).toMatch(/escapes project root/);
+    expect(ensureFileSyncCalls).not.toContain('../../../etc/passwd');
+  });
+
+  test('22b. diagnostics rejects absolute path outside project root', async () => {
+    const client = makeMockClient({});
+    mockClientResult = client;
+
+    const server = makeTestServer();
+    const result = (await server.call('nx_lsp_diagnostics', {
+      file: '/etc/hosts',
+    })) as Record<string, unknown>;
+
+    expect(result).toHaveProperty('error');
+    expect(String(result.error)).toMatch(/escapes project root/);
+  });
+
+  test('22c. find_references rejects traversal escape', async () => {
+    const client = makeMockClient({});
+    mockClientResult = client;
+
+    const server = makeTestServer();
+    const result = (await server.call('nx_lsp_find_references', {
+      file: '../outside.ts',
+      line: 1,
+      character: 1,
+    })) as Record<string, unknown>;
+
+    expect(String(result.error)).toMatch(/escapes project root/);
+  });
+
+  test('22d. rename rejects traversal escape', async () => {
+    const client = makeMockClient({});
+    mockClientResult = client;
+
+    const server = makeTestServer();
+    const result = (await server.call('nx_lsp_rename', {
+      file: '../../escape.ts',
+      line: 1,
+      character: 1,
+      newName: 'foo',
+    })) as Record<string, unknown>;
+
+    expect(String(result.error)).toMatch(/escapes project root/);
+  });
+
+  test('22e. code_actions rejects traversal escape', async () => {
+    const client = makeMockClient({});
+    mockClientResult = client;
+
+    const server = makeTestServer();
+    const result = (await server.call('nx_lsp_code_actions', {
+      file: '../escape.ts',
+      startLine: 1,
+      endLine: 5,
+    })) as Record<string, unknown>;
+
+    expect(String(result.error)).toMatch(/escapes project root/);
+  });
+
+  test('22f. normal in-root file passes guard (no false positive)', async () => {
+    const client = makeMockClient({ 'textDocument/hover': null });
+    mockClientResult = client;
+    ensureFileSyncCalls = [];
+
+    const server = makeTestServer();
+    const result = (await server.call('nx_lsp_hover', {
+      file: 'src/legit.ts',
+      line: 1,
+      character: 1,
+    })) as Record<string, unknown>;
+
+    expect(result).not.toHaveProperty('error');
+    expect(ensureFileSyncCalls).toContain('src/legit.ts');
+  });
+});
