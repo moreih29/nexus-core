@@ -15,7 +15,7 @@
 | `assets/conformance/` | 도구 · 시나리오 · 생애주기 · 상태 스키마 검증 데이터. |
 | `docs/contract/` | consumer가 따라야 할 규범 명세. |
 | `docs/consuming/` | consumer 구현 가이드. |
-| `src/` | 배포 TS 소스 (build-utils). |
+| `src/` | 배포 TS 소스. MCP 서버 (`mcp/`) · LSP 통합 (`lsp/`) · 공통 인프라 (`shared/`) · 타입 (`types/`). 상세는 [`mcp-server.md`](./mcp-server.md). |
 | `dist/` | 컴파일 출력 (.js + .d.ts). git에서 제외, npm 배포 시에만 포함. |
 | `scripts/` | 개발 전용 내부 도구 (검증 · manifest 생성 · 배포). |
 | `manifest.json` | 배포 메타데이터 (위 자산 구조의 자동 생성 스냅샷). |
@@ -53,4 +53,4 @@
 
 - 한 프로젝트에서 여러 세션 동시 활성 허용. 각 세션은 git 워크트리에서 격리.
 - 세션 로컬 파일은 네임스페이스 분리로 시스템적 쓰기 충돌 0.
-- 프로젝트 공유 jsonl(`history.jsonl` · `memory-access.jsonl`)은 git union merge로 처리.
+- 프로젝트 공유 jsonl(`memory-access.jsonl` · `tool-log.jsonl`)은 git union merge로 처리. `history.json`은 read-modify-write라 union merge 부적합 — 락 + atomic write로 처리.

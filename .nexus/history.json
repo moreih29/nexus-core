@@ -4476,6 +4476,27 @@
           "created_at": "2026-04-18T09:46:31.608Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-18T09:56:05.782Z",
+      "branch": "feat/v0_13_0-content",
+      "plan": null,
+      "tasks": [
+        {
+          "id": 1,
+          "title": "[sync] memory 정리 + context로 영구 지식 이동",
+          "context": "v0.13.0 MCP 서버 구현 완료 (246 unit test). roadmap-build-order.md는 임시 메모 (구현 완료로 폐기 시점). external-* 7 파일은 외부 조사 완료 (근거로 사용됨). pattern-jsonl-union-merge.md에 잘못된 history.jsonl 잔재. context는 영구 지식만 — 14 도구 카탈로그·데이터 타입·LSP 통합·권한·빌드 순서가 누락됨",
+          "approach": "4 sub-task: 1) pattern-jsonl-union-merge.md 정정 (history.jsonl 행 제거) 2) writer가 신규 .nexus/context/mcp-server.md 작성 — 14 도구 카탈로그 + 데이터 타입(PlanIssue/TaskItem/HistoryCycle) + LSP 6 결정 + 권한 모델(denylist) + 빌드 순서(MCP→Hook→Skill→Agent) 3) architecture.md에 src/ 트리 섹션 추가 4) roadmap-build-order.md + external-* 7개 archive로 이동",
+          "acceptance": "pattern-jsonl-union-merge.md에 history 자취 0. .nexus/context/mcp-server.md 신규 (~200 lines). architecture.md src/ 트리 추가. .nexus/memory/archive/에 8 파일 이동. .nexus/memory/ 루트는 깔끔 (임시 메모 0)",
+          "risk": "archive 이동 시 git mv 사용 (history 보존). external-* 파일 archive 후 향후 hook/skill 단계에서 재활용 시 재발견 비용",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "lead",
+          "created_at": "2026-04-18T09:51:53.886Z"
+        }
+      ]
     }
   ]
 }
