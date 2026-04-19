@@ -1,7 +1,7 @@
 {
   "name": "@moreih29/nexus-core",
   "version": "0.13.0",
-  "description": "Nexus ecosystem Authoring layer — canonical prompts, neutral metadata, and vocabulary shared by Nexus harnesses",
+  "description": "Nexus ecosystem authoring layer — canonical agents/skills/hooks and 3-harness build pipeline (Claude Code, OpenCode, Codex)",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -16,27 +16,18 @@
     ".": null,
     "./agents/*": "./assets/agents/*",
     "./skills/*": "./assets/skills/*",
-    "./vocabulary/*": "./vocabulary/*",
-    "./schema/*": "./schema/*",
-    "./conformance/*": "./conformance/*",
     "./docs/*": "./docs/*",
-    "./manifest.json": "./manifest.json",
     "./mcp": "./dist/mcp/server.js",
     "./assets/lsp-servers.json": "./assets/lsp-servers.json",
     "./assets/schema/lsp-servers.schema.json": "./assets/schema/lsp-servers.schema.json"
   },
   "files": [
     "assets",
-    "vocabulary",
-    "schema",
-    "conformance",
     "docs",
     "scripts",
-    "dist",
-    "manifest.json"
+    "dist"
   ],
   "bin": {
-    "nexus-validate-conformance": "./scripts/conformance-coverage.ts",
     "nexus-mcp": "./dist/mcp/server.js",
     "nexus-core": "./scripts/cli.ts"
   },
@@ -50,11 +41,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
-    "test": "bun test src/",
-    "validate": "bun run scripts/validate.ts",
-    "validate:conformance": "bun run scripts/conformance-coverage.ts",
+    "test": "bun test src/ scripts/",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "bun run validate"
+    "prepublishOnly": "bun run test"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
