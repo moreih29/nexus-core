@@ -36,5 +36,16 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Debug env
+        run: |
+          echo "=== shell pwd ==="
+          pwd
+          echo "=== bun cwd ==="
+          bun -e "console.log('bun cwd:', process.cwd())"
+          echo "=== tmpdir ==="
+          bun -e "console.log('tmpdir:', require('os').tmpdir())"
+          echo "=== git ==="
+          git rev-parse --show-toplevel || echo "git failed"
+
       - name: Run tests
         run: bun run test
