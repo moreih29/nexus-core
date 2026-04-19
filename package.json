@@ -43,7 +43,7 @@
     "build:runtime": "tsc -p tsconfig.build.json",
     "build:assets": "bun run scripts/build-agents.ts && bun run scripts/build-hooks.ts",
     "clean": "rm -rf dist",
-    "test": "bun run build:runtime && bun test src/ scripts/",
+    "test": "bun run build:runtime && bun test --max-concurrency=1 src/ scripts/",
     "typecheck": "tsc --noEmit",
     "prepack": "bun run build",
     "prepublishOnly": "bun run test"
