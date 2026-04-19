@@ -6,30 +6,29 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { makeTempDir } from "../../shared/test-temp.ts";
 
 // ---------------------------------------------------------------------------
-// Test isolation: override NEXUS_ROOT resolution via process.chdir
-// Tasks tools call getNexusRoot() / getStateRoot() which use process.cwd()
-// as fallback when no git is present.
+// Test isolation: override root resolution via NEXUS_PROJECT_ROOT.
 // ---------------------------------------------------------------------------
 
 let tmpDir: string;
-let originalCwd: string;
 let prevSid: string | undefined;
+let prevRoot: string | undefined;
 
 const TEST_SESSION_ID = "test-session";
 
 beforeEach(() => {
-  originalCwd = process.cwd();
   prevSid = process.env.NEXUS_SESSION_ID;
+  prevRoot = process.env.NEXUS_PROJECT_ROOT;
   process.env.NEXUS_SESSION_ID = TEST_SESSION_ID;
   tmpDir = makeTempDir("nexus-task-");
   fs.mkdirSync(path.join(tmpDir, ".nexus", "state", TEST_SESSION_ID), { recursive: true });
-  process.chdir(tmpDir);
+  process.env.NEXUS_PROJECT_ROOT = tmpDir;
 });
 
 afterEach(async () => {
-  process.chdir(originalCwd);
   if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
   else process.env.NEXUS_SESSION_ID = prevSid;
+  if (prevRoot === undefined) delete process.env.NEXUS_PROJECT_ROOT;
+  else process.env.NEXUS_PROJECT_ROOT = prevRoot;
   await fsPromises.rm(tmpDir, { recursive: true, force: true });
 });
 

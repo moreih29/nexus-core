@@ -6,23 +6,22 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { makeTempDir } from "../../shared/test-temp.ts";
 
 // ---------------------------------------------------------------------------
-// Test isolation: override NEXUS_ROOT resolution via process.chdir
-// History tools call getNexusRoot() which uses process.cwd() as fallback
-// when no git is present.
+// Test isolation: override root resolution via NEXUS_PROJECT_ROOT.
 // ---------------------------------------------------------------------------
 
 let tmpDir: string;
-let originalCwd: string;
+let prevRoot: string | undefined;
 
 beforeEach(() => {
-  originalCwd = process.cwd();
+  prevRoot = process.env.NEXUS_PROJECT_ROOT;
   tmpDir = makeTempDir("nexus-history-");
   fs.mkdirSync(path.join(tmpDir, ".nexus"), { recursive: true });
-  process.chdir(tmpDir);
+  process.env.NEXUS_PROJECT_ROOT = tmpDir;
 });
 
 afterEach(async () => {
-  process.chdir(originalCwd);
+  if (prevRoot === undefined) delete process.env.NEXUS_PROJECT_ROOT;
+  else process.env.NEXUS_PROJECT_ROOT = prevRoot;
   await fsPromises.rm(tmpDir, { recursive: true, force: true });
 });
 

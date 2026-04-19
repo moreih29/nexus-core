@@ -29,11 +29,11 @@ function parseResult(result: CallToolResult): { success: boolean; path: string }
 }
 
 /**
- * Build a server, capture the registered tool handler, then restore cwd.
+ * Build a server and capture the registered tool handler.
  * The handler is extracted by intercepting server.tool's return value.
  */
 function buildHandler(
-  tmpDir: string,
+  _tmpDir: string,
 ): (args: { filename: string; content: string }) => Promise<CallToolResult> {
   const server = new McpServer({ name: "test", version: "0.0.0" });
 
@@ -46,28 +46,12 @@ function buildHandler(
     return reg;
   };
 
-  // chdir so findProjectRoot / getNexusRoot resolve to tmpDir
-  const prevCwd = process.cwd();
-  process.chdir(tmpDir);
-  try {
-    registerArtifactTools(server);
-  } finally {
-    process.chdir(prevCwd);
-  }
+  registerArtifactTools(server);
 
   if (!registered) throw new Error("registerArtifactTools did not call server.tool");
 
   const handler = registered.handler;
-  return async (args) => {
-    // chdir during invocation so runtime calls resolve correctly
-    const prev = process.cwd();
-    process.chdir(tmpDir);
-    try {
-      return (await handler(args, {})) as CallToolResult;
-    } finally {
-      process.chdir(prev);
-    }
-  };
+  return async (args) => (await handler(args, {})) as CallToolResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,17 +110,22 @@ describe("nx_artifact_write handler", () => {
   let tmpDir: string;
   let invoke: (args: { filename: string; content: string }) => Promise<CallToolResult>;
   let prevSid: string | undefined;
+  let prevRoot: string | undefined;
 
   beforeEach(() => {
     prevSid = process.env.NEXUS_SESSION_ID;
+    prevRoot = process.env.NEXUS_PROJECT_ROOT;
     process.env.NEXUS_SESSION_ID = ARTIFACT_TEST_SESSION;
     tmpDir = makeTmpGitRepo();
+    process.env.NEXUS_PROJECT_ROOT = tmpDir;
     invoke = buildHandler(tmpDir);
   });
 
   afterEach(async () => {
     if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
     else process.env.NEXUS_SESSION_ID = prevSid;
+    if (prevRoot === undefined) delete process.env.NEXUS_PROJECT_ROOT;
+    else process.env.NEXUS_PROJECT_ROOT = prevRoot;
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   });
 
@@ -248,17 +237,22 @@ describe("보안 edge", () => {
   let tmpDir: string;
   let invoke: (args: { filename: string; content: string }) => Promise<CallToolResult>;
   let prevSid: string | undefined;
+  let prevRoot: string | undefined;
 
   beforeEach(() => {
     prevSid = process.env.NEXUS_SESSION_ID;
+    prevRoot = process.env.NEXUS_PROJECT_ROOT;
     process.env.NEXUS_SESSION_ID = ARTIFACT_TEST_SESSION;
     tmpDir = makeTmpGitRepo();
+    process.env.NEXUS_PROJECT_ROOT = tmpDir;
     invoke = buildHandler(tmpDir);
   });
 
   afterEach(async () => {
     if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
     else process.env.NEXUS_SESSION_ID = prevSid;
+    if (prevRoot === undefined) delete process.env.NEXUS_PROJECT_ROOT;
+    else process.env.NEXUS_PROJECT_ROOT = prevRoot;
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   });
 

@@ -36,12 +36,16 @@ function initGitRepo(dir: string): void {
 
 describe('findProjectRoot', () => {
   let tmpDir: string;
+  let prevRoot: string | undefined;
 
   beforeEach(() => {
     tmpDir = makeTmpDir();
+    prevRoot = process.env.NEXUS_PROJECT_ROOT;
   });
 
   afterEach(() => {
+    if (prevRoot === undefined) delete process.env.NEXUS_PROJECT_ROOT;
+    else process.env.NEXUS_PROJECT_ROOT = prevRoot;
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -74,6 +78,13 @@ describe('findProjectRoot', () => {
     } finally {
       fs.rmSync(isolated, { recursive: true, force: true });
     }
+  });
+
+  test('4. NEXUS_PROJECT_ROOT env 설정 시 — override 경로 반환', () => {
+    initGitRepo(tmpDir);
+    process.env.NEXUS_PROJECT_ROOT = tmpDir;
+    const result = findProjectRoot();
+    expect(fs.realpathSync(result)).toBe(fs.realpathSync(tmpDir));
   });
 });
 

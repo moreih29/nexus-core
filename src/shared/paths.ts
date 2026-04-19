@@ -2,9 +2,17 @@ import { join, resolve } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';
 
+const PROCESS_START_CWD = process.cwd();
+
+function getDefaultRootInput(): string {
+  return process.env['NEXUS_PROJECT_ROOT']
+    ?? process.env['NEXUS_TEST_ROOT']
+    ?? PROCESS_START_CWD;
+}
+
 /** git root를 찾아 반환. git 없으면 cwd 상승하며 .git 탐색, 끝까지 못 찾으면 cwd 반환 */
 export function findProjectRoot(cwd?: string): string {
-  const start = cwd ?? process.cwd();
+  const start = cwd ?? getDefaultRootInput();
   try {
     return execSync('git rev-parse --show-toplevel', {
       encoding: 'utf8',
@@ -40,10 +48,11 @@ export const STATE_ROOT: string = getStateRoot();
 
 /** 현재 git 브랜치명 반환. detached HEAD면 "HEAD" 또는 빈 문자열, git 없으면 빈 문자열 */
 export function getCurrentBranch(cwd?: string): string {
+  const start = cwd ?? getDefaultRootInput();
   const opts = {
     encoding: 'utf8' as const,
     stdio: ['ignore', 'pipe', 'ignore'] as ['ignore', 'pipe', 'ignore'],
-    ...(cwd ? { cwd } : {}),
+    cwd: start,
   };
   try {
     return execSync('git symbolic-ref --short HEAD', opts).trim();
