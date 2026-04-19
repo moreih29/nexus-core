@@ -24,9 +24,19 @@ export function registerArtifactTools(server: McpServer): void {
     },
     async ({ filename, content }) => {
       const safeName = sanitizeName(filename);
-      const artifactsDir = join(getSessionRoot(), "artifacts");
+      const sessionRoot = getSessionRoot();
+      const artifactsDir = join(sessionRoot, "artifacts");
       const outputPath = join(artifactsDir, safeName);
       const outputDir = dirname(outputPath);
+      // [TEST-DIAG]
+      if (process.env.NEXUS_SESSION_ID === "artifact-test-session") {
+        console.log("[TEST-DIAG:artifact.ts:handler]",
+          "cwd=", process.cwd(),
+          "| projectRoot=", findProjectRoot(),
+          "| sessionRoot=", sessionRoot,
+          "| outputDir=", outputDir,
+        );
+      }
       await mkdir(outputDir, { recursive: true });
       // Resolve symlinks in the output directory and verify it stays inside artifactsDir
       const realOutputDir = await realpath(outputDir);

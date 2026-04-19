@@ -7,6 +7,16 @@ import { execSync } from "node:child_process";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { sanitizeName, registerArtifactTools } from "./artifact.ts";
+import { findProjectRoot, NEXUS_ROOT, STATE_ROOT } from "../../shared/paths.ts";
+
+// [TEST-DIAG] — remove once CI /project mystery is resolved
+console.log("[TEST-DIAG:module-load]",
+  "cwd=", process.cwd(),
+  "| findProjectRoot()=", findProjectRoot(),
+  "| NEXUS_ROOT=", NEXUS_ROOT,
+  "| STATE_ROOT=", STATE_ROOT,
+  "| execSync pwd=", execSync("pwd").toString().trim(),
+);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -132,6 +142,14 @@ describe("nx_artifact_write handler", () => {
     process.env.NEXUS_SESSION_ID = ARTIFACT_TEST_SESSION;
     tmpDir = makeTmpGitRepo();
     invoke = buildHandler(tmpDir);
+    // [TEST-DIAG]
+    console.log("[TEST-DIAG:beforeEach]",
+      "cwd=", process.cwd(),
+      "| tmpDir=", tmpDir,
+      "| findProjectRoot()=", findProjectRoot(),
+      "| findProjectRoot(tmpDir)=", findProjectRoot(tmpDir),
+      "| execSync pwd=", execSync("pwd").toString().trim(),
+    );
   });
 
   afterEach(async () => {
@@ -141,6 +159,12 @@ describe("nx_artifact_write handler", () => {
   });
 
   test("1. 정상: findings.md 작성, 응답 path가 PROJECT_ROOT 상대", async () => {
+    // [TEST-DIAG] — inside test body, right before invoke
+    console.log("[TEST-DIAG:test-1:before-invoke]",
+      "cwd=", process.cwd(),
+      "| findProjectRoot()=", findProjectRoot(),
+      "| execSync pwd=", execSync("pwd").toString().trim(),
+    );
     const result = await invoke({ filename: "findings.md", content: "hello" });
     const parsed = parseResult(result);
 
