@@ -62,6 +62,35 @@ jobs:
           echo "--- id / whoami ---"
           id; whoami
 
+      - name: Diagnose bun runtime cwd/execSync behavior
+        run: |
+          bun -e '
+            const { execSync } = require("child_process");
+            const fs = require("fs"), os = require("os"), path = require("path");
+            const safeExec = (cmd, opts) => { try { return execSync(cmd, opts).toString().trim(); } catch(e){ return "ERR: " + e.message; } };
+            const origCwd = process.cwd();
+            const pathsModuleAbs = path.join(origCwd, "src/shared/paths.ts");
+            console.log("process.cwd():", origCwd);
+            console.log("os.tmpdir():", os.tmpdir());
+            console.log("process.env.TMPDIR:", process.env.TMPDIR);
+            console.log("process.env.GITHUB_WORKSPACE:", process.env.GITHUB_WORKSPACE);
+            console.log("git @ cwd (no opts):", safeExec("git rev-parse --show-toplevel"));
+            const td = fs.mkdtempSync(path.join(os.tmpdir(), "diag-"));
+            console.log("mkdtemp result:", td);
+            console.log("git @ {cwd: td}:", safeExec("git rev-parse --show-toplevel", { cwd: td }));
+            process.chdir(td);
+            console.log("after process.chdir(td), process.cwd():", process.cwd());
+            console.log("git @ cwd (after chdir, no opts):", safeExec("git rev-parse --show-toplevel"));
+            console.log("git @ {cwd: td} (after chdir):", safeExec("git rev-parse --show-toplevel", { cwd: td }));
+            // Call the real findProjectRoot via dynamic import (absolute path, since cwd changed)
+            import(pathsModuleAbs).then(m => {
+              console.log("findProjectRoot() [after chdir]:", m.findProjectRoot());
+              console.log("findProjectRoot(td):", m.findProjectRoot(td));
+              console.log("getNexusRoot() [after chdir]:", m.getNexusRoot());
+              console.log("getNexusRoot(td):", m.getNexusRoot(td));
+            }).catch(e => console.log("import err:", e.message));
+          '
+
       - name: Run tests
         env:
           TMPDIR: /tmp
