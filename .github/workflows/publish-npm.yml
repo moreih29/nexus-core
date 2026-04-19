@@ -64,6 +64,8 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run tests
+        env:
+          TMPDIR: /tmp
         run: bun run test
 
       - name: Version match check (git tag vs package.json)

@@ -36,16 +36,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Debug env
-        run: |
-          echo "=== shell pwd ==="
-          pwd
-          echo "=== bun cwd ==="
-          bun -e "console.log('bun cwd:', process.cwd())"
-          echo "=== tmpdir ==="
-          bun -e "console.log('tmpdir:', require('os').tmpdir())"
-          echo "=== git ==="
-          git rev-parse --show-toplevel || echo "git failed"
-
       - name: Run tests
+        env:
+          # GitHub Actions runner는 RUNNER_TEMP 이후 처리에서 TMPDIR이 /project로
+          # 노출되는 경우가 있어 test의 mkdtempSync(os.tmpdir())가 EACCES 발생.
+          # 명시적으로 /tmp 지정해 재현 경로 차단.
+          TMPDIR: /tmp
         run: bun run test
