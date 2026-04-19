@@ -36,10 +36,33 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Diagnose git/env (why findProjectRoot returns /project)
+        run: |
+          echo "--- env (git|project|runner|tmp) ---"
+          env | grep -iE 'git|project|runner|tmp' || true
+          echo
+          echo "--- git config --list --show-origin ---"
+          git config --list --show-origin 2>&1 || true
+          echo
+          echo "--- git rev-parse --show-toplevel (cwd=repo) ---"
+          git rev-parse --show-toplevel 2>&1 || true
+          echo
+          echo "--- git rev-parse --show-toplevel (cwd=/tmp) ---"
+          cd /tmp && git rev-parse --show-toplevel 2>&1 || true
+          echo
+          echo "--- git rev-parse --show-toplevel (cwd=mktemp dir) ---"
+          TD=$(mktemp -d)
+          cd "$TD" && git rev-parse --show-toplevel 2>&1 || true
+          echo "  tmp dir was: $TD"
+          echo
+          echo "--- /project inspection ---"
+          ls -la /project 2>&1 || true
+          stat /project 2>&1 || true
+          echo
+          echo "--- id / whoami ---"
+          id; whoami
+
       - name: Run tests
         env:
-          # GitHub Actions runner는 RUNNER_TEMP 이후 처리에서 TMPDIR이 /project로
-          # 노출되는 경우가 있어 test의 mkdtempSync(os.tmpdir())가 EACCES 발생.
-          # 명시적으로 /tmp 지정해 재현 경로 차단.
           TMPDIR: /tmp
         run: bun run test
