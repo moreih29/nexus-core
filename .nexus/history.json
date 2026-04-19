@@ -5257,6 +5257,167 @@
           "created_at": "2026-04-19T09:27:45.831Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-19T12:14:43.747Z",
+      "branch": "feat/v0_13_0-content",
+      "plan": {
+        "id": 14,
+        "topic": "assets/agents/lead 신설 + 3 하네스 빌드 파이프라인에 lead 주입 로직 추가 (A 방향)",
+        "issues": [
+          {
+            "id": 1,
+            "title": "Lead agent 이름 — lead vs nexus",
+            "status": "decided",
+            "decision": "Lead agent 이름은 `lead`로 확정. 파일 경로 `assets/agents/lead/body.md`. 근거: 나머지 9개 agent가 모두 역할명(architect, engineer 등)이므로 명명 체계 일관성 유지. CLAUDE.md·skills·다른 agent body에서 이미 \"Lead\"를 역할 고유 명사로 사용 중이라 문서↔코드 참조 단절 없음. 브랜드 정체성은 플러그인 패키지명에서 이미 충분히 표현됨. 반려: `nexus` — opencode-nexus 관례였지만 9 agent 역할명 체계에서 홀로 브랜드명이 되어 이상치가 됨."
+          },
+          {
+            "id": 2,
+            "title": "Lead body 콘텐츠 출처 — 분산 임베드 수집 vs 새 작성",
+            "status": "decided",
+            "decision": "C (혼합 — skill 참조 + 1인칭 새 작성). Lead body.md는 9 agent와 동일 구조(Identity → Constraints → Collaboration → Output Format)로 1인칭 새 작성. 실행 플로우 SSOT는 외부 skill(nx-plan·nx-run·nx-init·nx-sync) 유지, Lead body는 정체성·책임·의사결정 범위·HOW/DO/CHECK 라우팅 원칙만 담고 세부 플로우는 skill 참조. 타 agent body의 'Report to Lead' 류 분산 언급은 각 agent의 협업 계약이므로 그대로 유지(상호 참조 구조). 반려: A(분산 임베드 수집) — 수집 결과물이 타 agent 관점 계약문이라 Lead 1인칭으로 재구성 필요해 실질 이득 없음. B(독립 새 작성) — skill SSOT와 drift 위험."
+          },
+          {
+            "id": 3,
+            "title": "Lead의 capability-matrix 포지셔닝 — capabilities/model_tier 설정",
+            "status": "decided",
+            "decision": "A (model_tier: high) + capabilities: [] + resume_tier: persistent. \n- capabilities 빈 배열: Lead는 task 생성/업데이트/file edit 모두 필요 → 어떤 capability도 적용 금지.\n- model_tier: high: Lead는 사용자 직면 유일 agent로 품질 필터 없이 노출됨. intent discovery/scope 판단/9 agent composition/decision synthesis는 HOW 수준 추론 깊이 요구.\n- resume_tier: persistent: Lead는 대화 컨텍스트 누적 필요.\n반려: B(standard) — 사용자 직접 노출 agent 품질 리스크 크고, Lead는 1개 세션뿐이라 비용 규모 제한적.\n실무 주의: 사용자 지적대로 model_tier는 각 하네스 TUI에서 동적 조절 가능한 부분이라 빌드 타임 기본값의 실제 영향은 제한적. 그럼에도 build time default는 품질 측 보수적 선택으로 high 설정."
+          },
+          {
+            "id": 4,
+            "title": "Claude 빌드 산출물 — settings.json agent 키 자동 기입 vs Template 분리",
+            "status": "decided",
+            "decision": "A (Managed). `dist/claude/settings.json`을 플러그인 루트에 Managed로 생성(매 빌드 덮어씀). 내용은 `{ \"agent\": \"lead\" }` 기본. \n근거: settings.json 허용 키 2개(agent, subagentStatusLine) 모두 nexus-core orchestration SSOT 영역. consumer가 다른 agent 원할 시 사용자/프로젝트 .claude/settings.json에서 scope 우선순위로 override 가능하므로 Managed가 closed system 아님. plugin.json(Template)과 성격 다름 — plugin.json은 consumer 패키지 메타, settings.json은 nexus orchestration 설정.\n반려: B(Template) — nexus-core 업데이트 시 consumer repo 반영 안 돼 drift 위험. lead 이름/설정이 SSOT에서 바뀌어도 plugin 빌드에 반영 안 됨.\n후속: architecture.md §2-1 dist 트리 표에 dist/claude/settings.json 항목 추가 필요."
+          },
+          {
+            "id": 5,
+            "title": "OpenCode 빌드 확장 — body.md frontmatter에 mode: primary 지원",
+            "status": "decided",
+            "decision": "A (frontmatter `mode` 필드 도입). body.md frontmatter에 `mode: primary | subagent | all` 신설. default는 `subagent`. OpenCode 공식 필드 그대로 이름·값 준수.\n빌드 로직: \n- OpenCode: AgentConfig에 mode 필드 그대로 전달\n- Claude: mode: primary인 agent 이름을 dist/claude/settings.json의 agent 키에 자동 기입 (Issue #4 연계)\n- Codex: mode: primary인 agent만 AGENTS.md fragment 대상으로 선별 (Issue #6 연계)\n→ 3 하네스 빌드 분기가 단일 시그널(body.md의 mode)로 통합됨. lead 이름을 각 하네스 빌드 로직에 하드코딩하지 않음.\n반려: B(이름 하드코딩) — cross-harness 분산 로직 초래. C(별도 메타) — 의미 중복.\n기존 9 agent: frontmatter 미기재 시 default 적용. 추후 점진 명시적 기재."
+          },
+          {
+            "id": 6,
+            "title": "Codex AGENTS.md fragment — 위치/포맷/consumer 가이드 구조",
+            "status": "decided",
+            "decision": "B (marker-wrapped fragment).\n산출물: `dist/codex/install/AGENTS.fragment.md` (Managed). 기존 `config.fragment.toml`과 같은 `install/` 위치.\n포맷: `<!-- nexus-core:<agent-name>:start -->` ... `<!-- nexus-core:<agent-name>:end -->` 마커로 감싼 각 primary agent body. expandInvocations(codex) 처리됨.\n빌드 기준: `mode: primary` 있는 모든 agent를 순차 append (현재 lead 1개).\nConsumer 책임: 플러그인 레포가 자체 install 절차/가이드로 merge 수행. nexus-core는 자동 머지 스크립트 배포 안 함.\n추가 산출물: docs/consuming/codex-lead-merge.md 신설 (수동 merge 절차·마커 규칙), docs/plugin-template/codex/README.md에 요약 + 링크.\n후속: architecture.md §2-1 dist 트리 표에 AGENTS.fragment.md 행 추가.\n반려: A(minimal) — 업데이트 시 사용자 수작업 교체 부담. C(installer script) — nexus-core가 사용자 ~/.codex/AGENTS.md 수정 스크립트 배포 = \"사용자 영역 침범 금지\" 철학 위배."
+          },
+          {
+            "id": 7,
+            "title": "Lead agent와 기존 hook(prompt-router/session-init) 간 역할 분리",
+            "status": "decided",
+            "decision": "A (완전 분리). Lead body.md는 정적 orchestration 규칙(정체성·책임·HOW/DO/CHECK 라우팅·skill 참조)만 담고, 동적 context 자가 로드 지시는 포함하지 않음. hook 설계는 현 상태 유지 — session-init의 \"no context injection at session start\" 결정 존중, prompt-router/agent-bootstrap/agent-finalize 역할 불변.\n책임 경계 표:\n- Lead body.md (system prompt): 정적 규칙 (정체성·라우팅·skill 참조)\n- session-init: 세션 폴더·tracker 초기화\n- prompt-router: 태그 감지·skill 유도·상태 알림·차단\n- agent-bootstrap: subagent에 buildCoreIndex+rules 주입 (Lead 제외)\n- agent-finalize: pending tasks 알림, tracker 종료\n반려: B(session-init이 Lead context 주입) — 이전 \"no context injection\" 결정 번복 및 hook 복잡도↑. C(자가 로드 지시) — 토큰/지연 비용 + 지시 준수 비결정적.\ngap 인정: Lead가 memory/context 자동 로드 못 받음. 사용자 개인 CLAUDE.md 지침(\"Before starting work, check .nexus/memory/ and .nexus/context/\")이 보완 역할 수행한다고 전제.\n후속: orchestration.md 또는 architecture.md에 책임 경계 표 추가."
+          }
+        ],
+        "research_summary": "**3 하네스 주입 메커니즘 조사 (researcher 2개 + Explore 1개)**:\n\n**Claude Code**:\n- `CLAUDE.md` 플러그인 전용 경로 없음 (프로젝트/사용자/관리형 경로만 자동 로드)\n- `plugin.json`에 system_prompt/instructions 필드 없음 (전체 스키마 확인)\n- **핵심 — plugin `settings.json`의 `agent` 키**: \"Run main thread as named subagent. Applies that subagent's system prompt, tool restrictions, and model.\" — OpenCode primary와 기능적 가장 근접 (Source: code.claude.com/docs/en/settings)\n- hook은 user message 레이어 주입만 가능 (system prompt 직접 수정 불가)\n- `--append-system-prompt` CLI 플래그는 플러그인이 자동 주입 불가\n- 제약: 에이전트 .md의 hooks/mcpServers/permissionMode는 플러그인 정의에서 무시. 플러그인 settings.json은 사용자/프로젝트보다 낮은 우선순위.\n\n**Codex**:\n- `AGENTS.md` 자동 로드 경로: `~/.codex/AGENTS.md` · 레포 루트만. 플러그인 폴더 내부 AGENTS.md는 로드 X.\n- `.codex-plugin/plugin.json`에 system_prompt 필드 없음 (전체 스키마 확인).\n- `[agents.main]` 또는 기본 에이전트 override 기능 공식 문서 언급 없음.\n- `config.toml`의 `developer_instructions`/`model_instructions_file` 필드 존재 — 사용자가 수동 설정. 플러그인이 자동 쓸 수 없음 (사용자 소유 영역).\n- oh-my-codex는 `omx setup`으로 사용자 레포 루트 AGENTS.md 직접 수정 + `-c model_instructions_file=...` 플래그 전달. 마커 주석으로 관리 영역 구분.\n- **결론**: 플러그인 전용 주입 경로 부재. fragment + 수동 머지가 현실적.\n\n**현재 nexus-core 상태 (Explore 조사)**:\n- `assets/agents/`에 lead/primary/nexus 이름 agent 없음. 9개: architect, designer, engineer, postdoc, researcher, reviewer, strategist, tester, writer.\n- Lead 지침은 strategist body.md 26-28/57-61행, reviewer 27행, tester 19행에 분산 임베드. 별도 SSOT 없음.\n- `build-agents.ts`에 primary/lead 특수 분기 없음. `tool-name-map.yml`의 codex invocations에서만 `primary` 키워드 출현 (nickname_candidates 매핑용, 무관).\n- `docs/plugin-template/opencode/`는 9 agent 동등 처리 (primary 구분 없음).\n- opencode.json.fragment도 flat 배열.",
+        "created_at": "2026-04-19T11:33:05.916Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Lead body.ko.md 작성 (한국어 SSOT)",
+          "context": "assets/agents/lead/body.ko.md 신규 작성. 9 agent 공통 구조(Identity → Constraints → Collaboration → Output Format) 따름. 한국어가 SSOT이며, 이후 task에서 영어 body.md로 수동 번역됨.",
+          "approach": "frontmatter: id=lead, name=Lead, description(≤140자), mode=primary, model_tier=high, capabilities=[], resume_tier=persistent. 본문: (1) Identity — 사용자 직면 메인 에이전트, 9 agent composition 주체. (2) Constraints — tasks 소유(nx_task_add/update/close), scope 결정권, 실행 플로우는 skill 준수. (3) Collaboration — HOW/DO/CHECK 3 카테고리 라우팅 원칙, 9 agent 역할 요약, Resume Dispatch 참조. (4) Output — 사용자 보고 형식(요약·결정 기록·다음 단계). 각 섹션 끝에 skill 참조 링크(nx-plan/nx-run/nx-sync/nx-init). 타 agent body의 'Report to Lead' 표현과 용어 일관성 유지.",
+          "acceptance": "body.ko.md 파일 존재. frontmatter 7 필드 모두 포함. 본문 4 섹션(Identity/Constraints/Collaboration/Output) 모두 존재. skill 참조 링크 명시. 타 agent body의 Lead 언급 용어와 충돌 없음.",
+          "risk": "skill SSOT 중복 위험 — 본문에 skill 내부 플로우를 복제하면 drift 발생. 참조·요약만 허용.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "writer",
+          "created_at": "2026-04-19T11:50:13.113Z"
+        },
+        {
+          "id": 2,
+          "title": "Lead body.md 영어 번역",
+          "context": "body.ko.md(한국어 SSOT)를 영어 body.md로 수동 번역. 다른 9 agent body.md와 동일한 영어 스타일 유지. 빌드 파이프라인이 영어 body.md를 소비함.",
+          "approach": "기존 9 agent body.md(architect·engineer 등)의 영어 문체·용어와 일치시킴. frontmatter는 번역 불필요(필드 이름 그대로). description·본문만 번역. 'Lead'는 고유 역할명이라 대문자 유지. skill 이름(nx-plan 등)·tool 이름(nx_task_add 등)은 원형 유지.",
+          "acceptance": "assets/agents/lead/body.md 파일 존재. frontmatter 필드/값이 body.ko.md와 1:1 일치. 본문 4 섹션 모두 번역 완료. 다른 agent body.md와 용어·스타일 일관성 유지.",
+          "risk": "번역 오차로 한국어·영어 버전 의미 drift.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 2,
+          "owner": "writer",
+          "created_at": "2026-04-19T11:50:23.891Z"
+        },
+        {
+          "id": 3,
+          "title": "body.md 번역 검토",
+          "context": "writer 산출물(body.md 영어 번역) 사실관계·용어·번역 정확도 검증. Writer→Reviewer 필수 페어링.",
+          "approach": "body.ko.md와 body.md 비교: (1) 의미 차이 유무, (2) 용어 일관성(Lead·HOW/DO/CHECK·skill 이름), (3) 다른 agent body.md(architect·engineer 등)와 문체 일관성, (4) skill 이름·tool 이름 원형 유지 여부, (5) frontmatter 필드 1:1 일치.",
+          "acceptance": "검토 보고서: PASS/FAIL + 항목별 이슈 리스트. CRITICAL 이슈 시 writer 재작업 요청.",
+          "risk": "없음 (순수 검토).",
+          "status": "completed",
+          "deps": [
+            2
+          ],
+          "plan_issue": 2,
+          "owner": "reviewer",
+          "created_at": "2026-04-19T11:50:32.539Z"
+        },
+        {
+          "id": 4,
+          "title": "build-agents 파이프라인 확장 (mode 필드 + 3 하네스 primary 주입)",
+          "context": "body.md frontmatter의 mode 필드를 기준으로 3 하네스 빌드가 각자 primary agent를 주입. Claude: dist/claude/settings.json 생성. OpenCode: AgentConfig에 mode 필드 전달. Codex: dist/codex/install/AGENTS.fragment.md 생성. 단일 엔지니어 세션(build-agents.ts 집중 수정) — artifact-coherence 만족.",
+          "approach": "(1) 타입 확장: BodyFrontmatter에 mode?: 'primary'|'subagent'|'all'. 기본값 'subagent'. (2) assets/schema/agent-body.schema.json(있으면)에 mode enum 추가. (3) buildForClaude: mode==='primary' agent 이름을 dist/claude/settings.json({agent: name})에 Managed 기입. 여러 primary면 경고 + 첫 번째 선택. (4) buildForOpencode: opencodeAgentTs에 mode 필드 추가(primary만 명시, 나머지 생략 또는 'subagent' 명시 — opencode 문서 기준으로 결정). (5) buildForCodex: mode==='primary' agent만 필터링 → expandInvocations(codex) 후 `<!-- nexus-core:<name>:start --> ... <!-- :end -->` 래핑, dist/codex/install/AGENTS.fragment.md에 순차 append(Managed). (6) build-agents.test.ts: mode 필드 파싱, 3 하네스 산출물 shape snapshot, primary 0개/1개/복수 edge case.",
+          "acceptance": "bun test src/ scripts/ 전부 통과(기존 회귀 없음). 신규 테스트: mode 필드 파싱 / Claude settings.json 내용 검증 / OpenCode AgentConfig mode 필드 확인 / Codex AGENTS.fragment.md 마커·내용 검증. 실제 빌드 시 dist/claude/settings.json·dist/codex/install/AGENTS.fragment.md 파일 생성.",
+          "risk": "opencode 'all' 모드 의미론 불명확(primary+subagent 병행) — 현재 lead는 primary만 필요하므로 'all' 처리는 pass-through로 단순화. codex AGENTS.fragment.md 마커 표기가 나중에 파서 구현 시 충돌 없도록 안정적 prefix 선택 필요.",
+          "status": "completed",
+          "deps": [
+            2
+          ],
+          "plan_issue": 5,
+          "owner": "engineer",
+          "created_at": "2026-04-19T11:51:07.230Z"
+        },
+        {
+          "id": 5,
+          "title": "3 하네스 빌드 산출물 shape 검증",
+          "context": "실제 `nexus-core sync` 실행해서 dist/<harness>/ 산출물이 3 하네스 공식 사양과 일치하는지 integration 검증. Engineer unit test와 별개로 end-to-end 산출 shape 검증.",
+          "approach": "(1) bun run scripts/cli.ts sync 실행. (2) dist/claude/settings.json 검증: JSON 파싱, {agent: 'lead'} 포함. (3) dist/claude/agents/lead.md 검증: frontmatter에 mode 필드 없어야(Claude 사양). (4) dist/opencode/src/agents/lead.ts 검증: AgentConfig에 mode: 'primary' 포함. (5) dist/codex/install/AGENTS.fragment.md 검증: 마커 nexus-core:lead:start/end 존재, body 내용 포함, expandInvocations 처리(codex 네이티브 tool 이름) 확인. (6) Codex config.fragment.toml은 영향 없음 확인. (7) full bun test src/ scripts/ — 회귀 0건. (8) acceptance 각 항목 PASS/FAIL 보고.",
+          "acceptance": "4 산출물 shape 모두 PASS. 기존 테스트 회귀 0건. Codex fragment의 codex-native tool 이름이 expandInvocations로 올바르게 치환됨. primary 0개 케이스(가상의 빌드): settings.json 생성 안 됨 또는 빈 agent 값 확인.",
+          "risk": "실제 빌드가 unit test에서 잡지 못한 edge case 노출 가능 — 발견 시 engineer 재작업 필요(T4 reopen).",
+          "status": "completed",
+          "deps": [
+            4
+          ],
+          "plan_issue": 5,
+          "owner": "tester",
+          "created_at": "2026-04-19T11:51:34.555Z"
+        },
+        {
+          "id": 6,
+          "title": "문서 업데이트 (Codex 머지 가이드 + plugin-template README + architecture.md)",
+          "context": "신규 lead 주입 경로를 문서에 반영. 3 문서가 동일 주제(Codex AGENTS fragment + mode 필드 + dist 트리) 연관 → 단일 writer 세션에서 일관된 용어로 작성.",
+          "approach": "(1) docs/consuming/codex-lead-merge.md 신설: dist/codex/install/AGENTS.fragment.md의 위치·역할, `<!-- nexus-core:<name>:start/end -->` 마커 규칙, 사용자 `~/.codex/AGENTS.md` 또는 레포 루트 AGENTS.md에 머지하는 수동 절차, nexus-core 업데이트 시 마커 구역 교체 방법. (2) docs/plugin-template/codex/README.md: AGENTS.fragment.md 머지 요약 + docs/consuming/codex-lead-merge.md 링크 추가. (3) .nexus/context/architecture.md §2-1 dist 트리 표에 dist/claude/settings.json · dist/codex/install/AGENTS.fragment.md 행 추가. §2-3 빌드 파이프라인에 mode 필드 처리 로직 한 줄 추가. 책임 경계 표(Lead body vs 5 hook) 신규 섹션 또는 orchestration.md에 추가. (4) assets/capability-matrix.yml 주석에 model_tier 영향 범위 설명(TUI 동적 조절 주의) 한 줄 추가 선택.",
+          "acceptance": "3 문서 모두 업데이트. architecture.md dist 표에 신규 2행 존재. 책임 경계 표 존재. consuming/codex-lead-merge.md의 머지 절차가 실제 dist/codex/install/AGENTS.fragment.md 포맷과 일치.",
+          "risk": "실제 산출물(T4)과 문서 설명 불일치 위험 — 반드시 T4 완료 후 실제 파일 확인 후 작성.",
+          "status": "completed",
+          "deps": [
+            4
+          ],
+          "plan_issue": 6,
+          "owner": "writer",
+          "created_at": "2026-04-19T11:51:49.398Z"
+        },
+        {
+          "id": 7,
+          "title": "문서 검토 (Codex 머지 가이드 + architecture.md 업데이트)",
+          "context": "Writer 산출물 검토. Writer→Reviewer 필수 페어링. 실제 dist/ 산출물과 문서 내용 일치 검증.",
+          "approach": "(1) docs/consuming/codex-lead-merge.md의 머지 절차가 실제 dist/codex/install/AGENTS.fragment.md 포맷·마커·내용과 1:1 일치하는지 확인. (2) architecture.md §2-1 dist 트리 표의 경로·Managed/Template 표기 정확성. (3) 책임 경계 표의 5 hook 역할 기술이 실제 assets/hooks/ 구현과 일치하는지. (4) plugin-template/codex/README.md의 링크·요약 정확성. (5) 문법·오탈자.",
+          "acceptance": "검토 보고서: PASS/FAIL + 항목별 이슈. CRITICAL 이슈 시 writer 재작업.",
+          "risk": "없음 (순수 검토).",
+          "status": "completed",
+          "deps": [
+            6,
+            5
+          ],
+          "plan_issue": 6,
+          "owner": "reviewer",
+          "created_at": "2026-04-19T11:51:57.482Z"
+        }
+      ]
     }
   ]
 }

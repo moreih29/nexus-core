@@ -68,6 +68,8 @@ nexus-core (@moreih29/nexus-core)
 | Codex | `dist/codex/prompts/<name>.md` | 에이전트 프롬프트 .md (Managed) |
 | Codex | `dist/codex/plugin/skills/<name>/SKILL.md` | 스킬 .md (Managed) |
 | Codex | `dist/codex/install/config.fragment.toml` | MCP 서버 등록 fragment (Managed) |
+| Claude | `dist/claude/settings.json` | Managed — plugin settings, `{ "agent": "<primary>" }` 키로 main thread 시스템 프롬프트 주입 |
+| Codex | `dist/codex/install/AGENTS.fragment.md` | Managed — primary agent body를 마커로 감싸 consumer가 수동 머지 |
 
 **덮어쓰기 정책**: `Managed` 경로는 빌드 시마다 항상 덮어씀. `Template` 경로는 파일이 이미 존재하면 건너뜀(`--force`로 강제 덮어쓰기 가능).
 
@@ -93,6 +95,8 @@ nexus-core (@moreih29/nexus-core)
 | 4. 하네스별 빌드 | Claude · OpenCode · Codex 각각 `dist/<harness>/` 에 파일 생성. `expandInvocations`가 `{{}}` 템플릿을 하네스 네이티브 구문으로 치환 |
 
 **`build-hooks.ts`**: 훅 `meta.yml` 검증 → capability-matrix.yml 대조 → portability_tier 산출 → 하네스별 훅 매니페스트 생성. 상세는 [`hooks.md`](./hooks.md) §7 참조.
+
+**mode 필드 처리**: `body.md` frontmatter의 `mode` 필드(`primary` | `subagent` | `all`, default `subagent`)를 기반으로 3 하네스 빌드가 각자 primary agent를 주입한다. Claude: `settings.json`의 `agent` 키. OpenCode: `AgentConfig.mode`. Codex: `AGENTS.fragment.md` 마커 블록.
 
 ## 3. `.nexus/` 자기 적용
 
@@ -127,3 +131,21 @@ nexus-core (@moreih29/nexus-core)
 - 한 프로젝트에서 여러 세션 동시 활성 허용. 각 세션은 git 워크트리에서 격리.
 - 세션 로컬 파일은 네임스페이스 분리로 시스템적 쓰기 충돌 0.
 - 프로젝트 공유 `memory-access.jsonl`은 git union merge로 처리 (멀티세션 병렬 append 안전). `tool-log.jsonl`은 세션 격리라 충돌 가능성 없으나 워크트리 병합 시 union merge 적용 안전. `history.json`은 read-modify-write라 union merge 부적합 — 락 + atomic write로 처리.
+
+## 4. Lead agent vs Hook 책임 경계
+
+### 4-1. 책임 경계 표
+
+| 레이어 | 담당 | 트리거 |
+|---|---|---|
+| Lead `body.md` (system prompt) | 정체성·책임·HOW/DO/CHECK 라우팅·skill 참조 | 세션 시작 (정적) |
+| `session-init` hook | 세션 폴더·tracker 초기화, context 주입 없음 | `SessionStart` |
+| `prompt-router` hook | 태그 감지·skill 유도·plan/tasks 상태 알림·차단 | `UserPromptSubmit` |
+| `agent-bootstrap` hook | subagent에 `buildCoreIndex` + rules 주입 | `SubagentStart` |
+| `agent-finalize` hook | pending tasks 알림, tracker 종료 | `SubagentStop` |
+
+`post-tool-telemetry` hook은 `PostToolUse` 이벤트에서 memory access·file-edit 작업을 추적하며, 위 orchestration 경계와는 별개로 감사·강화/망각 신호 수집을 담당한다.
+
+### 4-2. 설계 원칙
+
+Lead `body.md`는 정적 orchestration SSOT다. 에이전트 정체성·협업 구조·스킬 위임 방침이 여기에 집약된다. Hook은 동적 상태(tasks·plan·tracker)·태그 감지·subagent 주입을 담당한다. 두 레이어는 역할이 분리되어 중복·충돌이 없다. Lead는 `.nexus/memory/`·`.nexus/context/`를 자가 로드하지 않는다 — 사용자 `CLAUDE.md` 지침이 이 역할을 보완한다.

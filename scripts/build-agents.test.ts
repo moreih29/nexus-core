@@ -1057,3 +1057,223 @@ describe("Scenario 8 — Integration with real assets", () => {
     expect(files[0]).toBe("architect.md");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Scenario 9: mode field — primary agent injection
+// ---------------------------------------------------------------------------
+
+function makePrimaryAgentEntry(overrides?: Partial<AssetEntry>): AssetEntry {
+  return {
+    type: "agent",
+    name: "sample-lead",
+    frontmatter: {
+      name: "sample-lead",
+      description: "Sample primary orchestrator for testing",
+      task: "Orchestration",
+      category: "lead",
+      resume_tier: "persistent",
+      model_tier: "high",
+      capabilities: [],
+      id: "sample-lead",
+      mode: "primary",
+    },
+    body: "## Identity\n\nYou are Lead.\n",
+    bodyPath: join(FIXTURE_BASE, "agents/sample-lead/body.md"),
+    ...overrides,
+  };
+}
+
+describe("Scenario 9 — mode field and primary agent injection", () => {
+  const capMatrix = minimalCapMatrix();
+  const invocations = minimalInvocations();
+
+  // --- Type parsing ---
+
+  test("parseFrontmatter: mode=primary parses correctly", () => {
+    const raw =
+      "---\nname: test\nid: test\ncategory: lead\nmodel_tier: high\ncapabilities: []\nmode: primary\n---\n## Body";
+    const { fm } = parseFrontmatter(raw, "test.md");
+    expect(fm.mode).toBe("primary");
+  });
+
+  test("parseFrontmatter: mode=subagent parses correctly", () => {
+    const raw =
+      "---\nname: test\nid: test\ncategory: do\nmodel_tier: standard\ncapabilities: []\nmode: subagent\n---\n## Body";
+    const { fm } = parseFrontmatter(raw, "test.md");
+    expect(fm.mode).toBe("subagent");
+  });
+
+  test("parseFrontmatter: mode=all parses correctly", () => {
+    const raw =
+      "---\nname: test\nid: test\ncategory: do\nmodel_tier: standard\ncapabilities: []\nmode: all\n---\n## Body";
+    const { fm } = parseFrontmatter(raw, "test.md");
+    expect(fm.mode).toBe("all");
+  });
+
+  test("parseFrontmatter: invalid mode value throws", () => {
+    const raw =
+      "---\nname: test\nid: test\ncategory: do\nmodel_tier: standard\ncapabilities: []\nmode: invalid_mode\n---\n## Body";
+    expect(() => parseFrontmatter(raw, "test.md")).toThrow('Invalid mode "invalid_mode"');
+  });
+
+  test("parseFrontmatter: missing mode field defaults to undefined (treated as subagent)", () => {
+    const raw =
+      "---\nname: test\nid: test\ncategory: do\nmodel_tier: standard\ncapabilities: []\n---\n## Body";
+    const { fm } = parseFrontmatter(raw, "test.md");
+    expect(fm.mode).toBeUndefined();
+  });
+
+  // --- Claude settings.json ---
+
+  test("Claude: settings.json is created when primary agent exists", () => {
+    const tmp = makeTmp();
+    const assets = [makePrimaryAgentEntry(), makeAgentEntry()];
+    buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const settingsPath = join(tmp, "claude", "settings.json");
+    expect(existsSync(settingsPath)).toBe(true);
+    const parsed = JSON.parse(readFileSync(settingsPath, "utf-8")) as { agent: string };
+    expect(parsed.agent).toBe("sample-lead");
+  });
+
+  test("Claude: settings.json is NOT created when no primary agent exists", () => {
+    const tmp = makeTmp();
+    const assets = [makeAgentEntry(), makeEngineerEntry()]; // both mode=undefined (subagent default)
+    buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const settingsPath = join(tmp, "claude", "settings.json");
+    expect(existsSync(settingsPath)).toBe(false);
+  });
+
+  test("Claude: settings.json uses first primary when multiple primaries exist", () => {
+    const tmp = makeTmp();
+    const primary1 = makePrimaryAgentEntry();
+    const primary2 = makePrimaryAgentEntry({
+      name: "sample-lead-2",
+      frontmatter: { ...makePrimaryAgentEntry().frontmatter, id: "sample-lead-2", name: "sample-lead-2" },
+    });
+    buildForClaude([primary1, primary2, makeAgentEntry()], capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const settingsPath = join(tmp, "claude", "settings.json");
+    expect(existsSync(settingsPath)).toBe(true);
+    const parsed = JSON.parse(readFileSync(settingsPath, "utf-8")) as { agent: string };
+    expect(parsed.agent).toBe("sample-lead"); // first primary
+  });
+
+  // --- OpenCode mode field ---
+
+  test("OpenCode: primary agent .ts file contains mode: 'primary'", () => {
+    const tmp = makeTmp();
+    const assets = [makePrimaryAgentEntry()];
+    buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const tsPath = join(tmp, "opencode", "src", "agents", "sample-lead.ts");
+    expect(existsSync(tsPath)).toBe(true);
+    const content = readFileSync(tsPath, "utf-8");
+    expect(content).toContain('mode: "primary"');
+  });
+
+  test("OpenCode: subagent (mode=undefined) .ts file does NOT contain mode field", () => {
+    const tmp = makeTmp();
+    const assets = [makeAgentEntry()]; // no mode set
+    buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const content = readFileSync(
+      join(tmp, "opencode", "src", "agents", "sample-architect.ts"),
+      "utf-8",
+    );
+    expect(content).not.toContain("mode:");
+  });
+
+  // --- Codex AGENTS.fragment.md ---
+
+  test("Codex: AGENTS.fragment.md is created when primary agent exists", () => {
+    const tmp = makeTmp();
+    const assets = [makePrimaryAgentEntry(), makeAgentEntry()];
+    buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const fragmentPath = join(tmp, "codex", "install", "AGENTS.fragment.md");
+    expect(existsSync(fragmentPath)).toBe(true);
+  });
+
+  test("Codex: AGENTS.fragment.md contains start/end markers with agent id", () => {
+    const tmp = makeTmp();
+    const assets = [makePrimaryAgentEntry()];
+    buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const content = readFileSync(join(tmp, "codex", "install", "AGENTS.fragment.md"), "utf-8");
+    expect(content).toContain("<!-- nexus-core:sample-lead:start -->");
+    expect(content).toContain("<!-- nexus-core:sample-lead:end -->");
+  });
+
+  test("Codex: AGENTS.fragment.md contains agent name heading and body", () => {
+    const tmp = makeTmp();
+    const assets = [makePrimaryAgentEntry()];
+    buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const content = readFileSync(join(tmp, "codex", "install", "AGENTS.fragment.md"), "utf-8");
+    expect(content).toContain("# sample-lead");
+    expect(content).toContain("## Identity");
+    expect(content).toContain("You are Lead.");
+  });
+
+  test("Codex: AGENTS.fragment.md is NOT created when no primary agent exists", () => {
+    const tmp = makeTmp();
+    const assets = [makeAgentEntry(), makeEngineerEntry()]; // both subagent default
+    buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const fragmentPath = join(tmp, "codex", "install", "AGENTS.fragment.md");
+    expect(existsSync(fragmentPath)).toBe(false);
+  });
+
+  test("Codex: AGENTS.fragment.md with multiple primaries has both marker blocks", () => {
+    const tmp = makeTmp();
+    const primary1 = makePrimaryAgentEntry();
+    const primary2 = makePrimaryAgentEntry({
+      name: "sample-lead-2",
+      frontmatter: { ...makePrimaryAgentEntry().frontmatter, id: "sample-lead-2", name: "sample-lead-2" },
+    });
+    buildForCodex([primary1, primary2], capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const content = readFileSync(join(tmp, "codex", "install", "AGENTS.fragment.md"), "utf-8");
+    expect(content).toContain("<!-- nexus-core:sample-lead:start -->");
+    expect(content).toContain("<!-- nexus-core:sample-lead:end -->");
+    expect(content).toContain("<!-- nexus-core:sample-lead-2:start -->");
+    expect(content).toContain("<!-- nexus-core:sample-lead-2:end -->");
+  });
+
+  // --- Integration: real lead agent ---
+
+  test("Integration: buildForClaude creates settings.json with lead as primary from real assets", async () => {
+    const tmp = makeTmp();
+    await buildAgents({
+      harnesses: ["claude"],
+      targetDir: tmp,
+      dryRun: false,
+      force: false,
+      strict: false,
+    });
+
+    const settingsPath = join(tmp, "claude", "settings.json");
+    expect(existsSync(settingsPath)).toBe(true);
+    const parsed = JSON.parse(readFileSync(settingsPath, "utf-8")) as { agent: string };
+    expect(parsed.agent).toBe("lead");
+  });
+
+  test("Integration: buildForCodex creates AGENTS.fragment.md with lead from real assets", async () => {
+    const tmp = makeTmp();
+    await buildAgents({
+      harnesses: ["codex"],
+      targetDir: tmp,
+      dryRun: false,
+      force: false,
+      strict: false,
+    });
+
+    const fragmentPath = join(tmp, "codex", "install", "AGENTS.fragment.md");
+    expect(existsSync(fragmentPath)).toBe(true);
+    const content = readFileSync(fragmentPath, "utf-8");
+    expect(content).toContain("<!-- nexus-core:lead:start -->");
+    expect(content).toContain("<!-- nexus-core:lead:end -->");
+  });
+});

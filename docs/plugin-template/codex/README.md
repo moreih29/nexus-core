@@ -25,7 +25,8 @@ my-codex-plugin/
 ├── prompts/                 # Managed — 에이전트 프롬프트 Markdown
 │   └── <agent-name>.md
 ├── install/
-│   └── config.fragment.toml # Managed — ~/.codex/config.toml에 병합할 스니펫
+│   ├── config.fragment.toml # Managed — ~/.codex/config.toml에 병합할 스니펫
+│   └── AGENTS.fragment.md   # Managed — AGENTS.md에 병합할 primary agent 프롬프트
 ├── package.json
 └── .github/
     └── workflows/
@@ -69,6 +70,7 @@ bunx @moreih29/nexus-core sync --harness=codex --target=./
 - `agents/<name>.toml` × N — `[agents.<id>]` 테이블 형식
 - `prompts/<name>.md` × N — YAML frontmatter + 프롬프트 본문
 - `install/config.fragment.toml` — `~/.codex/config.toml`에 병합할 스니펫
+- `install/AGENTS.fragment.md` — `AGENTS.md`에 병합할 primary agent 프롬프트 (mode: primary agent 존재 시)
 
 ### 3. 변경 내용 커밋
 
@@ -129,6 +131,14 @@ bunx @moreih29/nexus-core list                                   # 사용 가능
 ```
 
 전역 설치(`bun add -g @moreih29/nexus-core`) 환경에서는 `nexus-core <cmd>` 형태로도 사용할 수 있습니다.
+
+## Lead Agent AGENTS.md 머지
+
+sync 결과물 중 `install/AGENTS.fragment.md`는 Codex의 AGENTS.md 자동 로드 경로에 주입할 lead agent body를 포함합니다.
+
+Codex는 main agent의 system prompt를 주입하는 공식 경로를 제공하지 않으므로, nexus-core는 이 fragment를 사용자의 `AGENTS.md`에 자동으로 병합하지 않습니다. consumer가 직접 fragment 내용을 `~/.codex/AGENTS.md`(글로벌) 또는 레포 루트 `AGENTS.md`(프로젝트)에 복사해야 합니다. 마커(`<!-- nexus-core:lead:start -->` / `<!-- nexus-core:lead:end -->`)를 포함해 복사해야 이후 업데이트 시 구역을 정확히 교체할 수 있습니다.
+
+자세한 절차는 [`docs/consuming/codex-lead-merge.md`](../../consuming/codex-lead-merge.md)를 참조하세요.
 
 ## 주의사항
 

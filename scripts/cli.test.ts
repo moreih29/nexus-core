@@ -250,10 +250,10 @@ describe("main() routing", () => {
 // ---------------------------------------------------------------------------
 
 describe("collectListEntries (real assets)", () => {
-  test("returns 9 agents from assets/agents/", () => {
+  test("returns 10 agents from assets/agents/", () => {
     const entries = collectListEntries();
     const agents = entries.filter((e) => e.kind === "agent");
-    expect(agents.length).toBe(9);
+    expect(agents.length).toBe(10);
   });
 
   test("returns 4 skills from assets/skills/", () => {
@@ -360,7 +360,7 @@ describe("runList output", () => {
     }
 
     const output = lines.join("\n");
-    expect(output).toContain("Agents (9)");
+    expect(output).toContain("Agents (10)");
     expect(output).toContain("Skills (4)");
     expect(output).toContain("Hooks");
   });

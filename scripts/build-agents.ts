@@ -13,22 +13,24 @@
  *   dist/claude/
  *     .claude-plugin/plugin.json       (Template — skip if exists, --force to overwrite)
  *     .claude-plugin/marketplace.json  (Template — skip if exists, --force to overwrite)
- *     agents/<n>.md × 9
+ *     agents/<n>.md × N
  *     skills/<n>/SKILL.md × 4
+ *     settings.json                    (Managed — primary agent injection, omitted if no primary)
  *
  *   dist/opencode/
  *     package.json                     (Template — skip if exists)
  *     opencode.json.fragment           (Managed — always overwrite)
  *     src/index.ts                     (Managed — always overwrite)
- *     src/agents/<n>.ts × 9           (Managed — always overwrite)
+ *     src/agents/<n>.ts × N           (Managed — always overwrite, mode:primary gets mode field)
  *     .opencode/skills/<n>/SKILL.md × 4  (Managed)
  *
  *   dist/codex/
  *     plugin/.codex-plugin/plugin.json (Managed)
  *     plugin/skills/<n>/SKILL.md × 4  (Managed)
- *     agents/<n>.toml × 9             (Managed)
- *     prompts/<n>.md × 9              (Managed)
+ *     agents/<n>.toml × N             (Managed)
+ *     prompts/<n>.md × N              (Managed)
  *     install/config.fragment.toml    (Managed)
+ *     install/AGENTS.fragment.md      (Managed — primary agents only, omitted if none)
  *
  * Overwrite policy:
  *   Managed paths — always overwrite (unless --dry-run)
@@ -80,7 +82,8 @@ export interface AgentFrontmatter {
   description: string;
   task?: string;
   alias_ko?: string;
-  category: "how" | "do" | "check";
+  category: "how" | "do" | "check" | "lead";
+  mode?: "primary" | "subagent" | "all";
   resume_tier?: "persistent" | "bounded" | "ephemeral";
   model_tier: "high" | "standard" | "low";
   capabilities: string[];
@@ -162,6 +165,13 @@ export function parseFrontmatter(raw: string, filePath: string): { fm: AgentFron
   if (!fm.id || !fm.name) {
     throw new Error(
       `[build-agents] Missing required frontmatter fields (id, name) in: ${filePath}`,
+    );
+  }
+
+  const VALID_MODES = ["primary", "subagent", "all"] as const;
+  if (fm.mode !== undefined && !(VALID_MODES as readonly string[]).includes(fm.mode)) {
+    throw new Error(
+      `[build-agents] Invalid mode "${fm.mode}" in: ${filePath}. Valid values: ${VALID_MODES.join(", ")}`,
     );
   }
 
@@ -504,6 +514,22 @@ export function buildForClaude(
     const content = claudeSkillMarkdown(skill, invocations);
     applyOverwritePolicy(outPath, content, true, opts);
   }
+
+  // Managed: settings.json (primary agent injection)
+  const primaryAgents = agentAssets.filter(
+    (a) => (a.frontmatter.mode ?? "subagent") === "primary",
+  );
+  if (primaryAgents.length > 0) {
+    if (primaryAgents.length > 1) {
+      console.warn(
+        `[build-agents] Warning: multiple primary agents found (${primaryAgents.map((a) => a.name).join(", ")}). Using first: ${primaryAgents[0]!.name}`,
+      );
+    }
+    const primaryAgent = primaryAgents[0]!;
+    const settingsPath = join(baseDir, "settings.json");
+    const settingsContent = JSON.stringify({ agent: primaryAgent.frontmatter.id }, null, 2) + "\n";
+    applyOverwritePolicy(settingsPath, settingsContent, true, opts);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -543,6 +569,11 @@ function opencodeAgentTs(asset: AssetEntry, capMatrix: CapabilityMatrix, invocat
   ];
 
   if (permBlock) lines.push(permBlock);
+
+  // Emit mode field only for primary agents (subagent is the OpenCode default)
+  if (fm.mode === "primary") {
+    lines.push(`  mode: "primary",`);
+  }
 
   lines.push(
     `  system: \`${escapedBody}\`,`,
@@ -807,6 +838,26 @@ export function buildForCodex(
   // Managed: install/config.fragment.toml
   const fragmentPath = join(baseDir, "install", "config.fragment.toml");
   applyOverwritePolicy(fragmentPath, codexConfigFragment(agentAssets), true, opts);
+
+  // Managed: install/AGENTS.fragment.md (primary agents only)
+  const primaryAgents = agentAssets.filter(
+    (a) => (a.frontmatter.mode ?? "subagent") === "primary",
+  );
+  if (primaryAgents.length > 0) {
+    const agentsFragmentPath = join(baseDir, "install", "AGENTS.fragment.md");
+    const blocks = primaryAgents.map((agent) => {
+      const expandedBody = expandInvocations(agent.body, "codex", invocations);
+      return [
+        `<!-- nexus-core:${agent.frontmatter.id}:start -->`,
+        `# ${agent.frontmatter.name}`,
+        ``,
+        expandedBody,
+        `<!-- nexus-core:${agent.frontmatter.id}:end -->`,
+      ].join("\n");
+    });
+    const agentsFragmentContent = blocks.join("\n\n") + "\n";
+    applyOverwritePolicy(agentsFragmentPath, agentsFragmentContent, true, opts);
+  }
 }
 
 // ---------------------------------------------------------------------------
