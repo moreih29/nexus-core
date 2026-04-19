@@ -63,9 +63,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Build (dist required by e2e/spawn tests and publish)
+        run: bun run build
+
       - name: Run tests
-        env:
-          TMPDIR: /tmp
         run: bun run test
 
       - name: Version match check (git tag vs package.json)
