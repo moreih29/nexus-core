@@ -24,7 +24,7 @@ import { logToolCall } from "./tool-log.ts";
 const REAL_STATE_ROOT = getStateRoot();
 
 function makeSessionDir(sessionId: string): string {
-  return path.join(REAL_STATE_ROOT, "sessions", sessionId);
+  return path.join(REAL_STATE_ROOT, sessionId);
 }
 
 function makeLogFile(sessionId: string): string {
@@ -135,11 +135,10 @@ describe("logToolCall", () => {
     delete process.env["NEXUS_SESSION_ID"];
 
     const pid = process.pid;
-    const sessionsDir = path.join(REAL_STATE_ROOT, "sessions");
 
     logToolCall({ tool: "fallback-test", args: {}, response: {}, duration_ms: 5 });
 
-    // sessions/ 아래를 재귀적으로 탐색해 tool-log.jsonl 파일이 생성되었는지 확인
+    // state/ 아래를 재귀적으로 탐색해 tool-log.jsonl 파일이 생성되었는지 확인
     // (branch에 '/'가 포함되면 nested 디렉토리가 생성될 수 있으므로 재귀 검색)
     function findToolLogFiles(dir: string): string[] {
       if (!fs.existsSync(dir)) return [];
@@ -155,15 +154,14 @@ describe("logToolCall", () => {
       return results;
     }
 
-    const logFiles = findToolLogFiles(sessionsDir);
-    // 적어도 1개의 tool-log.jsonl이 sessions/ 하위에 존재해야 함
+    const logFiles = findToolLogFiles(REAL_STATE_ROOT);
+    // 적어도 1개의 tool-log.jsonl이 state/ 하위에 존재해야 함
     expect(logFiles.length).toBeGreaterThanOrEqual(1);
 
     // 해당 파일의 세션 디렉토리 이름이 ${pid}로 끝나거나 unknown-${pid} 형식인지 확인
     const sessionDirs = logFiles.map((f) => {
-      // sessions/<sessionId>/tool-log.jsonl 형식; sessionId에 '/'가 포함될 수 있음
-      const rel = path.relative(sessionsDir, f);
-      // rel = "feat/v0_13_0-content-14798/tool-log.jsonl" 같은 형태
+      // state/<sessionId>/tool-log.jsonl 형식
+      const rel = path.relative(REAL_STATE_ROOT, f);
       return rel.replace(/\/tool-log\.jsonl$/, "");
     });
     const matchingSession = sessionDirs.find(
@@ -173,7 +171,7 @@ describe("logToolCall", () => {
 
     // 정리: 생성된 세션 디렉토리 제거
     for (const sessionId of sessionDirs) {
-      const dir = path.join(sessionsDir, sessionId);
+      const dir = path.join(REAL_STATE_ROOT, sessionId);
       if (fs.existsSync(dir)) {
         fs.rmSync(dir, { recursive: true, force: true });
       }

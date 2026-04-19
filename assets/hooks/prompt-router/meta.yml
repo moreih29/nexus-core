@@ -1,0 +1,11 @@
+name: prompt-router
+description: Detect nexus tags, inject state notices and skill invocation guidance
+events: [UserPromptSubmit]
+matcher: "*"
+timeout: 10
+fallback: warn
+priority: 0
+requires_capabilities:
+  - event.user_prompt_submit
+  - output.additional_context.user_prompt
+  - output.decision_block

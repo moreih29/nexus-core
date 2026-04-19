@@ -120,16 +120,23 @@ describe("sanitizeName", () => {
 // nx_artifact_write handler — integration tests (real I/O in tmp git repo)
 // ---------------------------------------------------------------------------
 
+const ARTIFACT_TEST_SESSION = "artifact-test-session";
+
 describe("nx_artifact_write handler", () => {
   let tmpDir: string;
   let invoke: (args: { filename: string; content: string }) => Promise<CallToolResult>;
+  let prevSid: string | undefined;
 
   beforeEach(() => {
+    prevSid = process.env.NEXUS_SESSION_ID;
+    process.env.NEXUS_SESSION_ID = ARTIFACT_TEST_SESSION;
     tmpDir = makeTmpGitRepo();
     invoke = buildHandler(tmpDir);
   });
 
   afterEach(async () => {
+    if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
+    else process.env.NEXUS_SESSION_ID = prevSid;
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   });
 
@@ -138,9 +145,9 @@ describe("nx_artifact_write handler", () => {
     const parsed = parseResult(result);
 
     expect(parsed.success).toBe(true);
-    expect(parsed.path).toBe(path.join(".nexus", "state", "artifacts", "findings.md"));
+    expect(parsed.path).toBe(path.join(".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "findings.md"));
 
-    const fullPath = path.join(tmpDir, ".nexus", "state", "artifacts", "findings.md");
+    const fullPath = path.join(tmpDir, ".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "findings.md");
     expect(fs.existsSync(fullPath)).toBe(true);
     expect(fs.readFileSync(fullPath, "utf-8")).toBe("hello");
   });
@@ -151,10 +158,10 @@ describe("nx_artifact_write handler", () => {
 
     expect(parsed.success).toBe(true);
     expect(parsed.path).toBe(
-      path.join(".nexus", "state", "artifacts", "sub", "synthesis.md"),
+      path.join(".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "sub", "synthesis.md"),
     );
 
-    const fullPath = path.join(tmpDir, ".nexus", "state", "artifacts", "sub", "synthesis.md");
+    const fullPath = path.join(tmpDir, ".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "sub", "synthesis.md");
     expect(fs.existsSync(fullPath)).toBe(true);
   });
 
@@ -164,10 +171,10 @@ describe("nx_artifact_write handler", () => {
 
     expect(parsed.success).toBe(true);
     // path must stay inside artifacts/
-    expect(parsed.path).toContain(path.join(".nexus", "state", "artifacts"));
+    expect(parsed.path).toContain(path.join(".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts"));
     expect(parsed.path).not.toContain("..");
 
-    const fullPath = path.join(tmpDir, ".nexus", "state", "artifacts", "etc", "passwd");
+    const fullPath = path.join(tmpDir, ".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "etc", "passwd");
     expect(fs.existsSync(fullPath)).toBe(true);
   });
 
@@ -176,7 +183,7 @@ describe("nx_artifact_write handler", () => {
     const parsed = parseResult(result);
 
     expect(parsed.success).toBe(true);
-    expect(parsed.path).toContain(path.join(".nexus", "state", "artifacts", "foo", "bar.md"));
+    expect(parsed.path).toContain(path.join(".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "foo", "bar.md"));
   });
 
   test("5. leading slash: '/abs/path.md' -> artifacts/abs/path.md", async () => {
@@ -184,7 +191,7 @@ describe("nx_artifact_write handler", () => {
     const parsed = parseResult(result);
 
     expect(parsed.success).toBe(true);
-    expect(parsed.path).toContain(path.join(".nexus", "state", "artifacts", "abs", "path.md"));
+    expect(parsed.path).toContain(path.join(".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "abs", "path.md"));
   });
 
   test("6. 다중 점: '../../../../../tmp/evil.md' -> artifacts/tmp/evil.md", async () => {
@@ -192,7 +199,7 @@ describe("nx_artifact_write handler", () => {
     const parsed = parseResult(result);
 
     expect(parsed.success).toBe(true);
-    expect(parsed.path).toContain(path.join(".nexus", "state", "artifacts", "tmp", "evil.md"));
+    expect(parsed.path).toContain(path.join(".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "tmp", "evil.md"));
     expect(parsed.path).not.toContain("..");
   });
 
@@ -200,7 +207,7 @@ describe("nx_artifact_write handler", () => {
     await invoke({ filename: "overwrite.md", content: "first" });
     await invoke({ filename: "overwrite.md", content: "second" });
 
-    const fullPath = path.join(tmpDir, ".nexus", "state", "artifacts", "overwrite.md");
+    const fullPath = path.join(tmpDir, ".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "overwrite.md");
     expect(fs.readFileSync(fullPath, "utf-8")).toBe("second");
   });
 
@@ -217,7 +224,7 @@ describe("nx_artifact_write handler", () => {
     expect(parsed.success).toBe(true);
     expect(parsed.path).toContain("한글파일.md");
 
-    const fullPath = path.join(tmpDir, ".nexus", "state", "artifacts", "한글파일.md");
+    const fullPath = path.join(tmpDir, ".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "한글파일.md");
     expect(fs.readFileSync(fullPath, "utf-8")).toBe("한글내용");
   });
 
@@ -228,7 +235,7 @@ describe("nx_artifact_write handler", () => {
 
     expect(parsed.success).toBe(true);
 
-    const fullPath = path.join(tmpDir, ".nexus", "state", "artifacts", "large.md");
+    const fullPath = path.join(tmpDir, ".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts", "large.md");
     expect(fs.readFileSync(fullPath, "utf-8")).toBe(largeContent);
   });
 });
@@ -240,13 +247,18 @@ describe("nx_artifact_write handler", () => {
 describe("보안 edge", () => {
   let tmpDir: string;
   let invoke: (args: { filename: string; content: string }) => Promise<CallToolResult>;
+  let prevSid: string | undefined;
 
   beforeEach(() => {
+    prevSid = process.env.NEXUS_SESSION_ID;
+    process.env.NEXUS_SESSION_ID = ARTIFACT_TEST_SESSION;
     tmpDir = makeTmpGitRepo();
     invoke = buildHandler(tmpDir);
   });
 
   afterEach(async () => {
+    if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
+    else process.env.NEXUS_SESSION_ID = prevSid;
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   });
 
@@ -254,8 +266,8 @@ describe("보안 edge", () => {
     const result = await invoke({ filename: "%2E%2E%2Fetc%2Fpasswd", content: "url-encoded" });
     const parsed = parseResult(result);
     expect(parsed.success).toBe(true);
-    // path must stay inside .nexus/state/artifacts
-    expect(parsed.path).toContain(path.join(".nexus", "state", "artifacts"));
+    // path must stay inside .nexus/state/<session_id>/artifacts
+    expect(parsed.path).toContain(path.join(".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts"));
     expect(parsed.path).not.toContain("..");
     // %2E%2E is NOT decoded by sanitizeName — it's treated as a literal segment name
     const writtenPath = path.join(tmpDir, parsed.path);
@@ -277,11 +289,11 @@ describe("보안 edge", () => {
 
     if (!threwError && parsedPath !== undefined) {
       // If it didn't throw, the written path must be inside artifactsDir
-      expect(parsedPath).toContain(path.join(".nexus", "state", "artifacts"));
+      expect(parsedPath).toContain(path.join(".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts"));
       expect(parsedPath).not.toContain("..");
       // Must NOT have written outside tmpDir
       const writtenFull = path.join(tmpDir, parsedPath);
-      const artifactsDir = path.join(tmpDir, ".nexus", "state", "artifacts");
+      const artifactsDir = path.join(tmpDir, ".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts");
       expect(writtenFull.startsWith(artifactsDir)).toBe(true);
     }
     // Either throw or safe path — both are acceptable outcomes
@@ -289,7 +301,7 @@ describe("보안 edge", () => {
   });
 
   test("symlink escape — artifactsDir 안 symlink → 외부 escape 차단", async () => {
-    const artifactsDir = path.join(tmpDir, ".nexus", "state", "artifacts");
+    const artifactsDir = path.join(tmpDir, ".nexus", "state", ARTIFACT_TEST_SESSION, "artifacts");
     fs.mkdirSync(artifactsDir, { recursive: true });
 
     // Create a symlink inside artifactsDir pointing to /tmp (an external directory)

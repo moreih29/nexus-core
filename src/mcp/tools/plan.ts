@@ -2,7 +2,7 @@ import { z } from "zod";
 import { join } from "node:path";
 import fs from "node:fs";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getNexusRoot, getStateRoot, getCurrentBranch, ensureDir } from "../../shared/paths.js";
+import { getNexusRoot, getSessionRoot, getCurrentBranch, ensureDir } from "../../shared/paths.js";
 import { readJsonFile, writeJsonFile, updateJsonFileLocked } from "../../shared/json-store.js";
 import { textResult } from "../../shared/mcp-utils.js";
 import { logToolCall } from "../../shared/tool-log.js";
@@ -13,7 +13,7 @@ import type { PlanFile, PlanIssue, PlanAnalysisEntry, HistoryFile } from "../../
 // ---------------------------------------------------------------------------
 
 function planPath(): string {
-  return join(getStateRoot(), "plan.json");
+  return join(getSessionRoot(), "plan.json");
 }
 
 function historyPath(): string {
@@ -108,7 +108,7 @@ export function registerPlanTools(server: McpServer): void {
         created_at: now,
       };
 
-      ensureDir(getStateRoot());
+      ensureDir(getSessionRoot());
       await writeJsonFile(pPath, newPlan);
 
       const response = { created: true, plan_id: planId, topic, issueCount: issues.length, previousArchived };

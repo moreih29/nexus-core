@@ -14,8 +14,8 @@
   },
   "exports": {
     ".": null,
-    "./agents/*": "./agents/*",
-    "./skills/*": "./skills/*",
+    "./agents/*": "./assets/agents/*",
+    "./skills/*": "./assets/skills/*",
     "./vocabulary/*": "./vocabulary/*",
     "./schema/*": "./schema/*",
     "./conformance/*": "./conformance/*",
@@ -26,9 +26,7 @@
     "./assets/schema/lsp-servers.schema.json": "./assets/schema/lsp-servers.schema.json"
   },
   "files": [
-    "agents",
     "assets",
-    "skills",
     "vocabulary",
     "schema",
     "conformance",
@@ -39,7 +37,8 @@
   ],
   "bin": {
     "nexus-validate-conformance": "./scripts/conformance-coverage.ts",
-    "nexus-mcp": "./dist/mcp/server.js"
+    "nexus-mcp": "./dist/mcp/server.js",
+    "nexus-core": "./scripts/cli.ts"
   },
   "engines": {
     "node": ">=20"

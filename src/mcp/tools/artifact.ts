@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
-import { findProjectRoot, getNexusRoot } from "../../shared/paths.js";
+import { findProjectRoot, getSessionRoot } from "../../shared/paths.js";
 import { textResult } from "../../shared/mcp-utils.js";
 
 export function sanitizeName(input: string): string {
@@ -24,7 +24,7 @@ export function registerArtifactTools(server: McpServer): void {
     },
     async ({ filename, content }) => {
       const safeName = sanitizeName(filename);
-      const artifactsDir = join(getNexusRoot(), "state", "artifacts");
+      const artifactsDir = join(getSessionRoot(), "artifacts");
       const outputPath = join(artifactsDir, safeName);
       const outputDir = dirname(outputPath);
       await mkdir(outputDir, { recursive: true });

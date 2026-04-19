@@ -1,0 +1,16 @@
+{
+  "name": "<my-claude-plugin>",
+  "version": "1.0.0",
+  "description": "Claude Code plugin powered by nexus-core",
+  "private": true,
+  "scripts": {
+    "sync": "bunx @moreih29/nexus-core sync --harness=claude --target=./",
+    "sync:dry": "bunx @moreih29/nexus-core sync --harness=claude --target=./ --dry-run",
+    "build": "bun run sync",
+    "validate": "bunx @moreih29/nexus-core validate",
+    "list": "bunx @moreih29/nexus-core list"
+  },
+  "devDependencies": {
+    "@moreih29/nexus-core": "^0.13.0"
+  }
+}

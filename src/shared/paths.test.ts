@@ -10,6 +10,8 @@ import {
   getStateRoot,
   getCurrentBranch,
   ensureDir,
+  getSessionId,
+  getSessionRoot,
 } from './paths.ts';
 
 // ---------------------------------------------------------------------------
@@ -138,6 +140,83 @@ describe('getCurrentBranch', () => {
     // tmpDir에 git init 하지 않음
     const branch = getCurrentBranch(tmpDir);
     expect(branch).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getSessionId / getSessionRoot
+// ---------------------------------------------------------------------------
+
+describe('getSessionId', () => {
+  let prevSid: string | undefined;
+
+  beforeEach(() => {
+    prevSid = process.env.NEXUS_SESSION_ID;
+  });
+
+  afterEach(() => {
+    if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
+    else process.env.NEXUS_SESSION_ID = prevSid;
+  });
+
+  test('11. NEXUS_SESSION_ID env 설정 시 — env 값 그대로 반환', () => {
+    process.env.NEXUS_SESSION_ID = 'my-fixed-session';
+    expect(getSessionId()).toBe('my-fixed-session');
+  });
+
+  test('12. NEXUS_SESSION_ID 없고 git 브랜치 있으면 — <branch>-<pid> 형식 반환', () => {
+    delete process.env.NEXUS_SESSION_ID;
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-sid-'));
+    try {
+      initGitRepo(tmpDir);
+      const sid = getSessionId(tmpDir);
+      // Should match <sanitized_branch>-<pid>
+      expect(sid).toMatch(/^[a-zA-Z0-9_-]+-\d+$/);
+      expect(sid).toContain(`-${process.pid}`);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('13. NEXUS_SESSION_ID 없고 git 없으면 — unknown-<pid> 형식 반환', () => {
+    delete process.env.NEXUS_SESSION_ID;
+    const isolated = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-no-git-'));
+    try {
+      const sid = getSessionId(isolated);
+      expect(sid).toBe(`unknown-${process.pid}`);
+    } finally {
+      fs.rmSync(isolated, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('getSessionRoot', () => {
+  let prevSid: string | undefined;
+  let tmpDir: string;
+
+  beforeEach(() => {
+    prevSid = process.env.NEXUS_SESSION_ID;
+    process.env.NEXUS_SESSION_ID = 'test-session';
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-sroot-'));
+    initGitRepo(tmpDir);
+  });
+
+  afterEach(() => {
+    if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
+    else process.env.NEXUS_SESSION_ID = prevSid;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test('14. NEXUS_SESSION_ID 고정 시 — .nexus/state/<sid>/ 형식 반환', () => {
+    const result = getSessionRoot(tmpDir);
+    const projectRoot = fs.realpathSync(tmpDir);
+    expect(result).toBe(path.join(projectRoot, '.nexus', 'state', 'test-session'));
+  });
+
+  test('15. getSessionRoot는 getStateRoot + session_id 조합', () => {
+    const stateRoot = getStateRoot(tmpDir);
+    const sessionRoot = getSessionRoot(tmpDir);
+    expect(sessionRoot).toBe(path.join(stateRoot, 'test-session'));
   });
 });
 

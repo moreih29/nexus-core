@@ -1,0 +1,17 @@
+{
+  "name": "<my-codex-plugin>",
+  "version": "1.0.0",
+  "description": "Codex plugin powered by nexus-core",
+  "private": true,
+  "scripts": {
+    "sync": "bunx @moreih29/nexus-core sync --harness=codex --target=./",
+    "sync:dry": "bunx @moreih29/nexus-core sync --harness=codex --target=./ --dry-run",
+    "build": "bun run sync",
+    "validate": "bunx @moreih29/nexus-core validate",
+    "list": "bunx @moreih29/nexus-core list",
+    "install-plugin": "bash install/install.sh"
+  },
+  "devDependencies": {
+    "@moreih29/nexus-core": "^0.13.0"
+  }
+}

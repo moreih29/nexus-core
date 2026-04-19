@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { readJsonFile, writeJsonFile, updateJsonFileLocked } from "./json-store.ts";
+import { readJsonFile, writeJsonFile, updateJsonFileLocked, appendJsonLine } from "./json-store.ts";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -143,5 +143,112 @@ describe("updateJsonFileLocked", () => {
     // Lock file should be gone
     const lockExists = await fsPromises.access(lp).then(() => true).catch(() => false);
     expect(lockExists).toBe(false);
+  });
+
+  it("12. 2 parallel agent-tracker writers both changes are preserved (no lost update)", async () => {
+    // Simulates two agents writing distinct keys to the same agent-tracker.json
+    const file = fp("agent-tracker.json");
+    await writeJsonFile(file, { agentA: null, agentB: null });
+
+    const [resultA, resultB] = await Promise.all([
+      updateJsonFileLocked(
+        file,
+        { agentA: null, agentB: null },
+        (c) => ({ ...c, agentA: "done" }),
+      ),
+      updateJsonFileLocked(
+        file,
+        { agentA: null, agentB: null },
+        (c) => ({ ...c, agentB: "done" }),
+      ),
+    ]);
+
+    // Both callers saw a result (neither was dropped)
+    expect(resultA.agentA === "done" || resultB.agentB === "done").toBe(true);
+
+    // Final file must contain both writes
+    const final = await readJsonFile<{ agentA: string | null; agentB: string | null }>(
+      file,
+      { agentA: null, agentB: null },
+    );
+    expect(final.agentA).toBe("done");
+    expect(final.agentB).toBe("done");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// appendJsonLine
+// ---------------------------------------------------------------------------
+
+describe("appendJsonLine", () => {
+  it("13. 100 parallel appends — every line is valid JSON and total count is 100", async () => {
+    const file = fp("parallel.jsonl");
+
+    // Kick off 100 concurrent synchronous-but-Promise-wrapped appends
+    await Promise.all(
+      Array.from({ length: 100 }, (_, i) =>
+        new Promise<void>((resolve) => {
+          appendJsonLine(file, { seq: i, payload: "x".repeat(64) });
+          resolve();
+        }),
+      ),
+    );
+
+    const raw = await fsPromises.readFile(file, "utf8");
+    const lines = raw.trimEnd().split("\n");
+
+    expect(lines).toHaveLength(100);
+
+    for (const line of lines) {
+      // Every line must be parseable JSON with the expected shape
+      let parsed: unknown;
+      expect(() => { parsed = JSON.parse(line); }).not.toThrow();
+      expect(parsed).toMatchObject({ payload: "x".repeat(64) });
+    }
+  });
+
+  it("14. entry exceeding 4KB emits console.error warning but is still written (no throw)", async () => {
+    const file = fp("large.jsonl");
+
+    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      // Build a record whose JSON serialisation exceeds 4096 bytes
+      const bigRecord = { data: "A".repeat(5000) };
+
+      // Must not throw
+      expect(() => appendJsonLine(file, bigRecord)).not.toThrow();
+
+      // console.error must have been called at least once with the warning
+      expect(errorSpy).toHaveBeenCalled();
+      const [firstArg] = errorSpy.mock.calls[0] as [string];
+      expect(firstArg).toContain("[json-store] appendJsonLine line exceeds");
+
+      // The record must still be written
+      const raw = await fsPromises.readFile(file, "utf8");
+      const parsed = JSON.parse(raw.trimEnd());
+      expect(parsed.data).toHaveLength(5000);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("15. auto-creates missing parent directories before writing", async () => {
+    const file = fp("deep/nested/dir/events.jsonl");
+
+    // Parent directories do not exist yet — must not throw
+    expect(() => appendJsonLine(file, { event: "init" })).not.toThrow();
+
+    const raw = await fsPromises.readFile(file, "utf8");
+    expect(JSON.parse(raw.trimEnd())).toEqual({ event: "init" });
+  });
+
+  it("16. single append writes exactly one line of valid JSON", async () => {
+    const file = fp("single.jsonl");
+    appendJsonLine(file, { hello: "world" });
+
+    const raw = await fsPromises.readFile(file, "utf8");
+    const lines = raw.trimEnd().split("\n");
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0])).toEqual({ hello: "world" });
   });
 });

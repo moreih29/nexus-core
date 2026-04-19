@@ -1,20 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getCurrentBranch, getStateRoot } from "./paths.js";
-
-function sanitizeBranch(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_-]+/g, "_");
-}
-
-function getSessionId(): string {
-  const envId = process.env["NEXUS_SESSION_ID"];
-  if (envId) return envId;
-
-  const branch = getCurrentBranch();
-  const pid = process.pid;
-  if (!branch) return `unknown-${pid}`;
-  return `${sanitizeBranch(branch)}-${pid}`;
-}
+import { getSessionRoot } from "./paths.js";
 
 export function logToolCall(entry: {
   tool: string;
@@ -27,8 +13,7 @@ export function logToolCall(entry: {
     const timestamp = entry.timestamp ?? new Date().toISOString();
     const record = { ...entry, timestamp };
 
-    const sessionId = getSessionId();
-    const logDir = path.join(getStateRoot(), "sessions", sessionId);
+    const logDir = getSessionRoot();
 
     try {
       fs.mkdirSync(logDir, { recursive: true });

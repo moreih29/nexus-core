@@ -188,8 +188,8 @@ describe("e2e session scenario", () => {
   });
 
   test("step 8 — plan.json and tasks.json deleted after close", async () => {
-    expect(existsSync(path.join(tmpDir, ".nexus", "state", "plan.json"))).toBe(false);
-    expect(existsSync(path.join(tmpDir, ".nexus", "state", "tasks.json"))).toBe(false);
+    expect(existsSync(path.join(tmpDir, ".nexus", "state", "e2e-test-session", "plan.json"))).toBe(false);
+    expect(existsSync(path.join(tmpDir, ".nexus", "state", "e2e-test-session", "tasks.json"))).toBe(false);
   });
 
   test("step 9 — nx_history_search returns archived cycle with plan topic and task title", async () => {

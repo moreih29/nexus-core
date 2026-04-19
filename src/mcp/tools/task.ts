@@ -2,7 +2,7 @@ import { z } from "zod";
 import { join } from "node:path";
 import fs from "node:fs";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getNexusRoot, getStateRoot, getCurrentBranch, ensureDir } from "../../shared/paths.js";
+import { getNexusRoot, getSessionRoot, getCurrentBranch, ensureDir } from "../../shared/paths.js";
 import { readJsonFile, updateJsonFileLocked } from "../../shared/json-store.js";
 import { textResult } from "../../shared/mcp-utils.js";
 import { logToolCall } from "../../shared/tool-log.js";
@@ -14,11 +14,11 @@ import type { TaskItem, TasksFile, TaskOwner, HistoryFile, PlanFile, ResumeTier 
 // ---------------------------------------------------------------------------
 
 function tasksPath(): string {
-  return join(getStateRoot(), "tasks.json");
+  return join(getSessionRoot(), "tasks.json");
 }
 
 function planPath(): string {
-  return join(getStateRoot(), "plan.json");
+  return join(getSessionRoot(), "plan.json");
 }
 
 function historyPath(): string {

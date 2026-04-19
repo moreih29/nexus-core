@@ -12,3 +12,6 @@ agents.staging/
 agents.backup/
 skills.staging/
 skills.backup/
+
+.legacy/
+.playwright-mcp/

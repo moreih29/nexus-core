@@ -13,16 +13,23 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 let tmpDir: string;
 let originalCwd: string;
+let prevSid: string | undefined;
+
+const TEST_SESSION_ID = "test-session";
 
 beforeEach(() => {
   originalCwd = process.cwd();
+  prevSid = process.env.NEXUS_SESSION_ID;
+  process.env.NEXUS_SESSION_ID = TEST_SESSION_ID;
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-task-"));
-  fs.mkdirSync(path.join(tmpDir, ".nexus", "state"), { recursive: true });
+  fs.mkdirSync(path.join(tmpDir, ".nexus", "state", TEST_SESSION_ID), { recursive: true });
   process.chdir(tmpDir);
 });
 
 afterEach(async () => {
   process.chdir(originalCwd);
+  if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
+  else process.env.NEXUS_SESSION_ID = prevSid;
   await fsPromises.rm(tmpDir, { recursive: true, force: true });
 });
 
@@ -31,11 +38,11 @@ afterEach(async () => {
 // ---------------------------------------------------------------------------
 
 function tasksFilePath(): string {
-  return path.join(tmpDir, ".nexus", "state", "tasks.json");
+  return path.join(tmpDir, ".nexus", "state", TEST_SESSION_ID, "tasks.json");
 }
 
 function planFilePath(): string {
-  return path.join(tmpDir, ".nexus", "state", "plan.json");
+  return path.join(tmpDir, ".nexus", "state", TEST_SESSION_ID, "plan.json");
 }
 
 function historyFilePath(): string {

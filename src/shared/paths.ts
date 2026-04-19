@@ -56,3 +56,24 @@ export function getCurrentBranch(cwd?: string): string {
 export function ensureDir(p: string): void {
   mkdirSync(p, { recursive: true });
 }
+
+/** branch명에서 파일시스템에 안전한 문자만 남긴다 */
+function sanitizeBranch(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]+/g, '_');
+}
+
+/** NEXUS_SESSION_ID env 우선, 없으면 '<branch>-<pid>' 또는 'unknown-<pid>' */
+export function getSessionId(cwd?: string): string {
+  const envId = process.env['NEXUS_SESSION_ID'];
+  if (envId) return envId;
+
+  const branch = getCurrentBranch(cwd);
+  const pid = process.pid;
+  if (!branch) return `unknown-${pid}`;
+  return `${sanitizeBranch(branch)}-${pid}`;
+}
+
+/** .nexus/state/<session_id>/ 경로 */
+export function getSessionRoot(cwd?: string): string {
+  return join(getStateRoot(cwd), getSessionId(cwd));
+}

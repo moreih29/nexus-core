@@ -1,0 +1,10 @@
+name: agent-finalize
+description: Finalize subagent tracker, aggregate files_touched, alert pending tasks with same role
+events: [SubagentStop]
+matcher: "*"
+timeout: 10
+fallback: warn
+priority: 0
+requires_capabilities:
+  - event.subagent_stop
+  - output.additional_context.subagent_stop

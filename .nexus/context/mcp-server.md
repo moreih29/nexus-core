@@ -8,19 +8,19 @@
 
 | 카테고리 | 도구 | 핵심 동작 |
 |---|---|---|
-| plan | `nx_plan_start` | 새 plan 세션 시작. `research_summary` 강제 포함 |
+| plan | `nx_plan_start` | 새 plan 세션 시작. `research_summary` 강제 포함. 응답 `{created, plan_id, topic, issueCount, previousArchived}` — 기존 plan 자동 archive 시 `previousArchived: true` |
 | plan | `nx_plan_status` | 현재 plan 상태 조회. 핵심 필드만 반환 |
-| plan | `nx_plan_update` | plan 이슈 관리. `add` · `remove` · `reopen` · `resolve` 4 액션 단일 도구 |
-| plan | `nx_plan_decide` | 이슈 결정 기록. 입력 `{issue_id, decision}`. analysis 분리. re-decide는 throw |
+| plan | `nx_plan_update` | plan 이슈 관리. `add` · `remove` · `modify` · `reopen` 4 액션 단일 도구 |
+| plan | `nx_plan_decide` | 이슈 결정 기록. 입력 `{issue_id, decision, how_agents?, how_summary?, how_agent_ids?}` — legacy compat: how_* 파라미터는 analysis 배열로 변환됨. re-decide는 throw |
 | plan | `nx_plan_resume` | 중단된 HOW 에이전트 재개. 입력 `{role}`. 출력 `role · resumable · agent_id · resume_tier · issue_id` |
 | plan | `nx_plan_analysis_add` | HOW 분석 즉시 append. 입력 `{issue_id, role, agent_id?, summary}`. `recorded_at` 서버 자동 부여 |
-| task | `nx_task_add` | 태스크 추가. `owner` 필수 객체, `acceptance` 필수. deps 검증 throw |
-| task | `nx_task_list` | 태스크 목록 조회. 입력 `{include_completed?: boolean}`. summary는 4분류(in_progress · completed · blocked · ready) + total |
-| task | `nx_task_update` | 태스크 부분 갱신. 입력 `{id, status?, owner?: {agent_id?, resume_tier?}}`. role 갱신 불가 |
+| task | `nx_task_add` | 태스크 추가. `owner` 필수 객체, `acceptance` 필수. deps 검증 throw. `goal?: string`으로 tasks.json top-level `goal` 갱신, `decisions?: string[]`으로 top-level `decisions` append 가능 |
+| task | `nx_task_list` | 태스크 목록 조회. 입력 `{include_completed?: boolean}`. summary는 4분류(in_progress · completed · blocked · ready) + total. `goal` 설정 시 응답에 포함 |
+| task | `nx_task_update` | 태스크 부분 갱신. 입력 `{id, status?, owner?: {agent_id?, resume_tier?}}`. role 갱신 불가. `owner.agent_id`가 `null` 또는 `""` 이면 해당 필드 삭제. `owner.resume_tier`가 `null` 이면 삭제 |
 | task | `nx_task_close` | 세션 종료. 인자 없음. 응답 `{closed, plan_id, task_count, incomplete_count}` |
 | task | `nx_task_resume` | 중단된 태스크 재개. 입력 `{id}`. 출력 `task_id · resumable · agent_id · resume_tier` |
 | history | `nx_history_search` | 과거 사이클 전문 검색. 입력 `{query?, last_n?: number = 10}`. 응답 `{total, showing, cycles[]}`. 최신→오래 순 |
-| artifact | `nx_artifact_write` | 산출물 저장. 입력 `{filename, content}`. 경로 sanitize(`..` · `\` 차단). 응답 `{success, path}` |
+| artifact | `nx_artifact_write` | 산출물 저장. 입력 `{filename, content}`. 경로 sanitize(`..` · `\` 차단) + realpath 기반 symlink escape 차단. 응답 `{success, path}` |
 | lsp | `nx_lsp_hover` · `nx_lsp_diagnostics` · `nx_lsp_find_references` · `nx_lsp_rename` · `nx_lsp_code_actions` | LSP 5개 도구 — §5 참조 |
 
 ### 미채택 도구 (11개)
@@ -186,30 +186,79 @@
 
 | 모듈 | 역할 |
 |---|---|
-| `src/shared/paths.ts` | `findProjectRoot` · `NEXUS_ROOT` · `STATE_ROOT` · `getCurrentBranch` · `ensureDir` |
-| `src/shared/json-store.ts` | atomic write + file lock (in-process queue + `O_EXCL` `.lock` 파일) |
+| `src/shared/paths.ts` | `findProjectRoot` · `NEXUS_ROOT` · `STATE_ROOT` · `getCurrentBranch` · `ensureDir` · `getSessionId` · `getSessionRoot` |
+| `src/shared/json-store.ts` | atomic write + file lock (in-process queue + `O_EXCL` `.lock` 파일) + `appendJsonLine` helper |
 | `src/shared/mcp-utils.ts` | `textResult` — MCP 텍스트 응답 래퍼 |
-| `src/shared/tool-log.ts` | 세션별 `.nexus/state/sessions/<sid>/tool-log.jsonl` best-effort 기록 |
+| `src/shared/tool-log.ts` | 세션별 `.nexus/state/<sid>/tool-log.jsonl` best-effort 기록 |
 | `src/types/state.ts` | zod schema + TS 타입 (`PlanIssue` · `TaskItem` · `HistoryCycle` 등) |
+| `src/hooks/types.ts` | Hook 공통 타입 (`HookEvent` · `HookResult` · capability 인터페이스) |
+| `src/hooks/runtime.ts` | Hook 실행 엔진 — capability-matrix.yml 로드 · hook 디스패치 · harness 분기 |
+| `src/hooks/opencode-mount.ts` | OpenCode 하네스용 hook mount 어댑터 |
+
+`paths.ts` 주요 함수:
+
+| 함수 | 동작 | 소스 |
+|---|---|---|
+| `getSessionId(cwd?)` | NEXUS_SESSION_ID env 우선, 없으면 `<branch>-<pid>` | paths.ts |
+| `getSessionRoot(cwd?)` | `.nexus/state/<session_id>/` 경로 반환 | paths.ts |
+
+### 상태 파일 배치
+
+| 파일 | 위치 | 형식 |
+|---|---|---|
+| `tasks.json` · `plan.json` · `agent-tracker.json` · `tool-log.jsonl` | `.nexus/state/<session_id>/` | 세션 격리 |
+| `artifacts/` | `.nexus/state/<session_id>/artifacts/` | 세션 스코프 산출물 (최근 리팩터로 세션 스코프화됨) |
+| `memory-access.jsonl` | `.nexus/memory-access.jsonl` | **프로젝트 레벨, append-only** |
+| `history.json` | `.nexus/history.json` | 프로젝트 레벨, cycles 배열 read-modify-write |
+
+### memory-access.jsonl 형식 (append-only 재설계)
+
+한 access 이벤트 = 1 line:
+
+```json
+{"path": ".nexus/memory/foo.md", "accessed_at": "2026-04-19T00:00:00.000Z", "agent": "architect"}
+```
+
+- count · last_accessed는 읽기 시 reduce로 계산 (저장 단계 read-modify-write 제거)
+- 멀티세션 write 안전 — OS write atomicity (line < 4KB) + git union merge
 
 ---
 
-## 7. 빌드 및 실행
+## 7. CLI 서브커맨드 (`nexus-core`)
 
-- **bin**: `nexus-mcp` → `./dist/mcp/server.js`
-- **exports**: `./mcp` → `./dist/mcp/server.js`
+v0.13.0부터 `nexus-core` bin이 추가됐다 (`scripts/cli.ts` → `./scripts/cli.ts`). 에이전트·스킬 빌드 파이프라인과 MCP 서버 기동을 단일 진입점으로 오케스트레이션한다.
+
+```
+nexus-core <command> [flags]
+```
+
+| 서브커맨드 | 역할 | 주요 플래그 |
+|---|---|---|
+| `sync` | 에이전트·스킬 빌드(`build-agents`) + 훅 빌드(`build-hooks`) 순서대로 실행. | `--harness=<claude\|opencode\|codex>` · `--target=<dir>` · `--dry-run` · `--force` · `--strict` · `--only=<name>` |
+| `init` | 하네스 플러그인 템플릿을 지정 디렉토리로 복사 (플러그인 레포 신규 생성용). | `--harness=<harness>` · `--target=<dir>` (필수) |
+| `list` | `assets/` 아래 에이전트·스킬·훅을 이름+설명 목록으로 출력. | — |
+| `validate` | 에이전트·스킬 `body.md` frontmatter 필수 필드 검증 + `capability-matrix.yml` · `tool-name-map.yml` YAML 파싱 검증. | — |
+| `mcp` | MCP stdio 서버 기동 (`nexus-mcp`와 동일). | — |
+
+모든 서브커맨드는 `--help` / `-h` 플래그를 지원한다.
+
+## 8. 빌드 및 실행
+
+- **bin `nexus-mcp`**: `./dist/mcp/server.js` — MCP 서버 단독 실행 (기존 호환 유지)
+- **bin `nexus-core`**: `./scripts/cli.ts` — 에이전트·훅 빌드 + MCP 기동 통합 CLI (v0.13.0 신규)
+- **exports `./mcp`**: `./dist/mcp/server.js`
 - **컴파일**: `tsc` emit (`esbuild` 미채택)
 - **모듈 시스템**: ESM (`"type": "module"`)
 - **런타임**: Node.js >= 20
 
 ---
 
-## 8. 빌드 순서
+## 9. 빌드 순서
 
 | 단계 | 공통 자산 | 상태 |
 |---|---|---|
 | 1 | **MCP 서버** — 14 도구 + 공통 인프라 + LSP 통합 | v0.13.0 완료 |
-| 2 | Hook — MCP 도구 인터셉트 | 예정 |
+| 2 | **Hook** — 5 Tier 1 hook + capability-matrix + build-hooks | v0.13.0 완료 |
 | 3 | Skill — Hook 위에서 동작 | 예정 |
 | 4 | Agent | 예정 |
 

@@ -89,6 +89,8 @@ mock.module('../../shared/paths.js', () => ({
   findProjectRoot: () => '/project',
   getNexusRoot: () => '/project/.nexus',
   getStateRoot: () => '/project/.nexus/state',
+  getSessionId: () => 'test-session',
+  getSessionRoot: () => '/project/.nexus/state/test-session',
   getCurrentBranch: () => 'main',
   ensureDir: () => undefined,
   NEXUS_ROOT: '/project/.nexus',

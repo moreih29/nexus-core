@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { constants as fsConstants } from "node:fs";
+import { constants as fsConstants, appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -149,4 +149,35 @@ export async function updateJsonFileLocked<T>(
       await releaseFsLock(filePath);
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Append-only JSONL helper
+// ---------------------------------------------------------------------------
+
+const APPEND_SIZE_WARN_THRESHOLD = 4 * 1024; // 4KB — OS write atomicity limit
+
+/**
+ * Append a single JSON record as one line to a `.jsonl` file.
+ *
+ * Uses the OS `write(2)` syscall via `appendFileSync`, which is atomic for
+ * writes up to ~4 KB on most POSIX filesystems. Lines exceeding that threshold
+ * trigger a `console.error` warning but are still written (best-effort).
+ *
+ * No lock is acquired — concurrent appenders are safe at the line level
+ * because each call is a single `write(2)` syscall.
+ * Parent directories are created automatically.
+ */
+export function appendJsonLine(filePath: string, record: unknown): void {
+  const line = JSON.stringify(record) + "\n";
+
+  if (line.length > APPEND_SIZE_WARN_THRESHOLD) {
+    console.error(
+      `[json-store] appendJsonLine line exceeds ${APPEND_SIZE_WARN_THRESHOLD} bytes ` +
+        `(${line.length}) — write may not be atomic on some filesystems. path=${filePath}`,
+    );
+  }
+
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  appendFileSync(filePath, line);
 }
