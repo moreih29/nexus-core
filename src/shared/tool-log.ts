@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getSessionRoot } from "./paths.js";
+import { STATE_ROOT, getSessionId } from "./paths.js";
 
 export function logToolCall(entry: {
   tool: string;
@@ -13,7 +13,7 @@ export function logToolCall(entry: {
     const timestamp = entry.timestamp ?? new Date().toISOString();
     const record = { ...entry, timestamp };
 
-    const logDir = getSessionRoot();
+    const logDir = path.join(STATE_ROOT, getSessionId());
 
     try {
       fs.mkdirSync(logDir, { recursive: true });

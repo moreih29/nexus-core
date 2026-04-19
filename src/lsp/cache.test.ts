@@ -1,6 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, spyOn, mock } from 'bun:test';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 
 // ---------------------------------------------------------------------------
@@ -11,6 +10,7 @@ import * as path from 'node:path';
 import { ensureClient, ensureFileSync, shutdownAll, findWorkspaceRoot } from './cache.ts';
 import { LspClient } from './client.ts';
 import { _resetConfigCache } from './detect.ts';
+import { makeTempDir } from '../shared/test-temp.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -18,7 +18,7 @@ import { _resetConfigCache } from './detect.ts';
 
 /** Create a temporary directory */
 function makeTmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-cache-'));
+  return makeTempDir('nexus-cache-');
 }
 
 /** Reset module-level cache state between tests */

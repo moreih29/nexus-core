@@ -1,19 +1,19 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { sanitizeName, registerArtifactTools } from "./artifact.ts";
+import { getWritableTempRoot, makeTempDir } from "../../shared/test-temp.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function makeTmpGitRepo(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-artifact-"));
+  const dir = makeTempDir("nexus-artifact-");
   execSync("git init", { cwd: dir, stdio: "ignore" });
   execSync('git config user.email "test@test.com"', { cwd: dir, stdio: "ignore" });
   execSync('git config user.name "Test"', { cwd: dir, stdio: "ignore" });
@@ -305,7 +305,7 @@ describe("보안 edge", () => {
     fs.mkdirSync(artifactsDir, { recursive: true });
 
     // Create a symlink inside artifactsDir pointing to /tmp (an external directory)
-    const externalTarget = os.tmpdir();
+    const externalTarget = getWritableTempRoot();
     const symlinkPath = path.join(artifactsDir, "evil-link");
     fs.symlinkSync(externalTarget, symlinkPath);
 

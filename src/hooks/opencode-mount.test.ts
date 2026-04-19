@@ -28,9 +28,9 @@ import {
 import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import type { OpenCodeHookManifest } from "./opencode-mount.ts";
+import { makeTempDir } from "../shared/test-temp.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers: fake ChildProcess
@@ -111,7 +111,7 @@ import { mountHooks } from "./opencode-mount.ts";
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-mount-"));
+  tmpDir = makeTempDir("nexus-mount-");
 });
 
 afterEach(async () => {

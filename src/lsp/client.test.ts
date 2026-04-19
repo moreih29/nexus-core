@@ -259,10 +259,10 @@ process.stdin.on('data', (chunk) => {
 });
 `;
     // Write the script to a temp file
-    const os = await import('node:os');
     const path = await import('node:path');
     const fs = await import('node:fs');
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lsp-test-'));
+    const { makeTempDir } = await import('../shared/test-temp.ts');
+    const tmpDir = makeTempDir('lsp-test-');
     const scriptPath = path.join(tmpDir, 'mock-server.js');
     fs.writeFileSync(scriptPath, serverScript, 'utf-8');
 

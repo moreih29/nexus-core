@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { makeTempDir } from "../../shared/test-temp.ts";
 
 // ---------------------------------------------------------------------------
 // Test isolation: override NEXUS_ROOT resolution via process.chdir
@@ -21,7 +21,7 @@ beforeEach(() => {
   originalCwd = process.cwd();
   prevSid = process.env.NEXUS_SESSION_ID;
   process.env.NEXUS_SESSION_ID = TEST_SESSION_ID;
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-plan-"));
+  tmpDir = makeTempDir("nexus-plan-");
   // Create the expected .nexus/state/<session_id> directory structure
   fs.mkdirSync(path.join(tmpDir, ".nexus", "state", TEST_SESSION_ID), { recursive: true });
   process.chdir(tmpDir);

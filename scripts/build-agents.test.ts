@@ -16,15 +16,14 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import {
   mkdirSync,
-  mkdtempSync,
   rmSync,
   writeFileSync,
   readFileSync,
   existsSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { makeTempDir } from "../src/shared/test-temp.ts";
 
 import {
   parseFrontmatter,
@@ -78,7 +77,7 @@ afterEach(() => {
 });
 
 function makeTmp(): string {
-  const dir = mkdtempSync(join(tmpdir(), "build-agents-test-"));
+  const dir = makeTempDir("build-agents-test-");
   tmpDirs.push(dir);
   return dir;
 }

@@ -1,6 +1,5 @@
 import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { execSync } from 'child_process';
 
@@ -13,13 +12,14 @@ import {
   getSessionId,
   getSessionRoot,
 } from './paths.ts';
+import { makeTempDir } from './test-temp.ts';
 
 // ---------------------------------------------------------------------------
 // 헬퍼
 // ---------------------------------------------------------------------------
 
 function makeTmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-paths-'));
+  return makeTempDir('nexus-paths-');
 }
 
 function initGitRepo(dir: string): void {
@@ -63,7 +63,7 @@ describe('findProjectRoot', () => {
   test('3. git 없는 독립 디렉토리 — cwd 그대로 반환', () => {
     // tmpDir 안에 .git 없음, 상위도 현재 테스트 환경 git root에 포함될 수 있으므로
     // /tmp 아래의 완전히 분리된 경로를 사용
-    const isolated = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-isolated-'));
+    const isolated = makeTempDir('nexus-isolated-');
     try {
       // isolated 내부의 서브 디렉토리에서 시작 — 상위에 .git 없으면 isolated 반환
       const sub = path.join(isolated, 'sub');
@@ -166,7 +166,7 @@ describe('getSessionId', () => {
 
   test('12. NEXUS_SESSION_ID 없고 git 브랜치 있으면 — <branch>-<pid> 형식 반환', () => {
     delete process.env.NEXUS_SESSION_ID;
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-sid-'));
+    const tmpDir = makeTempDir('nexus-sid-');
     try {
       initGitRepo(tmpDir);
       const sid = getSessionId(tmpDir);
@@ -180,7 +180,7 @@ describe('getSessionId', () => {
 
   test('13. NEXUS_SESSION_ID 없고 git 없으면 — unknown-<pid> 형식 반환', () => {
     delete process.env.NEXUS_SESSION_ID;
-    const isolated = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-no-git-'));
+    const isolated = makeTempDir('nexus-no-git-');
     try {
       const sid = getSessionId(isolated);
       expect(sid).toBe(`unknown-${process.pid}`);
@@ -197,7 +197,7 @@ describe('getSessionRoot', () => {
   beforeEach(() => {
     prevSid = process.env.NEXUS_SESSION_ID;
     process.env.NEXUS_SESSION_ID = 'test-session';
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-sroot-'));
+    tmpDir = makeTempDir('nexus-sroot-');
     initGitRepo(tmpDir);
   });
 

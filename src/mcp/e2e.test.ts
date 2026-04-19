@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { existsSync } from "node:fs";
+import { makeTempDir } from "../shared/test-temp.ts";
 
 const PROJECT_ROOT = process.cwd();
 const SERVER_DIST = path.join(PROJECT_ROOT, "dist", "mcp", "server.js");
@@ -53,7 +53,7 @@ describe("e2e session scenario", () => {
 
     // isolated tmp directory
     originalCwd = process.cwd();
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-e2e-"));
+    tmpDir = makeTempDir("nexus-e2e-");
     fs.mkdirSync(path.join(tmpDir, ".nexus", "state"), { recursive: true });
 
     proc = spawn("node", [SERVER_DIST], {

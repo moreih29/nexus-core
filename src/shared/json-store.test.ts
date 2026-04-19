@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { readJsonFile, writeJsonFile, updateJsonFileLocked, appendJsonLine } from "./json-store.ts";
+import { makeTempDir } from "./test-temp.ts";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -12,7 +12,7 @@ import { readJsonFile, writeJsonFile, updateJsonFileLocked, appendJsonLine } fro
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-json-"));
+  tmpDir = makeTempDir("nexus-json-");
 });
 
 afterEach(async () => {

@@ -15,12 +15,11 @@
 import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
 import {
   mkdirSync,
-  mkdtempSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { makeTempDir } from "../src/shared/test-temp.ts";
 
 import {
   parseFlags,
@@ -312,7 +311,7 @@ describe("runValidateSync (bad assets in tmp)", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), "nexus-cli-validate-"));
+    tmpDir = makeTempDir("nexus-cli-validate-");
   });
 
   afterEach(() => {

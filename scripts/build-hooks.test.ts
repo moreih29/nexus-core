@@ -20,7 +20,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import {
   mkdirSync,
-  mkdtempSync,
   rmSync,
   writeFileSync,
   readFileSync,
@@ -28,9 +27,9 @@ import {
   statSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { makeTempDir } from "../src/shared/test-temp.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -57,7 +56,7 @@ function createFixtureDir(
   capabilityMatrix: string,
   toolNameMap?: string,
 ): string {
-  const tmp = mkdtempSync(join(tmpdir(), "build-hooks-test-"));
+  const tmp = makeTempDir("build-hooks-test-");
 
   // capability-matrix.yml
   const hooksDir = join(tmp, "assets", "hooks");
