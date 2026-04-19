@@ -8,7 +8,7 @@
 
 | 파일 | 형식 | union merge |
 |---|---|---|
-| `.nexus/state/memory-access.jsonl` | jsonl 추가 전용 | ✓ |
+| `.nexus/memory-access.jsonl` | jsonl 추가 전용 (프로젝트 레벨) | ✓ |
 | `.nexus/state/sessions/<sid>/tool-log.jsonl` | jsonl 추가 전용 | ✓ |
 | `.nexus/history.json` | json (cycles 배열, read-modify-write) | ✗ — 락 + atomic write로 처리 |
 
@@ -17,7 +17,7 @@
 `.gitattributes`에 대상 등록:
 
 ```
-.nexus/state/memory-access.jsonl  merge=union
+.nexus/memory-access.jsonl  merge=union
 ```
 
 ## 순서 보장
