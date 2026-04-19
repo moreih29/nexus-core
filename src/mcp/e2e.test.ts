@@ -59,7 +59,11 @@ describe("e2e session scenario", () => {
     proc = spawn("node", [SERVER_DIST], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: tmpDir,
-      env: { ...process.env, NEXUS_SESSION_ID: "e2e-test-session" },
+      env: {
+        ...process.env,
+        NEXUS_SESSION_ID: "e2e-test-session",
+        NEXUS_PROJECT_ROOT: tmpDir,
+      },
     });
 
     proc.stdout.setEncoding("utf-8");

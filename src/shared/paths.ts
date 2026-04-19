@@ -2,8 +2,17 @@ import { join, resolve } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';
 
-/** git root를 찾아 반환. git 없으면 cwd 상승하며 .git 탐색, 끝까지 못 찾으면 cwd 반환 */
+/**
+ * 프로젝트 루트 해석. 우선순위:
+ *   1. NEXUS_PROJECT_ROOT env (테스트·명시 주입용)
+ *   2. git rev-parse --show-toplevel (cwd 혹은 인자 기준)
+ *   3. cwd 상승하며 .git 수동 탐색
+ *   4. fallback: start 자체
+ */
 export function findProjectRoot(cwd?: string): string {
+  const envOverride = process.env['NEXUS_PROJECT_ROOT'];
+  if (envOverride) return envOverride;
+
   const start = cwd ?? process.cwd();
   try {
     return execSync('git rev-parse --show-toplevel', {
@@ -12,7 +21,6 @@ export function findProjectRoot(cwd?: string): string {
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
   } catch {
-    // git 없거나 git 저장소 아닌 경우 — .git 디렉토리 수동 탐색
     let dir = start;
     while (true) {
       if (existsSync(join(dir, '.git'))) return dir;
@@ -33,10 +41,6 @@ export function getNexusRoot(cwd?: string): string {
 export function getStateRoot(cwd?: string): string {
   return join(getNexusRoot(cwd), 'state');
 }
-
-/** module-level const (cwd 고정 환경용; 테스트에서는 getter 사용 권장) */
-export const NEXUS_ROOT: string = getNexusRoot();
-export const STATE_ROOT: string = getStateRoot();
 
 /** 현재 git 브랜치명 반환. detached HEAD면 "HEAD" 또는 빈 문자열, git 없으면 빈 문자열 */
 export function getCurrentBranch(cwd?: string): string {

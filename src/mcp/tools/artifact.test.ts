@@ -3,32 +3,16 @@ import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { execSync } from "node:child_process";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { sanitizeName, registerArtifactTools } from "./artifact.ts";
-import { findProjectRoot, NEXUS_ROOT, STATE_ROOT } from "../../shared/paths.ts";
-
-// [TEST-DIAG] — remove once CI /project mystery is resolved
-console.log("[TEST-DIAG:module-load]",
-  "cwd=", process.cwd(),
-  "| findProjectRoot()=", findProjectRoot(),
-  "| NEXUS_ROOT=", NEXUS_ROOT,
-  "| STATE_ROOT=", STATE_ROOT,
-  "| execSync pwd=", execSync("pwd").toString().trim(),
-);
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeTmpGitRepo(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-artifact-"));
-  execSync("git init", { cwd: dir, stdio: "ignore" });
-  execSync('git config user.email "test@test.com"', { cwd: dir, stdio: "ignore" });
-  execSync('git config user.name "Test"', { cwd: dir, stdio: "ignore" });
-  execSync("git commit --allow-empty -m init", { cwd: dir, stdio: "ignore" });
-  return dir;
+function makeTmpProjectDir(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "nexus-artifact-"));
 }
 
 /** Parse the first text content item from a CallToolResult. */
@@ -39,15 +23,14 @@ function parseResult(result: CallToolResult): { success: boolean; path: string }
 }
 
 /**
- * Build a server, capture the registered tool handler, then restore cwd.
- * The handler is extracted by intercepting server.tool's return value.
+ * Build a server, capture the registered tool handler.
+ * Project root resolution is controlled via NEXUS_PROJECT_ROOT env (set in beforeEach).
  */
 function buildHandler(
-  tmpDir: string,
+  _tmpDir: string,
 ): (args: { filename: string; content: string }) => Promise<CallToolResult> {
   const server = new McpServer({ name: "test", version: "0.0.0" });
 
-  // Intercept server.tool to capture the registered tool object
   let registered: { handler: (args: unknown, extra: unknown) => Promise<unknown> } | undefined;
   const origTool = server.tool.bind(server) as typeof server.tool;
   (server as unknown as Record<string, unknown>).tool = (...args: Parameters<typeof server.tool>) => {
@@ -56,28 +39,12 @@ function buildHandler(
     return reg;
   };
 
-  // chdir so findProjectRoot / getNexusRoot resolve to tmpDir
-  const prevCwd = process.cwd();
-  process.chdir(tmpDir);
-  try {
-    registerArtifactTools(server);
-  } finally {
-    process.chdir(prevCwd);
-  }
+  registerArtifactTools(server);
 
   if (!registered) throw new Error("registerArtifactTools did not call server.tool");
 
   const handler = registered.handler;
-  return async (args) => {
-    // chdir during invocation so runtime calls resolve correctly
-    const prev = process.cwd();
-    process.chdir(tmpDir);
-    try {
-      return (await handler(args, {})) as CallToolResult;
-    } finally {
-      process.chdir(prev);
-    }
-  };
+  return async (args) => (await handler(args, {})) as CallToolResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -136,35 +103,26 @@ describe("nx_artifact_write handler", () => {
   let tmpDir: string;
   let invoke: (args: { filename: string; content: string }) => Promise<CallToolResult>;
   let prevSid: string | undefined;
+  let prevProjectRoot: string | undefined;
 
   beforeEach(() => {
     prevSid = process.env.NEXUS_SESSION_ID;
+    prevProjectRoot = process.env.NEXUS_PROJECT_ROOT;
     process.env.NEXUS_SESSION_ID = ARTIFACT_TEST_SESSION;
-    tmpDir = makeTmpGitRepo();
+    tmpDir = makeTmpProjectDir();
+    process.env.NEXUS_PROJECT_ROOT = tmpDir;
     invoke = buildHandler(tmpDir);
-    // [TEST-DIAG]
-    console.log("[TEST-DIAG:beforeEach]",
-      "cwd=", process.cwd(),
-      "| tmpDir=", tmpDir,
-      "| findProjectRoot()=", findProjectRoot(),
-      "| findProjectRoot(tmpDir)=", findProjectRoot(tmpDir),
-      "| execSync pwd=", execSync("pwd").toString().trim(),
-    );
   });
 
   afterEach(async () => {
     if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
     else process.env.NEXUS_SESSION_ID = prevSid;
+    if (prevProjectRoot === undefined) delete process.env.NEXUS_PROJECT_ROOT;
+    else process.env.NEXUS_PROJECT_ROOT = prevProjectRoot;
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   });
 
   test("1. 정상: findings.md 작성, 응답 path가 PROJECT_ROOT 상대", async () => {
-    // [TEST-DIAG] — inside test body, right before invoke
-    console.log("[TEST-DIAG:test-1:before-invoke]",
-      "cwd=", process.cwd(),
-      "| findProjectRoot()=", findProjectRoot(),
-      "| execSync pwd=", execSync("pwd").toString().trim(),
-    );
     const result = await invoke({ filename: "findings.md", content: "hello" });
     const parsed = parseResult(result);
 
@@ -272,17 +230,22 @@ describe("보안 edge", () => {
   let tmpDir: string;
   let invoke: (args: { filename: string; content: string }) => Promise<CallToolResult>;
   let prevSid: string | undefined;
+  let prevProjectRoot: string | undefined;
 
   beforeEach(() => {
     prevSid = process.env.NEXUS_SESSION_ID;
+    prevProjectRoot = process.env.NEXUS_PROJECT_ROOT;
     process.env.NEXUS_SESSION_ID = ARTIFACT_TEST_SESSION;
-    tmpDir = makeTmpGitRepo();
+    tmpDir = makeTmpProjectDir();
+    process.env.NEXUS_PROJECT_ROOT = tmpDir;
     invoke = buildHandler(tmpDir);
   });
 
   afterEach(async () => {
     if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
     else process.env.NEXUS_SESSION_ID = prevSid;
+    if (prevProjectRoot === undefined) delete process.env.NEXUS_PROJECT_ROOT;
+    else process.env.NEXUS_PROJECT_ROOT = prevProjectRoot;
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   });
 

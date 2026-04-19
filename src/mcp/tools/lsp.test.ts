@@ -1,4 +1,4 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test';
+import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { formatMarkupContent, formatLocation } from './lsp.ts';
 
@@ -84,30 +84,33 @@ mock.module('../../lsp/cache.js', () => ({
   },
 }));
 
-// Mock findProjectRoot to return a stable path
-mock.module('../../shared/paths.js', () => ({
-  findProjectRoot: () => '/project',
-  getNexusRoot: () => '/project/.nexus',
-  getStateRoot: () => '/project/.nexus/state',
-  getSessionId: () => 'test-session',
-  getSessionRoot: () => '/project/.nexus/state/test-session',
-  getCurrentBranch: () => 'main',
-  ensureDir: () => undefined,
-  NEXUS_ROOT: '/project/.nexus',
-  STATE_ROOT: '/project/.nexus/state',
-}));
+// Stabilize project root via NEXUS_PROJECT_ROOT env override (set per test).
+// Do NOT use mock.module on ../../shared/paths — that mutation is process-wide
+// in Bun and poisons other test files that share this process.
 
 // ---------------------------------------------------------------------------
 // Lazy import of registerLspTools (after mocks are set up)
 // ---------------------------------------------------------------------------
 
 let registerLspTools: (server: unknown) => void;
+let prevProjectRoot: string | undefined;
+let prevSessionId: string | undefined;
 
 beforeEach(async () => {
   ensureFileSyncCalls = [];
-  // Re-import after mocking
+  prevProjectRoot = process.env['NEXUS_PROJECT_ROOT'];
+  prevSessionId = process.env['NEXUS_SESSION_ID'];
+  process.env['NEXUS_PROJECT_ROOT'] = '/project';
+  process.env['NEXUS_SESSION_ID'] = 'test-session';
   const mod = await import('./lsp.ts');
   registerLspTools = mod.registerLspTools;
+});
+
+afterEach(() => {
+  if (prevProjectRoot === undefined) delete process.env['NEXUS_PROJECT_ROOT'];
+  else process.env['NEXUS_PROJECT_ROOT'] = prevProjectRoot;
+  if (prevSessionId === undefined) delete process.env['NEXUS_SESSION_ID'];
+  else process.env['NEXUS_SESSION_ID'] = prevSessionId;
 });
 
 // ---------------------------------------------------------------------------

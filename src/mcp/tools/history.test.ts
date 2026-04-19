@@ -6,23 +6,24 @@ import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 // ---------------------------------------------------------------------------
-// Test isolation: override NEXUS_ROOT resolution via process.chdir
-// History tools call getNexusRoot() which uses process.cwd() as fallback
-// when no git is present.
+// Test isolation: override project root via NEXUS_PROJECT_ROOT env.
+// Avoids process.chdir (process-wide state, unsafe with parallel tests) and
+// avoids depending on git CLI behavior inside the test runner process.
 // ---------------------------------------------------------------------------
 
 let tmpDir: string;
-let originalCwd: string;
+let prevProjectRoot: string | undefined;
 
 beforeEach(() => {
-  originalCwd = process.cwd();
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-history-"));
   fs.mkdirSync(path.join(tmpDir, ".nexus"), { recursive: true });
-  process.chdir(tmpDir);
+  prevProjectRoot = process.env["NEXUS_PROJECT_ROOT"];
+  process.env["NEXUS_PROJECT_ROOT"] = tmpDir;
 });
 
 afterEach(async () => {
-  process.chdir(originalCwd);
+  if (prevProjectRoot === undefined) delete process.env["NEXUS_PROJECT_ROOT"];
+  else process.env["NEXUS_PROJECT_ROOT"] = prevProjectRoot;
   await fsPromises.rm(tmpDir, { recursive: true, force: true });
 });
 
