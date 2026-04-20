@@ -526,7 +526,7 @@ function buildOpenCodeManifest(plans: PortabilityPlan[]): OpenCodeHookManifest {
       name: plan.name,
       events: [...plan.meta.events],
       matcher: plan.meta.matcher ?? "*",
-      handlerPath: `../assets/hooks/${plan.name}/handler.js`,
+      handlerPath: `../hooks/${plan.name}.js`,
       priority: plan.meta.priority ?? 0,
       timeout: plan.meta.timeout,
     };

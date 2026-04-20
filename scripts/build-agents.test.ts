@@ -609,7 +609,7 @@ describe("Scenario 3 — Manifest file content", () => {
     expect(existsSync(skillPath)).toBe(true);
   });
 
-  test("Codex: agents/<n>.toml is created with TOML agent block", () => {
+  test("Codex: agents/<n>.toml is created with standalone role schema", () => {
     const tmp = makeTmp();
     const assets = [makeAgentEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
@@ -617,10 +617,21 @@ describe("Scenario 3 — Manifest file content", () => {
     const tomlPath = join(tmp,"agents", "sample-architect.toml");
     expect(existsSync(tomlPath)).toBe(true);
     const content = readFileSync(tomlPath, "utf-8");
-    expect(content).toContain("[agents.sample-architect]");
+    // Standalone schema: root-level name and developer_instructions
+    expect(content).toMatch(/^name = "sample-architect"/m);
     expect(content).toContain("description =");
-    expect(content).toContain("sandbox_mode = ");
+    expect(content).toContain("developer_instructions =");
     expect(content).toContain("gpt-5.4");
+    // No nested table headers
+    expect(content).not.toContain("[agents.");
+  });
+
+  test("OpenCode: opencode.json.fragment is NOT emitted", () => {
+    const tmp = makeTmp();
+    const assets = [makeAgentEntry()];
+    buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    expect(existsSync(join(tmp, "opencode.json.fragment"))).toBe(false);
   });
 
   test("Codex: prompts/<n>.md is created", () => {
