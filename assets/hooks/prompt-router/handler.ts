@@ -32,6 +32,13 @@ let _invocationsCache: InvocationsMap | null = null;
 function loadInvocations(): InvocationsMap {
   if (_invocationsCache) return _invocationsCache;
 
+  // In the compiled consumer bundle, assets/ is absent — use data inlined at build time.
+  const inlined = (globalThis as unknown as { __NEXUS_INLINE_INVOCATIONS__?: InvocationsMap }).__NEXUS_INLINE_INVOCATIONS__;
+  if (inlined) {
+    _invocationsCache = inlined;
+    return inlined;
+  }
+
   const selfDir = new URL(".", import.meta.url).pathname;
   // Walk up from handler directory to find assets/tools/tool-name-map.yml
   let dir = selfDir;
@@ -82,6 +89,10 @@ function expand(template: string, harness: Harness): string {
 // ---------------------------------------------------------------------------
 
 function loadValidRuleTargets(cwd: string): string[] {
+  // In the compiled consumer bundle, cwd/assets/ is absent — use data inlined at build time.
+  const inlined = (globalThis as unknown as { __NEXUS_INLINE_RULE_TARGETS__?: string[] }).__NEXUS_INLINE_RULE_TARGETS__;
+  if (inlined && inlined.length > 0) return inlined;
+
   const targets: string[] = [];
   for (const dir of ["assets/agents", "assets/skills"]) {
     const absDir = join(cwd, dir);

@@ -69,6 +69,14 @@ function createFixtureDir(
   mkdirSync(toolsDir, { recursive: true });
   writeFileSync(join(toolsDir, "tool-name-map.yml"), toolNameMap ?? defaultToolNameMap());
 
+  // Minimal agents + skills dirs — required for prompt-router inline data injection.
+  for (const agentName of ["engineer", "architect"]) {
+    mkdirSync(join(tmp, "assets", "agents", agentName), { recursive: true });
+  }
+  for (const skillName of ["nx-plan", "nx-run"]) {
+    mkdirSync(join(tmp, "assets", "skills", skillName), { recursive: true });
+  }
+
   // hook dirs
   for (const hook of hooks) {
     const dir = join(hooksDir, hook.name);
@@ -115,6 +123,13 @@ function defaultToolNameMap(): string {
     claude: [Edit, MultiEdit]
     codex: apply_patch
     opencode: [apply_patch, edit]
+invocations:
+  skill_activation:
+    args: [skill, mode]
+    templates:
+      claude: 'Skill({ command: "{skill}" })'
+      opencode: 'skill({ name: "{skill}" })'
+      codex: '\${skill}'
 `;
 }
 
@@ -408,7 +423,28 @@ function compileHandlers(hooks: HookEntry[]): void {
     mkdirSync(entryDir, { recursive: true });
     const entryFile = join(entryDir, \`\${hook.name}-entry.ts\`);
     try {
-      const entryContent = [
+      const lines: string[] = [];
+
+      if (hook.name === "prompt-router") {
+        const toolNameMapRaw = readFileSync(TOOL_NAME_MAP_PATH, "utf-8");
+        const toolNameMapParsed = parseYaml(toolNameMapRaw) as { invocations?: unknown };
+        const invocationsJson = JSON.stringify(toolNameMapParsed.invocations ?? {});
+
+        const agentsDir = join(ROOT, "assets/agents");
+        const skillsDir = join(ROOT, "assets/skills");
+        const agentNames = existsSync(agentsDir)
+          ? readdirSync(agentsDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)
+          : [];
+        const skillNames = existsSync(skillsDir)
+          ? readdirSync(skillsDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)
+          : [];
+        const ruleTargetsJson = JSON.stringify([...agentNames, ...skillNames]);
+
+        lines.push("globalThis.__NEXUS_INLINE_INVOCATIONS__ = " + invocationsJson + ";");
+        lines.push("globalThis.__NEXUS_INLINE_RULE_TARGETS__ = " + ruleTargetsJson + ";");
+      }
+
+      lines.push(
         \`import handler from \${JSON.stringify(hook.handlerPath)};\`,
         \`import { readFileSync } from "node:fs";\`,
         \`async function main() {\`,
@@ -424,7 +460,9 @@ function compileHandlers(hooks: HookEntry[]): void {
         \`  () => process.exit(0),\`,
         \`  (err) => { process.stderr.write(String(err?.stack ?? err) + "\\\\n"); process.exit(1); }\`,
         \`);\`,
-      ].join("\\n") + "\\n";
+      );
+
+      const entryContent = lines.join("\\n") + "\\n";
       writeFileSync(entryFile, entryContent);
       try {
         execSync(
@@ -1464,6 +1502,42 @@ requires_capabilities:
 
     expect(first).toContain("hook-priority-99");
     expect(second).toContain("hook-priority-1");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Scenario 9: prompt-router 번들에 inline 데이터 포함, 다른 hook에는 없음
+// ---------------------------------------------------------------------------
+
+describe("Scenario 9 — prompt-router inline invocations + rule_targets", () => {
+  test("prompt-router bundle contains __NEXUS_INLINE_INVOCATIONS__ and __NEXUS_INLINE_RULE_TARGETS__", () => {
+    const { fixtureRoot, wrapperPath } = makeTmpAndWrapper(
+      fiveHookFixture(),
+      minimalCapabilityMatrix(),
+    );
+
+    runBuild(fixtureRoot, wrapperPath);
+
+    const bundlePath = join(fixtureRoot, "dist", "hooks", "prompt-router.js");
+    expect(existsSync(bundlePath)).toBe(true);
+    const content = readFileSync(bundlePath, "utf-8");
+    expect(content.includes("__NEXUS_INLINE_INVOCATIONS__")).toBe(true);
+    expect(content.includes("__NEXUS_INLINE_RULE_TARGETS__")).toBe(true);
+  });
+
+  test("session-init bundle does NOT contain __NEXUS_INLINE_INVOCATIONS__ or __NEXUS_INLINE_RULE_TARGETS__", () => {
+    const { fixtureRoot, wrapperPath } = makeTmpAndWrapper(
+      fiveHookFixture(),
+      minimalCapabilityMatrix(),
+    );
+
+    runBuild(fixtureRoot, wrapperPath);
+
+    const bundlePath = join(fixtureRoot, "dist", "hooks", "session-init.js");
+    expect(existsSync(bundlePath)).toBe(true);
+    const content = readFileSync(bundlePath, "utf-8");
+    expect(content.includes("__NEXUS_INLINE_INVOCATIONS__")).toBe(false);
+    expect(content.includes("__NEXUS_INLINE_RULE_TARGETS__")).toBe(false);
   });
 });
 
