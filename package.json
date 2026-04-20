@@ -18,6 +18,10 @@
       "types": "./dist/src/mcp/server.d.ts",
       "import": "./dist/src/mcp/server.js"
     },
+    "./types": {
+      "types": "./dist/src/types/index.d.ts",
+      "import": "./dist/src/types/index.js"
+    },
     "./hooks/opencode-mount": {
       "types": "./dist/src/hooks/opencode-mount.d.ts",
       "import": "./dist/src/hooks/opencode-mount.js"
