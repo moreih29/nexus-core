@@ -624,6 +624,33 @@ describe("Scenario 3 — Manifest file content", () => {
     expect(content).toContain("gpt-5.4");
     // No nested table headers
     expect(content).not.toContain("[agents.");
+    // disabled_tools must NOT appear at root level (before any table header)
+    const rootSection = content.split(/^\[/m)[0];
+    expect(rootSection).not.toContain("disabled_tools");
+  });
+
+  test("Codex: agents/<n>.toml emits [mcp_servers.nx] with disabled_tools when capabilities present", () => {
+    const tmp = makeTmp();
+    const assets = [makeAgentEntry()];
+    buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const tomlPath = join(tmp, "agents", "sample-architect.toml");
+    const content = readFileSync(tomlPath, "utf-8");
+    expect(content).toContain("[mcp_servers.nx]");
+    const afterBlock = content.split("[mcp_servers.nx]")[1];
+    expect(afterBlock).toContain('command = "nexus-mcp"');
+    expect(afterBlock).toContain("disabled_tools = [");
+  });
+
+  test("Codex: agents/<n>.toml omits [mcp_servers.nx] when no disabled_tools", () => {
+    const tmp = makeTmp();
+    const assets = [makeAgentEntry({ frontmatter: { ...makeAgentEntry().frontmatter, capabilities: [] } })];
+    buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
+
+    const tomlPath = join(tmp, "agents", "sample-architect.toml");
+    const content = readFileSync(tomlPath, "utf-8");
+    expect(content).not.toContain("[mcp_servers.nx]");
+    expect(content).not.toMatch(/^disabled_tools = /m);
   });
 
   test("OpenCode: opencode.json.fragment is NOT emitted", () => {

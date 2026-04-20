@@ -4,6 +4,18 @@
 
 ---
 
+## [0.16.2] - 2026-04-20
+
+### Fixed
+
+- Codex standalone role file(`~/.codex/agents/*.toml`)의 `disabled_tools`가 root-level에 방출되어 codex-cli 0.121+ `RawAgentRoleFileToml`의 `deny_unknown_fields`에 reject되던 문제([#48](https://github.com/moreih29/nexus-core/issues/48)) 수정. `[mcp_servers.nx]` 테이블 블록 하위로 이동해 `RawMcpServerConfig` 정식 필드로 처리. v0.16.0 standalone 전환 시 누락됐던 `[mcp_servers.nx]` 블록 복원.
+
+### Migration Notes
+
+- Codex consumer는 `bun add @moreih29/nexus-core@^0.16.2` 후 sync 재실행 (`nexus sync --harness=codex`). 기존 `~/.codex/agents/*.toml`이 덮어쓰기되어, codex 시작 시 "Ignoring malformed agent role definition" 경고가 사라지는지 확인.
+
+---
+
 ## [0.16.1] - 2026-04-20
 
 ### Fixed

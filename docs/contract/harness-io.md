@@ -206,10 +206,15 @@ description = "..."
 developer_instructions = """<body>"""
 model = "..."
 sandbox_mode = "..."
-disabled_tools = [...]
+
+[mcp_servers.nx]
+command = "nexus-mcp"
+disabled_tools = ["nx_task_add"]    # 예시 — 실제 항목은 capability-matrix 조합에 따라 다름
 ```
 
-> **주의**: `[agents.<id>]` nested 구조는 `~/.codex/config.toml`(global config)의 agent 정의용이며, standalone role file과 혼용하면 안 된다. standalone 파일에는 반드시 root-level `name`·`developer_instructions` 형식을 사용한다.
+> **주의 1**: `[agents.<id>]` nested 구조는 `~/.codex/config.toml`(global config)의 agent 정의용이며, standalone role file과 혼용하면 안 된다. standalone 파일에는 반드시 root-level `name`·`developer_instructions` 형식을 사용한다.
+
+> **주의 2**: `disabled_tools`는 `[mcp_servers.<id>]` 블록 하위에만 배치한다. root-level에 배치하면 Codex 0.121+ `RawAgentRoleFileToml`의 `deny_unknown_fields`에 걸려 role 전체가 reject된다. `disabled_tools`가 비어 있을 때는 `[mcp_servers.nx]` 블록 자체를 생략한다.
 
 **도메인 서브디렉터리 구조**: Codex 내부 `plugin/`·`agents/`·`install/` 서브디렉터리는 Codex 생태계가 `~/.codex/plugins/`·`~/.codex/agents/`·`~/.codex/config.toml` 3곳에 분리 설치되는 구조를 반영한다. 이 도메인 prefix는 flat 출력 규칙(§4 공통 규칙)과 직교하며 유지된다.
 

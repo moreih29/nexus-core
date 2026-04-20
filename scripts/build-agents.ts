@@ -72,6 +72,7 @@ export const CAPABILITY_MATRIX_PATH = join(ROOT, "assets/capability-matrix.yml")
 export const TOOL_NAME_MAP_PATH = join(ROOT, "assets/tools/tool-name-map.yml");
 
 const HARNESSES = ["claude", "opencode", "codex"] as const;
+const CODEX_MCP_NX_COMMAND = "nexus-mcp";
 
 // ---------------------------------------------------------------------------
 // Data shapes
@@ -780,6 +781,9 @@ function codexAgentToml(asset: AssetEntry, capMatrix: CapabilityMatrix, invocati
   if (sandbox_mode) lines.push(`sandbox_mode = ${JSON.stringify(sandbox_mode)}`);
 
   if (disabled_tools.length > 0) {
+    lines.push(``);
+    lines.push(`[mcp_servers.nx]`);
+    lines.push(`command = ${JSON.stringify(CODEX_MCP_NX_COMMAND)}`);
     lines.push(`disabled_tools = [${disabled_tools.map((t) => JSON.stringify(t)).join(", ")}]`);
   }
 
@@ -842,7 +846,7 @@ function codexConfigFragment(agents: AssetEntry[]): string {
     `# Merge this fragment into your codex config.toml`,
     ``,
     `[mcp_servers.nx]`,
-    `command = "nexus-mcp"`,
+    `command = ${JSON.stringify(CODEX_MCP_NX_COMMAND)}`,
     ``,
   ];
 
