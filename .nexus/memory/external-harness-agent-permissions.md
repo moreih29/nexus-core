@@ -152,6 +152,12 @@ prompts/<name>.md (frontmatter)
   sandbox_mode + [mcp_servers.nx] disabled_tools
 ```
 
+### nexus-core 히스토리
+
+- **v0.15.x**: `[agents.<id>]` nested 테이블 + `[agents.<id>.mcp_servers.nx] disabled_tools`
+- **v0.16.0**: standalone role file로 전환 시 `[mcp_servers.nx]` 블록을 실수로 drop하고 root-level `disabled_tools` 방출 → codex-cli 0.121의 `RawAgentRoleFileToml` `deny_unknown_fields`에 reject (Issue #48)
+- **v0.16.2**: standalone role file 구조 유지 + `[mcp_servers.nx] disabled_tools = [...]` 복원 (올바른 스키마)
+
 ### Caller 전파 — **De-facto (미문서화)**
 
 Codex 런타임이 MCP `tools/call` 요청의 `_meta` 필드에 `x-codex-turn-metadata` 객체 자동 삽입:
