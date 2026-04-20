@@ -4,6 +4,25 @@
 
 ---
 
+## [0.16.1] - 2026-04-20
+
+### Fixed
+
+- v0.16.0에서 `prompt-router` 번들이 런타임에 `assets/tools/tool-name-map.yml`을 consumer target 트리 상향 탐색으로 찾다가 실패해 `UserPromptSubmit` hook이 exit 1로 throw하던 regression ([#46](https://github.com/moreih29/nexus-core/issues/46)).
+  `scripts/build-hooks.ts:compileHandlers()`가 `prompt-router` entry에만 `tool-name-map.yml`의 `invocations` 섹션과 `assets/agents`·`assets/skills` 디렉토리 이름 배열을 JSON으로 parse해 `globalThis.__NEXUS_INLINE_INVOCATIONS__`·`__NEXUS_INLINE_RULE_TARGETS__`에 주입하고, `assets/hooks/prompt-router/handler.ts:loadInvocations()`·`loadValidRuleTargets()`가 이 globalThis 값을 우선 사용하도록 변경되었습니다. 기존 FS 상향 탐색 경로는 nexus-core source tree 내 dev 시나리오를 위해 fallback으로 유지됩니다.
+  영향: consumer plugin에서 `[run]`·`[plan]`·`[sync]`·`[d]`·`[m]`·`[rule]` tag dispatch가 모두 복구됩니다.
+
+### Added
+
+- `scripts/smoke/smoke-consumer.ts` — distribution-invariant smoke gate. `mkdtemp` 타깃에 `sync --harness=claude`를 실행한 뒤 `prompt-router`에 `[run]` / `[rule]` payload를 주입하여 `exit 0` + `<system-notice>` stdout을 assert합니다. `bun run smoke` aggregate 체인 끝에 추가되어 `validate.yml`·`publish-npm.yml` CI에서 자동 실행되며, source-tree 기반 기존 smoke가 놓치는 consumer-install 시나리오 class를 차단합니다.
+
+### Migration Notes
+
+- `bun add @moreih29/nexus-core@^0.16.1` / `npm i @moreih29/nexus-core@0.16.1`로 bump 후 `bun run sync`로 번들을 target에 재배포하세요.
+- v0.16.0은 `prompt-router`가 항상 throw하므로 **deprecate 권장**.
+
+---
+
 ## [0.16.0] - 2026-04-20
 
 ### BREAKING CHANGES

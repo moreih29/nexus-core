@@ -328,7 +328,35 @@ function compileHandlers(plans: PortabilityPlan[], hookIndex: Map<string, HookEn
     const entryFile = join(entryDir, `${hook.name}-entry.ts`);
 
     try {
-      const entryContent = [
+      // Build the entry lines array. For prompt-router, inline assets data that
+      // won't be available in a consumer target (#46: assets/ not present at runtime).
+      const lines: string[] = [];
+
+      if (hook.name === "prompt-router") {
+        // Inline invocations map from tool-name-map.yml so prompt-router bundle
+        // is self-contained — consumer targets have no assets/ directory (#46).
+        const toolNameMapRaw = readFileSync(TOOL_NAME_MAP_PATH, "utf-8");
+        const toolNameMapParsed = parseYaml(toolNameMapRaw) as { invocations?: unknown };
+        const invocationsJson = JSON.stringify(toolNameMapParsed.invocations ?? {});
+
+        // Inline rule targets (agents + skills directory names) for [rule] tag handling.
+        const agentsDir = join(ROOT, "assets/agents");
+        const skillsDir = join(ROOT, "assets/skills");
+        const agentNames = readdirSync(agentsDir, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name);
+        const skillNames = readdirSync(skillsDir, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name);
+        const ruleTargetsJson = JSON.stringify([...agentNames, ...skillNames]);
+
+        // Assign to globalThis before the handler import so the module reads
+        // these values at load time (cache check runs on first loadInvocations() call).
+        lines.push("globalThis.__NEXUS_INLINE_INVOCATIONS__ = " + invocationsJson + ";");
+        lines.push("globalThis.__NEXUS_INLINE_RULE_TARGETS__ = " + ruleTargetsJson + ";");
+      }
+
+      lines.push(
         `import handler from ${JSON.stringify(hook.handlerPath)};`,
         `import { readFileSync } from "node:fs";`,
         `async function main() {`,
@@ -344,7 +372,9 @@ function compileHandlers(plans: PortabilityPlan[], hookIndex: Map<string, HookEn
         `  () => process.exit(0),`,
         `  (err) => { process.stderr.write(String(err?.stack ?? err) + "\\n"); process.exit(1); }`,
         `);`,
-      ].join("\n") + "\n";
+      );
+
+      const entryContent = lines.join("\n") + "\n";
 
       writeFileSync(entryFile, entryContent);
 
