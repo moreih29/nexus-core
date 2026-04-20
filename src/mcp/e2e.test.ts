@@ -6,7 +6,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 
 const PROJECT_ROOT = process.cwd();
-const SERVER_DIST = path.join(PROJECT_ROOT, "dist", "mcp", "server.js");
+const SERVER_DIST = path.join(PROJECT_ROOT, "dist", "src", "mcp", "server.js");
 
 // ---------------------------------------------------------------------------
 // E2E: full session scenario — spawn server + JSON-RPC client

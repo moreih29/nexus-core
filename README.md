@@ -18,7 +18,10 @@
 
 ## Installation
 
+**요구사항: Node.js 22 이상** (`import ... with { type: "json" }` 구문이 Node 22에서 stable입니다.)
+
 ```bash
+node --version   # v22.0.0 이상 확인
 bun add -D @moreih29/nexus-core
 ```
 
@@ -60,6 +63,37 @@ git add . && git commit -m "Initial plugin scaffold"
 | [`docs/consuming/`](./docs/consuming/) | 컨슈머 구현 가이드 (Claude · OpenCode · Codex 설치 절차) |
 | [`docs/consuming/codex-lead-merge.md`](./docs/consuming/codex-lead-merge.md) | Codex AGENTS.md 수동 머지 절차 |
 | [`.nexus/context/architecture.md`](./.nexus/context/architecture.md) | 패키지 구조 · 빌드 파이프라인 · Lead vs Hook 책임 경계 |
+
+---
+
+## Consumer 통합 가이드
+
+### 서브패스 경유 정책
+
+`@moreih29/nexus-core`의 bare import(`import "@moreih29/nexus-core"`)는 의도적으로 비활성화되어 있습니다 (`"."` export = `null`). 모든 기능은 서브패스를 통해 접근해야 합니다.
+
+| 서브패스 | 노출 내용 |
+|---|---|
+| `@moreih29/nexus-core/hooks/opencode-mount` | `mountHooks` 함수 |
+| `@moreih29/nexus-core/hooks/runtime` | 런타임 유틸리티 |
+| `@moreih29/nexus-core/hooks/opencode-manifest` | OpenCode hook JSON manifest |
+
+### OpenCode 플러그인 thin-wrapper 예제
+
+OpenCode 플러그인을 구축하는 가장 간단한 패턴은 다음과 같습니다.
+
+```typescript
+import type { Plugin } from "@opencode-ai/plugin";
+import { mountHooks } from "@moreih29/nexus-core/hooks/opencode-mount";
+import manifest from "@moreih29/nexus-core/hooks/opencode-manifest" with { type: "json" };
+
+export const OpencodeNexus: Plugin = async (ctx) => mountHooks(ctx, manifest);
+```
+
+- `manifest`는 `./hooks/opencode-manifest` 서브패스를 통해 JSON으로 임포트합니다. Node 22의 `import ... with { type: "json" }` 구문이 필요합니다.
+- `mountHooks(ctx, manifest)`는 manifest에 정의된 훅을 OpenCode context에 등록합니다.
+
+전체 하네스별 통합 절차는 [`docs/plugin-guide.md`](./docs/plugin-guide.md)를 참조하세요.
 
 ---
 

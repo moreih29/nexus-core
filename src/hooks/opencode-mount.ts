@@ -9,6 +9,7 @@
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { updateJsonFileLocked } from "../shared/json-store.js";
 
 // ---------------------------------------------------------------------------
@@ -33,6 +34,23 @@ export interface OpenCodeHookManifest {
 }
 
 // ---------------------------------------------------------------------------
+// resolveManifestPath — handlerPath absolutizer
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve a manifest-relative handlerPath to an absolute filesystem path.
+ *
+ * The manifest JSON lives at dist/manifests/opencode-manifest.json.
+ * This module lives at dist/src/hooks/opencode-mount.js.
+ * We construct the manifest's URL relative to this module, then resolve
+ * the handlerPath relative to that manifest URL.
+ */
+function resolveManifestPath(relPath: string): string {
+  const manifestUrl = new URL("../../manifests/opencode-manifest.json", import.meta.url);
+  return fileURLToPath(new URL(relPath, manifestUrl));
+}
+
+// ---------------------------------------------------------------------------
 // mountHooks — primary export
 // ---------------------------------------------------------------------------
 
@@ -49,6 +67,11 @@ export function mountHooks(
   pluginCtx: { directory: string },
   manifest: OpenCodeHookManifest,
 ): Record<string, (...args: unknown[]) => Promise<void>> {
+  // Resolve all handlerPaths to absolute paths so spawn() works regardless of CWD.
+  const resolvedManifest: OpenCodeHookManifest = {
+    hooks: manifest.hooks.map((h) => ({ ...h, handlerPath: resolveManifestPath(h.handlerPath) })),
+  };
+
   // Buffer for additional_context produced by SessionStart / UserPromptSubmit hooks.
   // Flushed into the system prompt on each LLM call via chat.system.transform.
   const systemTransformBuffer: string[] = [];
@@ -67,7 +90,7 @@ export function mountHooks(
 
       await dispatchEvent(
         "SessionStart",
-        manifest,
+        resolvedManifest,
         {
           hook_event_name: "SessionStart" as const,
           session_id: sessionId,
@@ -88,7 +111,7 @@ export function mountHooks(
 
       await dispatchEvent(
         "UserPromptSubmit",
-        manifest,
+        resolvedManifest,
         {
           hook_event_name: "UserPromptSubmit" as const,
           session_id: sessionId,
@@ -113,7 +136,7 @@ export function mountHooks(
       if (isTask) {
         await dispatchEvent(
           "SubagentStart",
-          manifest,
+          resolvedManifest,
           {
             hook_event_name: "SubagentStart" as const,
             session_id: sessionId,
@@ -127,7 +150,7 @@ export function mountHooks(
       } else {
         await dispatchEvent(
           "PreToolUse",
-          manifest,
+          resolvedManifest,
           {
             hook_event_name: "PreToolUse" as const,
             session_id: sessionId,
@@ -164,7 +187,7 @@ export function mountHooks(
 
         await dispatchEvent(
           "SubagentStop",
-          manifest,
+          resolvedManifest,
           {
             hook_event_name: "SubagentStop" as const,
             session_id: sessionId,
@@ -179,7 +202,7 @@ export function mountHooks(
       } else {
         await dispatchEvent(
           "PostToolUse",
-          manifest,
+          resolvedManifest,
           {
             hook_event_name: "PostToolUse" as const,
             session_id: sessionId,

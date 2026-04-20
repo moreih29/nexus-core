@@ -4,11 +4,11 @@
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "outDir": "./dist",
+    "rootDir": "./",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
-    "rootDir": "./src"
+    "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "assets/hooks/**/handler.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

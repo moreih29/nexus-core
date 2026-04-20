@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createServer } from "./server.ts";
 
 const PROJECT_ROOT = process.cwd();
-const SERVER_DIST = join(PROJECT_ROOT, "dist", "mcp", "server.js");
+const SERVER_DIST = join(PROJECT_ROOT, "dist", "src", "mcp", "server.js");
 
 const EXPECTED_TOOLS = [
   "nx_artifact_write",

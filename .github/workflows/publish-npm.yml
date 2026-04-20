@@ -80,11 +80,38 @@ jobs:
           fi
           echo "Version match: $PKG_VERSION"
 
-      - name: Pack (dry-run verification)
-        run: npm pack --dry-run
+      - name: Pack
+        run: npm pack
+
+      - name: Assert tarball contents
+        run: |
+          TARBALL=$(ls *.tgz)
+          echo "Inspecting $TARBALL..."
+          tar -tzf "$TARBALL" | grep -q "^package/dist/scripts/cli.js$" || { echo "[FAIL] missing dist/scripts/cli.js in tarball"; exit 1; }
+          tar -tzf "$TARBALL" | grep -q "^package/dist/src/mcp/server.js$" || { echo "[FAIL] missing dist/src/mcp/server.js in tarball"; exit 1; }
+          tar -tzf "$TARBALL" | grep -q "^package/dist/src/hooks/opencode-mount.js$" || { echo "[FAIL] missing dist/src/hooks/opencode-mount.js"; exit 1; }
+          tar -tzf "$TARBALL" | grep -q "^package/dist/manifests/opencode-manifest.json$" || { echo "[FAIL] missing dist/manifests/opencode-manifest.json"; exit 1; }
+          if tar -tzf "$TARBALL" | grep -qE "^package/scripts/.*\.ts$"; then
+            echo "[FAIL] tarball still ships raw scripts/*.ts sources"; exit 1
+          fi
+          echo "[OK] tarball structure assertions passed"
+
+      - name: Install from pack + smoke test
+        run: |
+          TARBALL=$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)
+          SMOKE_DIR=$(mktemp -d)
+          cd "$SMOKE_DIR"
+          npm init -y > /dev/null
+          npm install "$TARBALL"
+          echo "--- nexus-core --help ---"
+          npx nexus-core --help
+          echo "--- import mountHooks ---"
+          node --input-type=module -e "import('@moreih29/nexus-core/hooks/opencode-mount').then(m => { if (typeof m.mountHooks !== 'function') { console.error('mountHooks not a function'); process.exit(1); } console.log('[OK] mountHooks import'); });"
+          echo "--- import manifest JSON ---"
+          node --input-type=module -e "import('@moreih29/nexus-core/hooks/opencode-manifest', { with: { type: 'json' }}).then(m => { const mf = m.default; if (!Array.isArray(mf.hooks)) { console.error('manifest.hooks not array'); process.exit(1); } console.log('[OK] manifest.hooks=', mf.hooks.length); });"
 
       - name: Publish to npm (OIDC Trusted Publishing)
         if: ${{ !inputs.dry_run }}
-        run: npm publish --provenance --access public
+        run: npm publish "$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)" --provenance --access public
         # No NODE_AUTH_TOKEN — OIDC via id-token:write permission above.
         # Trusted Publisher registered in npmjs.com for this repo+workflow.
