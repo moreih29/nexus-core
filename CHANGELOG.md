@@ -4,6 +4,39 @@
 
 ---
 
+## [0.15.1] - 2026-04-20
+
+### Fixed
+
+- `@moreih29/nexus-core@0.15.0` tarball의 fresh consumer install에서 `nexus-core sync --harness=<x>`가 FATAL로 실패하던 회귀 ([#34](https://github.com/moreih29/nexus-core/issues/34), [#35](https://github.com/moreih29/nexus-core/issues/35), [#36](https://github.com/moreih29/nexus-core/issues/36)).
+  consumer `sync`는 더 이상 `assets/hooks/*/handler.ts`를 재컴파일하지 않습니다. publish 시점에 `bun build --target node --format esm`으로 번들링된 self-contained `dist/hooks/<name>.js`와 `dist/manifests/<harness>-hooks.json`을 target 디렉터리로 단순 복사하는 `syncHooksToTarget()` 경로로 재설계되었습니다. handler의 `../../../src/...` import가 distribution universe에서 resolve 실패하던 근본 원인이 제거됩니다.
+- `compileHandlers`가 3 하네스 모두에서 excluded인 hook까지 compile 시도해 불필요한 `bun build` 호출과 WARN 노이즈를 발생시키던 문제 ([#35](https://github.com/moreih29/nexus-core/issues/35) 결함 #1).
+  이제 portability plan을 받아 `registeredIn.length===0`인 hook을 skip합니다.
+- `build-hooks`가 consumer install 시 `node_modules/@moreih29/nexus-core/dist/hooks/`로 쓰기를 시도하던 anti-pattern ([#35](https://github.com/moreih29/nexus-core/issues/35) 결함 #3).
+  authoring-time `buildHooks()`와 consumer-time `syncHooksToTarget()`이 분리되어 후자는 target 외부 쓰기가 0건입니다.
+- Claude `hooks/hooks.json`이 consumer target에 도달하지 않고 hookCommand 경로와 불일치하던 문제 ([#35](https://github.com/moreih29/nexus-core/issues/35) 결함 #4).
+  prebuilt `dist/manifests/claude-hooks.json` → `<target>/hooks/hooks.json`, `dist/hooks/*.js` → `<target>/dist/hooks/*.js` 복사로 `${CLAUDE_PLUGIN_ROOT}/dist/hooks/<name>.js` runtime 경로와 정합됩니다. Codex 동일.
+- Generator가 emit하던 `import type { AgentConfig } from "opencode"`가 존재하지 않는 npm 패키지를 가리켜 consumer `tsc --noEmit`이 10건 TS2307로 실패하던 문제 ([#36](https://github.com/moreih29/nexus-core/issues/36) Bug 1).
+  신규 `@moreih29/nexus-core/types` 서브패스에 nexus 내부 `AgentConfig` 타입을 정의·export하고, `scripts/build-agents.ts:611` generator가 이 경로로 import를 emit하도록 교체되었습니다.
+
+### Added
+
+- 신규 runtime subpath export `@moreih29/nexus-core/types` — `AgentConfig`, `PermissionMode` 타입 제공.
+  `package.json exports`에 `types` + `import` 조건부로 추가되어 consumer의 `tsc --noEmit` 및 ESM runtime 양쪽에서 resolve됩니다.
+- `docs/contract/harness-io.md` Claude·Codex 계약에 `hooks/hooks.json`·`dist/hooks/<name>.js` Managed 항목 명문화 ([#35](https://github.com/moreih29/nexus-core/issues/35) 결함 #5).
+  footnote로 "consumer sync는 재컴파일 금지, publish-time prebuilt의 단순 복사만" 원칙을 기록.
+- `.nexus/context/architecture.md`에 **Authoring vs Distribution universe 경계** 절 신설 ([#37](https://github.com/moreih29/nexus-core/issues/37) proposal #2).
+  동일 클래스의 회귀가 재발하지 않도록 경계·원칙·사례(`../../../src/...`·`"opencode"` 패키지명)를 인라인 기록.
+- `validate.yml`·`publish-npm.yml`에 **Distribution-invariant consumer sync smoke** 스텝 추가 ([#37](https://github.com/moreih29/nexus-core/issues/37)).
+  repo 외부 임시 디렉터리에 `npm pack` tarball을 install하고 3 하네스 non-dry-run `sync` + OpenCode `tsc --noEmit`을 실행합니다. authoring 트리의 sibling `src/`·`scripts/`에 우연히 resolve되던 경로가 distribution에서 실패하는 회귀는 publish 전 스텝에서 차단됩니다.
+
+### Migration Notes
+
+- `bun add @moreih29/nexus-core@^0.15.1`로 단순 bump. breaking 없음.
+- v0.15.0은 consumer full sync가 동작하지 않아 **deprecate 권장**. v0.14.1은 계속 사용 가능하나 v0.15 계약 갱신 대상이면 v0.15.1로 직행.
+
+---
+
 ## [0.14.1] - 2026-04-20
 
 ### Fixed
