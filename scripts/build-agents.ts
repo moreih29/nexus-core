@@ -59,13 +59,14 @@ import { execSync } from "node:child_process";
 import { parse as parseYaml } from "yaml";
 import { expandInvocations } from "../src/shared/invocations.js";
 import type { InvocationsMap, Harness } from "../src/shared/invocations.js";
+import { findPackageRoot } from "../src/shared/package-root.js";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-export const ROOT = resolve(__dirname, "..");
+export const ROOT = findPackageRoot(__dirname);
 export const AGENTS_DIR = join(ROOT, "assets/agents");
 export const SKILLS_DIR = join(ROOT, "assets/skills");
 export const CAPABILITY_MATRIX_PATH = join(ROOT, "assets/capability-matrix.yml");

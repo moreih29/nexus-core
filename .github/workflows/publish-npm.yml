@@ -109,6 +109,16 @@ jobs:
           node --input-type=module -e "import('@moreih29/nexus-core/hooks/opencode-mount').then(m => { if (typeof m.mountHooks !== 'function') { console.error('mountHooks not a function'); process.exit(1); } console.log('[OK] mountHooks import'); });"
           echo "--- import manifest JSON ---"
           node --input-type=module -e "import('@moreih29/nexus-core/hooks/opencode-manifest', { with: { type: 'json' }}).then(m => { const mf = m.default; if (!Array.isArray(mf.hooks)) { console.error('manifest.hooks not array'); process.exit(1); } console.log('[OK] manifest.hooks=', mf.hooks.length); });"
+          echo "--- sync --dry-run (asset resolution exercise) ---"
+          npx nexus-core sync --harness=claude --target=./ --dry-run
+          echo "--- list (asset count verification) ---"
+          AGENTS_LINE=$(npx nexus-core list | grep -E "^Agents \(" || true)
+          echo "$AGENTS_LINE"
+          if ! echo "$AGENTS_LINE" | grep -qE "^Agents \([1-9]"; then
+            echo "[FAIL] nexus-core list reported 0 agents — asset resolution likely broken"
+            exit 1
+          fi
+          echo "[OK] list reports agents"
 
       - name: Publish to npm (OIDC Trusted Publishing)
         if: ${{ !inputs.dry_run }}

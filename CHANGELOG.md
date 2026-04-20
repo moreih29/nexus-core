@@ -4,6 +4,28 @@
 
 ---
 
+## [0.14.1] - 2026-04-20
+
+### Fixed
+
+- 컴파일된 `dist/scripts/*.js` 의 ROOT 해결 로직이 dist 디렉토리를 가리켜 `assets/capability-matrix.yml` 접근이 실패하던 문제 ([#28](https://github.com/moreih29/nexus-core/issues/28)).
+  `src/shared/package-root.ts` 신설 — `findPackageRoot()` 헬퍼가 dirname 상향 탐색으로 첫 `package.json` 을 찾아 반환하여 dev·prod 경로 비대칭을 해소했습니다.
+  `scripts/cli.ts`, `scripts/build-agents.ts`, `scripts/build-hooks.ts` 세 파일이 이 헬퍼 호출로 전환되었습니다.
+- `nexus-core sync --harness=<claude|codex|opencode>` 실행 시 `[build-agents] capability-matrix.yml not found at: <pkg>/dist/assets/capability-matrix.yml` 오류로 실패하던 문제 복구.
+- `nexus-core list` 가 silent 0 결과를 반환하던 문제 복구.
+
+### Added
+
+- CI smoke 확장 — `publish-npm.yml` · `validate.yml` 의 "Install from pack + smoke test" 스텝에 두 검증 추가:
+  - `nexus-core sync --harness=claude --target=./ --dry-run` exit 0 — 실제 asset 로드 경로 exercise.
+  - `nexus-core list` stdout의 `^Agents \([1-9]` 패턴 매치 — silent 빈 결과 탐지.
+
+### Migration Notes
+
+- `bun add @moreih29/nexus-core@^0.14.1` 로 단순 bump. 소스·설정 변경 불필요. breaking 없음.
+
+---
+
 ## [0.14.0] - 2026-04-20
 
 ### Fixed
@@ -96,4 +118,5 @@ export const OpencodeNexus: Plugin = async (ctx) => mountHooks(ctx, manifest);
 
 ---
 
+[0.14.1]: https://github.com/moreih29/nexus-core/releases/tag/v0.14.1
 [0.14.0]: https://github.com/moreih29/nexus-core/releases/tag/v0.14.0

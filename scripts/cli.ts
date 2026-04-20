@@ -23,13 +23,14 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import { findPackageRoot } from "../src/shared/package-root.js";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-export const ROOT = resolve(__dirname, "..");
+export const ROOT = findPackageRoot(__dirname);
 export const ASSETS_DIR = join(ROOT, "assets");
 
 // ---------------------------------------------------------------------------
