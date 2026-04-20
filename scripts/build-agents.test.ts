@@ -34,6 +34,7 @@ import {
   resolveOpencodePermissions,
   resolveCodexConfig,
   resolveModel,
+  validateClaudeModel,
   buildForClaude,
   buildForOpencode,
   buildForCodex,
@@ -105,9 +106,9 @@ function minimalCapMatrix(): CapabilityMatrix {
       },
     },
     model_tier: {
-      high: { claude: "claude-opus-4", codex: "gpt-5.4", opencode: null },
-      standard: { claude: "claude-sonnet-4", codex: "gpt-5.3-codex", opencode: null },
-      low: { claude: "claude-haiku-4", codex: "gpt-5.4-mini", opencode: null },
+      high: { claude: "opus", codex: "gpt-5.4", opencode: null },
+      standard: { claude: "sonnet", codex: "gpt-5.3-codex", opencode: null },
+      low: { claude: "haiku", codex: "gpt-5.4-mini", opencode: null },
     },
   };
 }
@@ -449,9 +450,9 @@ describe("Scenario 2 — Capability mapping", () => {
     expect(config.disabled_tools).toContain("nx_task_add");
   });
 
-  test("resolveModel: high tier → claude-opus-4 for claude", () => {
+  test("resolveModel: high tier → opus alias for claude", () => {
     const model = resolveModel("high", "claude", capMatrix);
-    expect(model).toBe("claude-opus-4");
+    expect(model).toBe("opus");
   });
 
   test("resolveModel: standard tier → null for opencode (inherit user config)", () => {
@@ -462,6 +463,32 @@ describe("Scenario 2 — Capability mapping", () => {
   test("resolveModel: unknown tier → null", () => {
     const model = resolveModel("unknown_tier", "claude", capMatrix);
     expect(model).toBeNull();
+  });
+
+  test("validateClaudeModel: aliases pass", () => {
+    expect(() => validateClaudeModel("opus", "architect")).not.toThrow();
+    expect(() => validateClaudeModel("sonnet", "engineer")).not.toThrow();
+    expect(() => validateClaudeModel("haiku", "researcher")).not.toThrow();
+  });
+
+  test("validateClaudeModel: dated IDs with minor version pass", () => {
+    expect(() => validateClaudeModel("claude-opus-4-7", "architect")).not.toThrow();
+    expect(() => validateClaudeModel("claude-sonnet-4-6", "engineer")).not.toThrow();
+    expect(() => validateClaudeModel("claude-haiku-4-5-20251001", "writer")).not.toThrow();
+  });
+
+  test("validateClaudeModel: stale IDs without minor version throw", () => {
+    expect(() => validateClaudeModel("claude-opus-4", "architect")).toThrow(/Invalid model/);
+    expect(() => validateClaudeModel("claude-sonnet-4", "engineer")).toThrow(/Invalid model/);
+    expect(() => validateClaudeModel("claude-haiku-4", "writer")).toThrow(/Invalid model/);
+  });
+
+  test("validateClaudeModel: null/undefined pass", () => {
+    expect(() => validateClaudeModel(null, "architect")).not.toThrow();
+  });
+
+  test("validateClaudeModel: arbitrary string throws", () => {
+    expect(() => validateClaudeModel("gpt-5", "architect")).toThrow(/Invalid model/);
   });
 });
 
@@ -505,7 +532,7 @@ describe("Scenario 3 — Manifest file content", () => {
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
     const content = readFileSync(join(tmp, "agents", "sample-architect.md"), "utf-8");
-    expect(content).toContain("model: claude-opus-4");
+    expect(content).toContain("model: opus");
   });
 
   test("Claude: skill SKILL.md is created with description and body", () => {

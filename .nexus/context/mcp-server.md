@@ -199,7 +199,7 @@
 
 | 함수 | 동작 | 소스 |
 |---|---|---|
-| `getSessionId(cwd?)` | NEXUS_SESSION_ID env 우선, 없으면 `<branch>-<pid>` | paths.ts |
+| `getSessionId(cwd?)` | NEXUS_SESSION_ID env 우선 → `.nexus/state/runtime/by-ppid/<ppid>.json` (mtime 캐싱) → `<branch>-<pid>` → `unknown-<pid>` | paths.ts |
 | `getSessionRoot(cwd?)` | `.nexus/state/<session_id>/` 경로 반환 | paths.ts |
 
 ### 상태 파일 배치

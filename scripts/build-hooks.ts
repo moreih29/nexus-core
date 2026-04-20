@@ -356,6 +356,14 @@ function compileHandlers(plans: PortabilityPlan[], hookIndex: Map<string, HookEn
         lines.push("globalThis.__NEXUS_INLINE_RULE_TARGETS__ = " + ruleTargetsJson + ";");
       }
 
+      if (hook.name === "agent-bootstrap") {
+        const agentsDir = join(ROOT, "assets/agents");
+        const roleNames = readdirSync(agentsDir, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name);
+        lines.push("globalThis.__NEXUS_INLINE_AGENT_ROLES__ = " + JSON.stringify(roleNames) + ";");
+      }
+
       lines.push(
         `import handler from ${JSON.stringify(hook.handlerPath)};`,
         `import { readFileSync } from "node:fs";`,

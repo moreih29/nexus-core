@@ -1,18 +1,18 @@
 import type { HookHandler } from "../../../src/hooks/types.js";
+import { updateJsonFileLocked } from "../../../src/shared/json-store.js";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const CORE_INDEX_SIZE_LIMIT = 2 * 1024; // 2KB
 
 function loadValidRoles(cwd: string): string[] {
+  const inlined = (globalThis as unknown as { __NEXUS_INLINE_AGENT_ROLES__?: string[] }).__NEXUS_INLINE_AGENT_ROLES__;
+  if (Array.isArray(inlined)) return inlined;
   const agentsDir = join(cwd, "assets/agents");
-  const roles: string[] = [];
-  if (existsSync(agentsDir)) {
-    for (const entry of readdirSync(agentsDir, { withFileTypes: true })) {
-      if (entry.isDirectory()) roles.push(entry.name);
-    }
-  }
-  return roles;
+  if (!existsSync(agentsDir)) return [];
+  return readdirSync(agentsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
 }
 
 function readFirstLine(path: string): string {
@@ -94,6 +94,19 @@ const handler: HookHandler = async (input) => {
   // unregistered role: silent skip
   const validRoles = loadValidRoles(cwd);
   if (!validRoles.includes(agent_type)) return;
+
+  const trackerPath = join(cwd, ".nexus/state", session_id, "agent-tracker.json");
+  await updateJsonFileLocked(trackerPath, [], (tracker: Array<Record<string, unknown>>) => {
+    const list = Array.isArray(tracker) ? tracker : [];
+    if (list.find((e) => e["agent_id"] === agent_id)) return list;
+    list.push({
+      agent_id,
+      agent_type,
+      started_at: new Date().toISOString(),
+      status: "running",
+    });
+    return list;
+  });
 
   const parts: string[] = [];
 
