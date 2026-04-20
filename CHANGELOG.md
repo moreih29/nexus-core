@@ -18,9 +18,8 @@
 ### Added
 
 - CI smoke 확장 — `publish-npm.yml` · `validate.yml` 의 "Install from pack + smoke test" 스텝에 두 검증 추가:
-  - `./node_modules/.bin/nexus-core sync --harness=claude --target=./ --dry-run` exit 0 — 실제 asset 로드 경로 exercise.
-  - `./node_modules/.bin/nexus-core list` stdout의 `^Agents \([1-9]` 패턴 매치 — silent 빈 결과 탐지.
-  - `npx nexus-core` 대신 직접 bin 경로 사용 — `npx` 는 scoped 패키지(`@moreih29/nexus-core`)의 `nexus-core` bin 이름을 npm 레지스트리의 동명 public 패키지로 잘못 해석하는 문제가 있었습니다 (v0.14.0 CI가 이 false positive 로 통과).
+  - `npx nexus-core sync --harness=claude --target=./ --dry-run` exit 0 — 실제 asset 로드 경로 exercise.
+  - `npx nexus-core list` stdout의 `^Agents \([1-9]` 패턴 매치 — silent 빈 결과 탐지.
 
 ### Migration Notes
 
