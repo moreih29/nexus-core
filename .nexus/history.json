@@ -5584,6 +5584,113 @@
           "created_at": "2026-04-20T01:58:59.862Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-20T03:26:15.651Z",
+      "branch": "fix/v0.14.1-asset-root-resolution",
+      "plan": {
+        "id": 16,
+        "topic": "v0.14.1 — asset root resolution 버그 복구 (이슈 #28, claude/codex harness 마이그레이션 차단)",
+        "issues": [
+          {
+            "id": 1,
+            "title": "scripts/*.ts 의 ROOT 해식 패턴 교체 — dev/prod 대칭적 패키지 루트 탐색으로 통일",
+            "status": "decided",
+            "decision": "Option M(package.json 상향 탐색) 채택. 신설 헬퍼 `src/shared/package-root.ts` 의 `findPackageRoot(start)` 함수가 주어진 디렉토리에서 위로 walk하며 첫 번째 package.json을 찾아 반환. 3개 파일(scripts/cli.ts:32, scripts/build-agents.ts:68, scripts/build-hooks.ts:35)의 `resolve(__dirname, \"..\")` 를 `findPackageRoot(__dirname)` 호출로 교체. 근거: dev 소스 `<repo>/scripts/` 에서 walk → `<repo>` (package.json 있음), prod 컴파일 `<pkg>/dist/scripts/` 에서 walk → `<pkg>/dist` (없음) → `<pkg>` (있음) — 두 경로 모두 올바른 패키지 루트 반환. 탈락: A(`../..`)는 dev 실행 단계 깨짐, B(assets → dist/ 복사)는 tarball 크기·exports 재설계 비용, C(문자열 매칭)는 fragile, D(import.meta.resolve 자기 참조)는 dev에서 self-reference 해결 불확실, E(env 기반 단일 진실원)는 리팩터 범위 과다.</decision>\n<parameter name=\"how_agents\">[\"architect\"]",
+            "how_summary": {
+              "architect": "Lead 분석. Option M은 레거시 코드 수정 최소(3줄)·dev/prod 구조 다름 감지 로직 생략·테스트 영향도 0에 수렴. build-agents.test.ts 맰·build-hooks.test.ts는 자체 fixture 구조를 갖으므로 ROOT 표현 변경에 무관함(들 다 자체 resolve(fileURLToPath(import.meta.url), '../..') 사용)."
+            }
+          },
+          {
+            "id": 2,
+            "title": "CI smoke 확장 — sync/list 실제 호출로 이 class 회귀 차단",
+            "status": "decided",
+            "decision": "validate.yml·publish-npm.yml의 \"Install from pack + smoke test\" 스텝에 두 줄 추가: (a) `npx nexus-core sync --harness=claude --target=./ --dry-run` 실행 후 exit 0 확인 (실제로 capability-matrix.yml 로드 경로 exercise), (b) `npx nexus-core list` 실행 후 stdout이 `Agents (N):` 패턴 포함하고 N>0 확인 (silent 0 결과 탐지). 이 두 단계가 있었으면 #28 class 회귀를 publish 전 차단할 수 있었음.</decision>\n</invoke>"
+          },
+          {
+            "id": 3,
+            "title": "v0.14.1 patch 릴리즈 (CHANGELOG + commit + tag + publish)",
+            "status": "decided",
+            "decision": "v0.14.1 patch 릴리즈. package.json version 0.14.0 → 0.14.1, CHANGELOG.md에 v0.14.1 섹션(Fixed #28 + CI 가드 보강). breaking 없음. fix/v0.14.1-asset-root-resolution 브랜치 → PR → validate 통과 → squash merge → v0.14.1 태그 push → publish-npm.yml OIDC 자동 발행.</decision>\n</invoke>"
+          }
+        ],
+        "research_summary": "이슈 #28 실측 재현: `node <node_modules>/@moreih29/nexus-core/dist/scripts/cli.js sync --harness=claude --target=./ --dry-run` → `[build-agents] capability-matrix.yml not found at: <pkg>/dist/assets/capability-matrix.yml`. 실제 자산은 `<pkg>/assets/capability-matrix.yml` 에 위치. 원인: scripts/cli.ts:32, scripts/build-agents.ts:68, scripts/build-hooks.ts:35 모두 `resolve(__dirname, \"..\")`로 ROOT 도출. dev 실행 시 `<repo>/scripts/../ = <repo>` ✓ 지만 컴파일 후 `<pkg>/dist/scripts/../ = <pkg>/dist` ✗. files:[\"assets\",\"docs\",\"dist\"] 배치로 tarball 내 assets가 dist의 sibling이므로 dist 기준에서 접근 불가. OpenCode 플러그인은 import JSON + import function 경로라 파일시스템 asset에 안 닿아 증상 미발생 (구조적 차이). v0.14.0 CI smoke는 `npx nexus-core --help`만 실행해 이 class를 탐지 못함. `nexus-core list`도 silent 0 결과(exit 0)로 실패를 숨김 — 검증 로직 자체에 구멍. 수정 옵션 5종(A~E) 중 package.json 상향 탐색(Option M 신규)이 dev/prod 대칭 + 경로 문자열 매칭 fragility 회피로 가장 안정.",
+        "created_at": "2026-04-20T03:17:51.189Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "ROOT 해결 헬퍼 신설 + scripts 3파일 교체 + v0.14.1 버전 범프",
+          "context": "scripts/cli.ts:32, scripts/build-agents.ts:68, scripts/build-hooks.ts:35 모두 `resolve(__dirname, \"..\")` 사용으로 컴파일 후 ROOT가 dist/를 가리킴. findPackageRoot 헬퍼로 package.json 탐색하여 dev/prod 대칭 해결.",
+          "approach": "(1) src/shared/package-root.ts 신설: findPackageRoot(startDir: string): string 함수 — startDir에서 dirname 상향 탐색하며 package.json 존재 확인, 최상위 도달 시 throw. (2) scripts/cli.ts·build-agents.ts·build-hooks.ts에서 `import { findPackageRoot } from \"../src/shared/package-root.js\"` 추가, `export const ROOT = resolve(__dirname, \"..\")` → `export const ROOT = findPackageRoot(__dirname)` (필요 시 const만 교체). (3) package.json version 0.14.0 → 0.14.1. (4) bun run build + test + typecheck 확인.",
+          "acceptance": "findPackageRoot 헬퍼 작성·export됨. 3개 scripts 파일의 ROOT가 헬퍼 호출로 교체. `bun run build` 성공, `bun run test` 전부 통과, `bun run typecheck` 통과. package.json version=0.14.1. dist/scripts/cli.js 실행 시 ROOT가 package root를 가리킴(컴파일 후 console.log(ROOT) 또는 sync --dry-run 성공으로 간접 확인).",
+          "risk": "findPackageRoot가 monorepo 환경(상위에 또 다른 package.json)에서 잘못된 상위 패키지 루트를 찾을 가능성 — 하지만 start가 자기 패키지 scripts/에서 출발하므로 먼저 만나는 package.json이 항상 자기 것. pnpm/workspace의 .pnp 환경에서는 node_modules 구조가 다를 수 있으나 npm 표준 설치 범위 내 안전.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-20T03:19:05.628Z"
+        },
+        {
+          "id": 2,
+          "title": "CI smoke 확장 — sync --dry-run + list 검증 추가",
+          "context": "v0.14.0 CI는 `nexus-core --help`만 smoke로 돌려 이슈 #28 class를 놓침. sync·list 실제 호출로 asset 접근 경로를 exercise 하는 단계 추가.",
+          "approach": "publish-npm.yml·validate.yml의 \"Install from pack + smoke test\" 스텝 내부에 두 줄 추가: (a) `npx nexus-core sync --harness=claude --target=./ --dry-run` exit 0 확인 — 실제 capability-matrix.yml·agents·skills 로드 경로 exercise. (b) `npx nexus-core list | grep -qE \"^Agents \\\\([1-9]\"` — stdout에서 Agents 수>0 확인으로 silent 0 결과 탐지.",
+          "acceptance": "두 워크플로우 파일에 sync·list 검증 스텝 추가. 로컬 리허설에서 v0.14.0 tarball에 이 스텝 주입 시 실패(회귀 탐지 확인), v0.14.1 빌드 tarball에 주입 시 통과.",
+          "risk": "`list` stdout 형식(`Agents (N):`)이 향후 변경 시 grep 패턴 조정 필요. sync --dry-run이 실제로 capability-matrix 로드 경로를 타는지 재확인.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-20T03:19:12.966Z"
+        },
+        {
+          "id": 3,
+          "title": "E2E tester smoke — v0.14.1 tarball fresh install + sync/list 런타임 검증",
+          "context": "T1+T2 집행 후 실제 소비자 시나리오(npm install → sync/list/mountHooks)로 회귀 재검증. 이슈 #28 class 부재 확인.",
+          "approach": "(1) bun run build 성공. (2) npm pack + 격리 /tmp 디렉토리에 npm install. (3) `node node_modules/@moreih29/nexus-core/dist/scripts/cli.js sync --harness=claude --target=./ --dry-run` exit 0 + [build-agents] Loaded >0 agents 출력 확인. (4) 동일 직접 경로 cli.js list → stdout에 Agents (>0), Skills (>0), Hooks (>0) 포함 확인. (5) mountHooks dynamic import 여전히 동작 확인(기존 검증 유지). (6) capability-matrix.yml not found 에러 부재 확인.",
+          "acceptance": "위 6단계 모두 PASS. 각 단계 exit code·stdout 요약 보고.",
+          "risk": "로컬 Node 버전 22+ 필수. 임시 디렉토리 격리로 외부 영향 없음.",
+          "status": "completed",
+          "deps": [
+            1,
+            2
+          ],
+          "plan_issue": 1,
+          "owner": "tester",
+          "created_at": "2026-04-20T03:19:20.779Z"
+        },
+        {
+          "id": 4,
+          "title": "CHANGELOG.md v0.14.1 섹션 추가",
+          "context": "소비자가 v0.14.0 → v0.14.1 마이그레이션 시 단순 bump로 복구 가능함을 알리기 위한 릴리즈 노트.",
+          "approach": "CHANGELOG.md 파일 상단(v0.14.0 섹션 앞)에 `## [0.14.1] - 2026-04-20` 추가. 카테고리: Fixed(scripts 컴파일 후 ROOT가 dist/를 가리켜 assets/ 접근 실패하던 문제 해결; findPackageRoot 헬퍼로 package.json 상향 탐색 전환), Added(CI smoke에 sync --dry-run과 list 호출 단계 추가로 유사 회귀 사전 차단). 이슈 링크 [#28](https://github.com/moreih29/nexus-core/issues/28). 파일 하단 참조 링크에 `[0.14.1]: ...v0.14.1` 추가.",
+          "acceptance": "v0.14.1 섹션이 Fixed·Added 카테고리로 정리. 이슈 #28 링크 포함. 참조 링크 추가. v0.14.0 섹션은 건드리지 않음.",
+          "risk": "날짜(2026-04-20)가 v0.14.0과 동일하면 혼동 가능 — 실제 publish 시점에 맞춰 조정 필요.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-20T03:19:28.236Z"
+        },
+        {
+          "id": 5,
+          "title": "CHANGELOG 검증 (reviewer)",
+          "context": "writer의 v0.14.1 섹션이 실제 코드 변경·이슈 #28 내용과 정합한지 검증.",
+          "approach": "(1) CHANGELOG v0.14.1 Fixed 항목이 실제 커밋 diff(T1)와 대조 — 헬퍼 이름·3개 scripts 파일 교체 사실 일치. (2) Added 항목이 T2 워크플로우 diff와 일치. (3) 이슈 #28 링크 URL 정확. (4) 날짜·참조 링크 포맷 일관성.",
+          "acceptance": "PASS/FAIL 보고. 불일치 발견 시 구체적 diff 제안.",
+          "status": "completed",
+          "deps": [
+            4
+          ],
+          "plan_issue": 3,
+          "owner": "reviewer",
+          "created_at": "2026-04-20T03:19:32.175Z"
+        }
+      ]
     }
   ]
 }

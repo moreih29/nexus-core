@@ -22,17 +22,18 @@ import {
   mkdirSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { parse as parseYaml } from "yaml";
+import { findPackageRoot } from "../src/shared/package-root.js";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, "..");
+const ROOT = findPackageRoot(__dirname);
 const HOOKS_DIR = join(ROOT, "assets/hooks");
 const CAPABILITY_MATRIX_PATH = join(HOOKS_DIR, "capability-matrix.yml");
 const TOOL_NAME_MAP_PATH = join(ROOT, "assets/tools/tool-name-map.yml");
