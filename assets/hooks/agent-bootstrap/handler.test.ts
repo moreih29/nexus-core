@@ -7,7 +7,7 @@
  * (3) resume_count > 0 → skip (not fresh)
  * (4) .nexus/rules/<role>.md absent → core index only
  * (5) core index > 2KB → truncated to recent-modified N entries
- * (6) tracker write side-effect absent (agent-tracker.json unchanged before/after)
+ * (6) tracker append: new entry created; same agent_id is idempotent (no duplicate)
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
@@ -256,43 +256,44 @@ describe("scenario 5: 2KB truncation of core index", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Scenario (6): no tracker write side-effects
+// Scenario (6): tracker append
 // ---------------------------------------------------------------------------
 
-describe("scenario 6: handler produces no file write side-effects", () => {
+describe("scenario 6: tracker append", () => {
   let cleanup: () => void;
 
   afterAll(() => cleanup?.());
 
-  test("agent-tracker.json is not created or modified by handler", async () => {
+  test("agent-tracker.json is created with running entry for fresh agent", async () => {
     const { cwd, sessionId, cleanup: c } = makeFixture({ withTracker: undefined });
     cleanup = c;
 
     const trackerPath = join(cwd, ".nexus/state", sessionId, "agent-tracker.json");
 
-    // Tracker must not exist before the call
     expect(existsSync(trackerPath)).toBe(false);
 
-    await handler(makeInput(cwd, sessionId, "architect"));
+    await handler(makeInput(cwd, sessionId, "architect", "agent-001"));
 
-    // Tracker must still not exist after the call
-    expect(existsSync(trackerPath)).toBe(false);
+    expect(existsSync(trackerPath)).toBe(true);
+    const tracker = JSON.parse(readFileSync(trackerPath, "utf-8")) as Array<Record<string, unknown>>;
+    expect(tracker).toHaveLength(1);
+    expect(tracker[0]["agent_id"]).toBe("agent-001");
+    expect(tracker[0]["agent_type"]).toBe("architect");
+    expect(tracker[0]["status"]).toBe("running");
+    expect(typeof tracker[0]["started_at"]).toBe("string");
   });
 
-  test("pre-existing agent-tracker.json is not modified by handler", async () => {
-    const agentId = "agent-side-effect";
-    const { cwd, sessionId, cleanup: c } = makeFixture({
-      withTracker: { agentId, resumeCount: 0 },
-    });
+  test("duplicate agent_id on second call does not create a second entry", async () => {
+    const { cwd, sessionId, cleanup: c } = makeFixture({ withTracker: undefined });
     cleanup = c;
 
     const trackerPath = join(cwd, ".nexus/state", sessionId, "agent-tracker.json");
-    const before = readFileSync(trackerPath, "utf-8");
 
-    await handler(makeInput(cwd, sessionId, "architect", agentId));
+    await handler(makeInput(cwd, sessionId, "architect", "agent-001"));
+    await handler(makeInput(cwd, sessionId, "architect", "agent-001"));
 
-    const after = readFileSync(trackerPath, "utf-8");
-    expect(after).toBe(before);
+    const tracker = JSON.parse(readFileSync(trackerPath, "utf-8")) as Array<Record<string, unknown>>;
+    expect(tracker.filter((e) => e["agent_id"] === "agent-001")).toHaveLength(1);
   });
 });
 

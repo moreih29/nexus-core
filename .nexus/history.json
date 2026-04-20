@@ -6385,6 +6385,147 @@
           "created_at": "2026-04-20T08:28:30.055Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-20T12:56:32.053Z",
+      "branch": "fix/issue-50-v0.17.0",
+      "plan": {
+        "id": 21,
+        "topic": "nexus-core v0.17.0 — 이슈 #50 4건 회귀 수정 (session_id wiring, agent-bootstrap assets, tracker populate, capability-matrix model IDs)",
+        "issues": [
+          {
+            "id": 1,
+            "title": "session_id wiring — parent-PID keyed side-channel 설계 및 paths.ts resolveSessionId 확장",
+            "status": "decided",
+            "decision": "**선정: parent-PID keyed side-channel.**\n\n구체안:\n- session-init hook(SessionStart event)에서 `.nexus/state/runtime/by-ppid/<process.ppid>.json` 작성 — 내용 `{session_id, updated_at, cwd}`. ppid는 해당 harness 프로세스(Claude Code 등)의 PID.\n- `src/shared/paths.ts`의 `getSessionId(cwd?)` 우선순위 변경: (1) `NEXUS_SESSION_ID` env (기존), (2) `.nexus/state/runtime/by-ppid/<process.ppid>.json` 읽기 **[신규]**, (3) `<branch>-<pid>` (기존), (4) `unknown-<pid>` (기존).\n- mtime 캐싱으로 per-request IO 최소화 (재호출 시 파일 mtime 변경 없으면 캐시된 값 사용).\n- 병렬 하니스 세션 2개가 같은 cwd에 있어도 ppid가 다르므로 파일도 다름 → race-free.\n\n**반려 대안:**\n- Option 1 (`CLAUDE_SESSION_ID` env 기대): 웹조사 결과 Claude/OpenCode 둘 다 feature request open(#25642, #15117), Codex는 hook 자체가 experimental. upstream 대기 불가.\n- Option 2 (MCP tool schema에 session_id param): LLM이 session_id를 알 공식 채널 없음 → LLM이 잘못된 id 넘기면 타 세션 상태 훼손. 신뢰 경계가 LLM까지 내려감. 기각.\n- Option 3 (`.nexus/state/current.json` 단일 전역): 병렬 세션 2개가 같은 cwd에서 last-writer-wins. 전역 가변 상태 → race. 기각.\n\n**엣지 케이스 대응:**\n- tmux/direnv 등 shell wrapper 밑에서 실행되어도 ppid 일관성 유지(wrapper도 같은 harness 인스턴스에 대응).\n- Codex hook off-by-default 환경: side-channel 파일이 없으면 `<branch>-<pid>` fallback. graceful degradation.\n\n**파일 구조:**\n`.nexus/state/runtime/by-ppid/<ppid>.json` — runtime/ 하위 격리로 기존 `<session_id>/` 디렉터리와 섞이지 않음."
+          },
+          {
+            "id": 2,
+            "title": "agent-bootstrap loadValidRoles — assets/agents FS lookup 제거 및 빌드타임 inline 주입",
+            "status": "decided",
+            "decision": "**선정: prompt-router의 빌드타임 inline 패턴을 agent-bootstrap에 확장.**\n\n구체안:\n- `scripts/build-hooks.ts:compileHandlers()` (335-356줄 근방) 의 entry-specific inline 주입 블록에 `agent-bootstrap` 케이스 추가.\n- 주입 변수: `globalThis.__NEXUS_INLINE_AGENT_ROLES__: string[]` — `assets/agents/<role>/body.md` 존재 디렉터리 이름 배열 (빌드타임 스캔).\n- `assets/hooks/agent-bootstrap/handler.ts`의 `loadValidRoles(cwd)` 교체:\n  ```\n  const inlined = (globalThis as any).__NEXUS_INLINE_AGENT_ROLES__;\n  if (inlined) return inlined;\n  // FS fallback: nexus-core repo dev-only\n  ```\n- 추가 audit: 모든 `assets/hooks/*/handler.ts`에서 `join(cwd, \"assets/...\")` 패턴 grep → 남아있으면 동일 inline 패턴 적용.\n\n**반려 대안:**\n- consumer 측에 assets/ 심볼릭 링크 요구: 배포 표면 오염. 기각.\n- runtime discovery (node_modules 탐색): consumer가 monorepo/pnpm일 때 경로 파편화. 기각.\n- inline 없이 빈 배열 fallback로 조용히 skip 유지: 현재 버그 그대로. 기각.\n\n**왜 v0.16.1 패턴 재사용인가:** 이미 `prompt-router`에서 검증된 안정 패턴. consumer 번들 self-contained 보장이 #46에서 증명됨. 동일 class 버그에 동일 해법."
+          },
+          {
+            "id": 3,
+            "title": "agent-tracker populate 주체 — agent-bootstrap에서 running entry append",
+            "status": "decided",
+            "decision": "**선정: agent-bootstrap(SubagentStart)에서 running entry append + post-tool-telemetry를 managed hooks registry에 등록.**\n\n구체안:\n- (A) `assets/hooks/agent-bootstrap/handler.ts` 끝에 tracker append 로직 추가:\n  ```\n  await updateJsonFileLocked(trackerPath, [], (tracker) => {\n    const exists = tracker.find(e => e.agent_id === agent_id);\n    if (!exists) {\n      tracker.push({ agent_id, agent_type, started_at: new Date().toISOString(), status: \"running\" });\n    }\n    return tracker;\n  });\n  ```\n  - 위치는 role validation/context injection **이후**. resume 재진입 시는 skip (기존 resumeCount 가드 사용).\n  - Idempotent: 동일 agent_id 중복 append 방지.\n- (B) post-tool-telemetry를 hook meta/registry에 정식 등록. `assets/hooks/post-tool-telemetry/meta.yml` 확인 후 event binding (PostToolUse) 선언 및 build-hooks의 registered set에 포함되도록 조정.\n\n**반려 대안:**\n- SessionStart에서 미리 빈 tracker만 두고 external orchestrator가 append 기대: 현재 consumer가 그걸 안 함. 현실성 없음. 기각.\n- agent-finalize가 entry 없으면 자동 생성(find→push-if-missing): populate 주체를 finalize에 두면 start/stop 순서 얽힘. append 책임은 시작 시점에 두는 게 자연스러움. 기각.\n- post-tool-telemetry를 Lead가 직접 호출: harness 독립성 깨짐. 기각.\n\n**왜 이 분할인가:** agent lifecycle 추적(start→finalize) 책임은 agent-bootstrap/finalize 쌍에, tool-level 상세 로그 책임은 post-tool-telemetry에 분리. 두 축이 독립적으로 기능해야 observability가 완결됨."
+          },
+          {
+            "id": 4,
+            "title": "capability-matrix model_tier — claude-opus-4 등 무효 ID를 alias(opus/sonnet/haiku)로 교체",
+            "status": "decided",
+            "decision": "**선정: alias 형태(`opus`/`sonnet`/`haiku`)로 교체.**\n\n구체안:\n- `assets/capability-matrix.yml` model_tier 섹션:\n  - `high.claude: claude-opus-4` → `opus`\n  - `standard.claude: claude-sonnet-4` → `sonnet`\n  - `low.claude: claude-haiku-4` → `haiku`\n- `scripts/build-agents.ts:466`의 `model: ${model}` 출력은 그대로. 결과 frontmatter에 `model: opus` 같은 alias가 나감. Claude Code는 alias를 유효하게 해석.\n- 기존 테스트(`scripts/build-agents.test.ts`)에 `claude-opus-4` 문자열 하드코딩된 부분 있으면 업데이트.\n- 주석 갱신: \"UNVERIFIED slug\" 제거 또는 \"alias form — version-tolerant\" 명시.\n\n**반려 대안:**\n- dated ID로 교체 (`claude-opus-4-7` 등): 지금은 맞지만 Opus 4.8 나오면 또 stale. 이슈 제보자도 alias 권장. 매번 업데이트하는 maintenance 부담. 기각.\n- 모델 필드 자체를 제거: 에이전트 tier별 역할 매핑이 끊김. capability-matrix 설계 의도 훼손. 기각.\n\n**부수 효과 확인:**\n- Codex/OpenCode 컬럼은 변경 없음 (기존 gpt-5.4 등 유지). Claude 컬럼만 alias로 전환.\n- OpenCode가 null inherit하는 건 그대로. 영향 없음."
+          },
+          {
+            "id": 5,
+            "title": "smoke gate 보강 — parent-PID session_id 채널 및 tracker lifecycle 검증 케이스 추가",
+            "status": "decided",
+            "decision": "**선정: smoke-consumer에 \"session-init → MCP resolve\" 왕복 시나리오 + tracker lifecycle 검증 추가. smoke-claude/codex/opencode는 현상 유지(handler isolation 역할).**\n\n구체안:\n- `scripts/smoke/smoke-consumer.ts` 또는 동등 위치에 신규 케이스 2건:\n  1. **session_id 채널 왕복**: temp cwd에서 session-init handler 실행 → `.nexus/state/runtime/by-ppid/<process.pid>.json` 생성 확인 → 같은 cwd에서 `getSessionId()` 호출 시 파일의 session_id 반환되는지 assert. (process.ppid를 테스트에서 override하려면 paths.ts에 `__test_ppid` hook 또는 env 주입 경로 필요)\n  2. **tracker lifecycle**: session-init → agent-bootstrap(SubagentStart payload 모사) → agent-finalize(SubagentStop 모사) → 최종 tracker.json에 `{agent_id, status:\"completed\", started_at, stopped_at}` 있는지 assert.\n- 기존 handler isolation smoke gate는 유지 (빠르고 격리 보장). 신규 케이스는 handler **간 상호작용**을 검증하는 integration smoke.\n- **assets/agents/*.md frontmatter validation gate 추가**: build-agents 산출물 `dist/claude/agents/*.md`에서 `model:` 값이 허용 집합(`opus`|`sonnet`|`haiku`|날짜ID 정규식) 안에 있는지 체크. 이번 #50 제보 4건 중 하나를 재발 방지 가드로 고정.\n\n**반려 대안:**\n- live Claude Code + 실제 MCP spawn 전체 e2e: 환경 의존성 과도, CI 불안정. 기각.\n- Playwright 같은 browser 기반: MCP/hook 계층에 부적합. 기각.\n- smoke gate 추가 없이 release: 이슈 #50 본문이 지적한 gap 그대로. 재발 위험. 기각.\n\n**CI 통합:** `package.json` `smoke` 집계 스크립트에 포함. 기존 4개 gate + 신규 integration 케이스."
+          },
+          {
+            "id": 6,
+            "title": "release 준비 — version bump v0.17.0, CHANGELOG, PR 작성",
+            "status": "decided",
+            "decision": "**선정: v0.17.0 minor bump + CHANGELOG entry + PR close-on-merge.**\n\n구체안:\n- **version**: `package.json` 0.16.2 → **0.17.0** (minor bump). 이유: `.nexus/state/runtime/by-ppid/` 레이아웃 추가는 내부 변경이지만, hook 빌드 산출물의 inline 주입 변경 + capability-matrix model 값 변경은 소비자 가시 변화. breaking은 없음(graceful fallback).\n- **CHANGELOG.md**: Keep-a-Changelog 포맷 유지. 섹션:\n  - `### Fixed`: 4건 회귀 상세 (session_id wiring #50 part 1, agent-bootstrap assets #50 part 2, tracker populate #50 part 3, model IDs #50 part 4)\n  - `### Added`: smoke-consumer integration 케이스 2건 + frontmatter validation gate\n  - `### Migration Notes`: consumer 측 추가 작업 없음 명시 (모두 투명한 수정). `.nexus/state/runtime/` 디렉터리는 session-init이 자동 생성.\n- **PR 본문**: 이슈 #50 각 bug별로 closes 링크. Test plan 체크리스트 (build, smoke, consumer 실증).\n- **이슈 자동 close**: PR에 `Closes #50` 포함 → merge 시 자동.\n\n**반려 대안:**\n- patch bump (0.16.3): 수정 범위 넓고 hook 번들 구조가 변함. patch에 부적합. 기각.\n- major bump (1.0.0): API breaking 없음. 과잉. 기각.\n- 개별 PR 4개: 이슈 제보자가 통합 수정 가능성 언급, 의존관계(session_id 채널이 tracker 연쇄에 영향) 있어 단일 PR이 추적에 유리. 기각.\n\n**push/merge는 user 결정** — nx-run skill scope 바깥."
+          }
+        ],
+        "research_summary": "이슈 #50 제보 + 웹조사 + 코드 Explore 결과:\n\n1. 웹조사: Claude/OpenCode/Codex 3 harness 모두 MCP에 session_id 공식 노출 없음. Claude issue #25642, OpenCode issue #15117 open. Codex hook은 experimental. env/initialize/tool-meta 경로 모두 미지원. 결과: hook→file→MCP side-channel이 유일한 robust 경로.\n\n2. 코드 확인:\n- src/shared/paths.ts:69-78 — getSessionId()는 NEXUS_SESSION_ID env → <branch>-<pid> → unknown-<pid>. 세션당 고유 ID 아님.\n- assets/hooks/session-init/handler.ts — agent-tracker.json([]), tool-log.jsonl(빈 파일) 초기화. current.json 등 side-channel 없음.\n- assets/hooks/agent-bootstrap/handler.ts:7-8 — loadValidRoles(cwd)가 join(cwd, 'assets/agents')로 FS lookup. consumer layout에 해당 디렉터리 없어 validRoles=[] → 모든 subagent early return. #46과 동일 클래스.\n- assets/hooks/agent-finalize/handler.ts — tracker.find(agent_id) 후 status update. append 주체 없음 → 영구 no-op.\n- assets/hooks/post-tool-telemetry/handler.ts — EDIT_TOOLS + agent_id 있을 때 tool-log append. 코드는 정상. 단 hooks/hooks.json 등록 여부가 실패 원인일 수 있음.\n- scripts/build-hooks.ts:335-356 — prompt-router entry에만 globalThis.__NEXUS_INLINE_INVOCATIONS__ 주입. agent-bootstrap에는 미적용.\n- assets/capability-matrix.yml:181,189,196 — model_tier에 claude-opus-4/claude-sonnet-4/claude-haiku-4. 유효 ID는 claude-opus-4-7, claude-sonnet-4-6, claude-haiku-4-5-20251001.\n- scripts/build-agents.ts:466 — if (model) fmLines.push(`model: ${model}`) — frontmatter에 그대로 출력.\n- package.json: version 0.16.2. 4개 smoke gate (claude/codex/opencode/consumer). smoke는 handler isolation만 검증 → 4건 전부 miss.\n\n3. 설계 확정 (대화 맥락 option 선택 완료):\n- Bug #1: parent-PID keyed side-channel. session-init이 .nexus/state/runtime/by-ppid/<ppid>.json 작성, MCP는 process.ppid로 해당 파일 읽기. race-free for 병렬 세션.\n- Bug #2: prompt-router 패턴 그대로 적용 — build-hooks.ts에서 agent-bootstrap entry에도 __NEXUS_INLINE_AGENT_ROLES__ 주입.\n- Bug #3: agent-bootstrap SubagentStart에서 tracker entry append + post-tool-telemetry를 managed hooks.json에 등록.\n- Bug #4: capability-matrix의 claude-opus-4/sonnet-4/haiku-4 → opus/sonnet/haiku alias (버전 내성).",
+        "created_at": "2026-04-20T12:18:20.358Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "session_id parent-PID side-channel 구현",
+          "context": "plan_issue=1. MCP server가 자기 session_id를 모르는 P0 회귀 해결. session-init이 `.nexus/state/runtime/by-ppid/<process.ppid>.json` 작성 → getSessionId()가 process.ppid 기반으로 읽기. NEXUS_SESSION_ID env → by-ppid file → branch-pid → unknown-pid 순 우선순위.",
+          "approach": "1. `src/shared/paths.ts`: (a) `BY_PPID_DIR = join(cwd, \".nexus/state/runtime/by-ppid\")` helper 추가. (b) `readSessionIdFromByPpidFile(cwd): string | null` 함수 — `<BY_PPID_DIR>/<process.ppid>.json` 읽어 `session_id` 반환, 실패 시 null. mtime 캐싱(모듈 레벨 Map)으로 per-request IO 최소화. (c) `getSessionId(cwd?)` 우선순위 갱신: env → by-ppid → branch-pid → unknown-pid.\n2. `assets/hooks/session-init/handler.ts`: SessionStart event에서 `mkdirSync(runtimeByPpidDir, { recursive: true })` → `writeFileSync(<ppid>.json, JSON.stringify({ session_id, updated_at, cwd }))`. 기존 `<session_id>/` 초기화 로직은 유지.\n3. `src/shared/paths.test.ts`: 신규 테스트 3건 — (a) by-ppid 파일 존재 시 읽기, (b) env 우선순위 검증, (c) 파일 없을 때 branch-pid fallback. 테스트용 ppid 오버라이드는 `NEXUS_TEST_PPID` env 또는 함수 인자로 제공.\n4. consumer 관점: `.nexus/state/runtime/` 디렉터리는 auto-create. 추가 설정 불필요.",
+          "acceptance": "- `getSessionId()`가 by-ppid 파일이 있으면 해당 session_id 반환\n- session-init 실행 후 `.nexus/state/runtime/by-ppid/<ppid>.json` 생성 확인\n- `tsc` + `bun test src/shared/paths.test.ts` 통과\n- 기존 테스트 회귀 없음\n- 파일 레이아웃 문서 한 줄(주석 또는 context)이 session-init handler에 남음",
+          "risk": "mtime 캐싱이 오래된 값을 쥐고 있을 경우 session_id 불일치. → 파일 mtime 변경 시 캐시 invalidate 필수. 테스트 환경에서 process.ppid 오버라이드 없이는 real ppid로 테스트가 얽힘 → test-only hook 도입 필요.",
+          "status": "pending",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-20T12:20:49.384Z"
+        },
+        {
+          "id": 2,
+          "title": "agent-bootstrap inline 주입 + tracker populate + post-tool-telemetry 등록",
+          "context": "plan_issue=2 (primary), plan_issue=3 (bundled). same_file_bundle exception 적용: 두 이슈 모두 `assets/hooks/agent-bootstrap/handler.ts`를 수정하므로 parallel write 충돌 방지를 위해 1 task로 통합.",
+          "approach": "**Part A — inline 주입 (issue #2):**\n1. `scripts/build-hooks.ts` compileHandlers() 내 prompt-router 분기 근처(335-356줄)에 `agent-bootstrap` 케이스 추가. `readdirSync(\"assets/agents\")`로 디렉터리 이름 수집 → `globalThis.__NEXUS_INLINE_AGENT_ROLES__ = [...]` JSON stringify → esbuild `banner`/`define` 옵션으로 주입.\n2. `assets/hooks/agent-bootstrap/handler.ts`의 `loadValidRoles(cwd)` 교체:\n   ```ts\n   function loadValidRoles(cwd: string): string[] {\n     const inlined = (globalThis as any).__NEXUS_INLINE_AGENT_ROLES__;\n     if (Array.isArray(inlined)) return inlined;\n     const agentsDir = join(cwd, \"assets/agents\"); // dev fallback\n     if (!existsSync(agentsDir)) return [];\n     return readdirSync(agentsDir, { withFileTypes: true })\n       .filter(e => e.isDirectory()).map(e => e.name);\n   }\n   ```\n3. 추가 audit: `grep -rn \"assets/\" assets/hooks/*/handler.ts` — 남은 FS lookup 있으면 동일 패턴 적용.\n\n**Part B — tracker append (issue #3):**\n4. `assets/hooks/agent-bootstrap/handler.ts` handler 말미에 `updateJsonFileLocked(trackerPath, [], tracker => { if (!tracker.find(e=>e.agent_id===agent_id)) tracker.push({agent_id, agent_type, started_at: new Date().toISOString(), status:\"running\"}); return tracker; })`. 위치: resume guard + validRoles 체크 통과 후, context injection 전/후 무관.\n5. `assets/hooks/post-tool-telemetry/meta.yml` 확인. event=PostToolUse binding 없으면 추가. `scripts/build-hooks.ts`의 registered set에 포함되는지 확인, 누락 시 포함.\n\n**검증:** 빌드 후 `dist/hooks/agent-bootstrap.js`에 `__NEXUS_INLINE_AGENT_ROLES__` 주입 문자열 존재. `dist/manifests/claude-hooks.json`에 post-tool-telemetry 등록 확인.",
+          "acceptance": "- `dist/hooks/agent-bootstrap.js`에 inline roles 배열 포함 (grep으로 확인)\n- consumer 시나리오: cwd에 assets/ 없어도 validRoles 비어있지 않음\n- SubagentStart 시 agent-tracker.json에 running entry 1건 append 확인 (locked-update 사용, 중복 append 방지)\n- post-tool-telemetry가 PostToolUse event에 등록되어 dist manifest에 포함\n- `bun run build` 통과, 타입 에러 없음",
+          "risk": "inline 주입 방식이 esbuild의 `banner` vs `define` 중 어느 쪽을 쓸지 prompt-router 선례 확인 필요(후자가 tree-shakable). tracker append가 두 번 발동할 경우(이벤트 재전송 등) 중복 entry — idempotent find-first로 방지.",
+          "status": "pending",
+          "deps": [
+            1
+          ],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-20T12:21:12.281Z"
+        },
+        {
+          "id": 3,
+          "title": "capability-matrix model_tier alias 교체",
+          "context": "plan_issue=4. claude-opus-4/sonnet-4/haiku-4는 존재하지 않는 model ID → subagent spawn 실패(P0). alias(opus/sonnet/haiku)로 교체하여 버전 내성 확보.",
+          "approach": "1. `assets/capability-matrix.yml` 라인 181/189/196 수정:\n   - `claude-opus-4` → `opus`\n   - `claude-sonnet-4` → `sonnet`\n   - `claude-haiku-4` → `haiku`\n2. 주변 주석(line 167-173 근방)에서 \"UNVERIFIED\"/\"Update this section when OpenAI releases\" 문구를 Claude 쪽에 \"alias form — version-tolerant\" 설명으로 보강.\n3. `scripts/build-agents.test.ts`에 `claude-opus-4`/`claude-sonnet-4`/`claude-haiku-4` 문자열 하드코딩이 있으면 alias로 업데이트. (Grep 선행)\n4. 빌드 재실행 → `dist/claude/agents/<n>.md` frontmatter의 `model:` 값이 alias로 출력되는지 샘플 확인.",
+          "acceptance": "- capability-matrix.yml의 model_tier.*.claude 값 모두 alias 형태\n- `bun run build` 성공\n- dist/claude/agents/architect.md frontmatter `model: opus` 확인\n- 빌드 산출물 3 harness 전부 정상 (Claude만 alias, Codex/OpenCode 미변경)\n- 테스트 회귀 없음",
+          "risk": "alias는 Claude Code 측 해석에 의존. 만약 특정 구버전 Claude Code가 alias 해석 안 하면 consumer break — 그러나 이슈 #50 제보에서 이미 alias로 override 작동 확인됨.",
+          "status": "pending",
+          "deps": [],
+          "plan_issue": 4,
+          "owner": "lead",
+          "created_at": "2026-04-20T12:21:28.434Z"
+        },
+        {
+          "id": 4,
+          "title": "smoke-consumer integration 케이스 + frontmatter validation gate",
+          "context": "plan_issue=5. 기존 smoke gate가 handler isolation만 검증해서 이슈 #50의 4건 모두 miss. integration smoke 케이스 2건(session_id 왕복, tracker lifecycle) + build-time frontmatter validation gate 추가로 재발 방지.",
+          "approach": "1. `scripts/smoke/smoke-consumer.ts` (또는 `scripts/smoke-consumer.ts` — 실제 위치는 Explore 시 확인)에 신규 케이스:\n   **(a) session_id 채널 왕복**: tmpdir + NEXUS_TEST_PPID 주입 → session-init handler 실행 → `.nexus/state/runtime/by-ppid/<ppid>.json` 존재 assert → `getSessionId()` 호출 결과가 기록된 session_id와 일치 assert.\n   **(b) tracker lifecycle**: session-init → agent-bootstrap payload(SubagentStart + agent_type=architect, agent_id=test-abc) 모사 → agent-finalize payload(SubagentStop, 동일 agent_id) 모사 → `agent-tracker.json`에 `[{agent_id:\"test-abc\", status:\"completed\", started_at, stopped_at}]` assert.\n2. **frontmatter validation gate**: `scripts/build-agents.ts` 또는 별도 `scripts/validate-frontmatter.ts` — build 후 `dist/claude/agents/*.md`에서 `model:` 값이 허용 집합(`opus`|`sonnet`|`haiku`|`claude-opus-4-N`|`claude-sonnet-4-N`|`claude-haiku-4-N-*` 정규식) 안인지 검사. 불일치 시 build fail. `package.json` build chain에 포함.\n3. CI 통합: 기존 `package.json` smoke 스크립트 집계에 신규 케이스 자연히 포함.",
+          "acceptance": "- smoke-consumer 실행 시 신규 2건 케이스가 pass\n- 의도적 regression 주입(model 필드를 `claude-opus-4`로 되돌리기) 시 build가 frontmatter gate에서 fail\n- 기존 smoke-claude/codex/opencode gate 통과 유지\n- package.json scripts 구조 일관성 유지",
+          "risk": "NEXUS_TEST_PPID 같은 test-only hook을 프로덕션 paths.ts에 넣는 것에 대한 노이즈. → 최소 범위로 격리(test 환경 분기 명확).",
+          "status": "pending",
+          "deps": [
+            1,
+            2
+          ],
+          "plan_issue": 5,
+          "owner": "engineer",
+          "created_at": "2026-04-20T12:21:46.244Z"
+        },
+        {
+          "id": 5,
+          "title": "4건 수정 통합 검증 — acceptance tester",
+          "context": "issue #50 4건 회귀에 대한 수정 acceptance 기준을 각 task별로 PASS/FAIL 판정. runtime behavior 검증 조건 충족(session_id resolve, hook lifecycle, build artifact) → Tester 필수.",
+          "approach": "1. tasks.json에서 task 1-4의 `acceptance` 항목을 순차 검증.\n2. 실행 명령: `bun test src/shared/paths.test.ts`, `bun run build`, `bun run smoke:consumer` (또는 equivalent).\n3. 각 acceptance 조건마다 PASS/FAIL + 실행 로그 근거.\n4. 추가 수동 검증:\n   - `dist/claude/agents/architect.md` frontmatter에 `model: opus` 확인\n   - `dist/hooks/agent-bootstrap.js`에 `__NEXUS_INLINE_AGENT_ROLES__` inline 확인\n   - `.nexus/state/runtime/by-ppid/<ppid>.json` 생성 실증(로컬 dry-run)\n5. 실패 항목 있으면 원인 요약 후 Lead에 보고. 모두 PASS면 \"all green\" 결론.",
+          "acceptance": "- 모든 task 1-4의 acceptance 조건이 PASS\n- 실패 항목은 구체적 근거(명령 출력/파일 경로)와 함께 보고\n- 기존 smoke-claude/codex/opencode 회귀 없음",
+          "risk": "test-only hook(NEXUS_TEST_PPID) 없이 real ppid 기반 테스트가 환경 의존적. CI에서 flaky 가능성 → 확정적 test double 필수.",
+          "status": "pending",
+          "deps": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "plan_issue": 5,
+          "owner": "tester",
+          "created_at": "2026-04-20T12:21:59.677Z"
+        },
+        {
+          "id": 6,
+          "title": "release — version bump v0.17.0, CHANGELOG, PR",
+          "context": "plan_issue=6. 모든 수정 반영 후 최종 배포 준비. minor bump(0.16.2→0.17.0), CHANGELOG entry 작성, PR 생성 및 Closes #50 링크.",
+          "approach": "1. `package.json` version: `0.16.2` → `0.17.0`\n2. `CHANGELOG.md` 상단에 `## [0.17.0] - 2026-04-20` entry:\n   - `### Fixed`: 4건 회귀 (#50 part 1-4)\n   - `### Added`: smoke-consumer integration 케이스 2건 + frontmatter validation gate\n   - `### Migration Notes`: consumer 작업 없음 (`.nexus/state/runtime/`는 자동 생성)\n3. 최종 `bun run build` 한 번 더 실행 → dist/ 산출물 최신화\n4. git add: 소스 수정 파일 + dist/ + `.nexus/history.json` + 수정된 memory/context\n5. 커밋 메시지: `feat(v0.17.0): 이슈 #50 4건 회귀 수정 — session_id wiring, agent-bootstrap inline, tracker populate, model alias`. Co-Authored-By 포함.\n6. push → `gh pr create` — title \"v0.17.0 — fix #50 (4 regressions)\", body에 각 bug 요약 + test plan + `Closes #50`\n7. user에 PR URL 보고. merge 결정은 user 몫.",
+          "acceptance": "- package.json version = 0.17.0\n- CHANGELOG.md에 0.17.0 entry 추가, Keep-a-Changelog 포맷 유지\n- git commit 생성 (HEREDOC 메시지, explicit add)\n- PR 생성 및 URL 제공\n- `Closes #50` 문자열 PR body 포함",
+          "risk": "push 전 user 확인 단계 미확보. → PR 생성은 user 권한 필요한 작업이지만, 이미 [run] 의도된 흐름이라 진행. merge는 user 결정.",
+          "status": "pending",
+          "deps": [
+            5
+          ],
+          "plan_issue": 6,
+          "owner": "lead",
+          "created_at": "2026-04-20T12:22:14.157Z"
+        }
+      ]
     }
   ]
 }

@@ -360,6 +360,23 @@ export function resolveModel(
   return val === null || val === undefined ? null : val;
 }
 
+const CLAUDE_MODEL_ALIAS_RE = /^(opus|sonnet|haiku)$/;
+const CLAUDE_MODEL_DATED_RE = /^claude-(opus|sonnet|haiku)-\d+-\d+(-\d{8})?$/;
+
+/**
+ * Validate a resolved model value for the claude harness.
+ * Allowed: alias (opus|sonnet|haiku), dated ID (claude-opus-4-7 etc.), or null/undefined.
+ * Throws on any other value.
+ */
+export function validateClaudeModel(model: string | null, role: string): void {
+  if (model === null || model === undefined) return;
+  if (CLAUDE_MODEL_ALIAS_RE.test(model)) return;
+  if (CLAUDE_MODEL_DATED_RE.test(model)) return;
+  throw new Error(
+    `[build-agents] Invalid model value: "${model}" for role "${role}" on harness "claude". Allowed: alias(opus|sonnet|haiku) or dated ID.`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Overwrite policy
 // ---------------------------------------------------------------------------
@@ -460,6 +477,7 @@ function claudeAgentMarkdown(asset: AssetEntry, capMatrix: CapabilityMatrix, inv
   const fm = asset.frontmatter;
   const disallowed = resolveClaudeDisallowedTools(fm.capabilities ?? [], capMatrix);
   const model = resolveModel(fm.model_tier, "claude", capMatrix);
+  validateClaudeModel(model, asset.name);
 
   const fmLines: string[] = ["---"];
   if (fm.description) fmLines.push(`description: ${JSON.stringify(fm.description)}`);

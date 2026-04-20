@@ -162,8 +162,10 @@ capabilities:
 #   Source: https://opencode.ai/docs/agents/ (model field is optional)
 #   Verified: .nexus/memory/external-opencode-plugin.md §5
 #
-# claude model slugs (partial-match basis — Claude Code resolves to latest in series):
-#   Source: https://code.claude.com/docs/en/sub-agents (model field)
+# claude model slugs (alias form — version-tolerant; Claude Code resolves to the
+#   latest dated model in the series. Prefer aliases (opus/sonnet/haiku) over
+#   dated IDs (claude-opus-4-7 등) to avoid rot as new versions ship.):
+#   Source: https://code.claude.com/docs/en/sub-agents (model field accepts aliases)
 #   Verified: .nexus/memory/external-claude-code-hooks-tools.md §6 (Agent tool: model param)
 #
 # codex model slugs:
@@ -178,7 +180,7 @@ model_tier:
   # high — used by: architect, designer, postdoc, strategist
   # Reasoning-intensive advisory roles that require deep analysis.
   high:
-    claude: claude-opus-4
+    claude: opus            # alias — Claude Code resolves to latest Opus
     codex: gpt-5.4          # UNVERIFIED slug — confirm against current Codex model list
     opencode: null          # inherits user config
 
@@ -186,13 +188,13 @@ model_tier:
   # Execution and verification roles where throughput matters more than
   # top-tier reasoning.
   standard:
-    claude: claude-sonnet-4
+    claude: sonnet          # alias — Claude Code resolves to latest Sonnet
     codex: gpt-5.3-codex    # UNVERIFIED slug — confirm against current Codex model list
     opencode: null          # inherits user config
 
   # low — reserved tier; no agents currently assigned.
   # Intended for lightweight utility agents (fast, cheap, simple tasks).
   low:
-    claude: claude-haiku-4
+    claude: haiku           # alias — Claude Code resolves to latest Haiku
     codex: gpt-5.4-mini     # UNVERIFIED slug — confirm against current Codex model list
     opencode: null          # inherits user config

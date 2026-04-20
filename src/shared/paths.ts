@@ -1,5 +1,5 @@
 import { join, resolve } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, statSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 
 /**
@@ -66,10 +66,56 @@ function sanitizeBranch(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]+/g, '_');
 }
 
-/** NEXUS_SESSION_ID env 우선, 없으면 '<branch>-<pid>' 또는 'unknown-<pid>' */
+function runtimeByPpidDir(cwd: string): string {
+  return join(cwd, '.nexus/state/runtime/by-ppid');
+}
+
+function byPpidFilePath(cwd: string, ppid: number): string {
+  return join(runtimeByPpidDir(cwd), `${ppid}.json`);
+}
+
+export function getParentPid(): number {
+  const testOverride = parseInt(process.env['NEXUS_TEST_PPID'] ?? '');
+  return testOverride || process.ppid;
+}
+
+interface ByPpidCache {
+  mtimeMs: number;
+  value: string;
+}
+
+const byPpidCache = new Map<string, ByPpidCache>();
+
+export function resetByPpidCache(): void {
+  byPpidCache.clear();
+}
+
+function readSessionIdFromByPpidFile(cwd: string): string | null {
+  try {
+    const ppid = getParentPid();
+    const filePath = byPpidFilePath(cwd, ppid);
+    const st = statSync(filePath);
+    const cached = byPpidCache.get(filePath);
+    if (cached && cached.mtimeMs === st.mtimeMs) {
+      return cached.value;
+    }
+    const raw = readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(raw) as { session_id: string };
+    byPpidCache.set(filePath, { mtimeMs: st.mtimeMs, value: parsed.session_id });
+    return parsed.session_id;
+  } catch {
+    return null;
+  }
+}
+
+/** NEXUS_SESSION_ID env 우선, 없으면 by-ppid 파일, 없으면 '<branch>-<pid>' 또는 'unknown-<pid>' */
 export function getSessionId(cwd?: string): string {
   const envId = process.env['NEXUS_SESSION_ID'];
   if (envId) return envId;
+
+  const resolvedCwd = cwd ?? process.cwd();
+  const byPpidId = readSessionIdFromByPpidFile(resolvedCwd);
+  if (byPpidId) return byPpidId;
 
   const branch = getCurrentBranch(cwd);
   const pid = process.pid;

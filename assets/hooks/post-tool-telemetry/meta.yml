@@ -1,11 +1,10 @@
 name: post-tool-telemetry
 description: Track memory access and file-edit operations for strength/forgetting signals and audit
 events: [PostToolUse]
-matcher: "Read|Edit|Write|MultiEdit|ApplyPatch|NotebookEdit|Bash"
+matcher: "Read|Edit|Write|MultiEdit|ApplyPatch|NotebookEdit"
 timeout: 5
 fallback: warn
 priority: 10
 requires_capabilities:
   - event.post_tool_use.read
   - event.post_tool_use.edit
-  - event.post_tool_use.bash_parsed

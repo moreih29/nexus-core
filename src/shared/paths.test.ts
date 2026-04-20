@@ -12,6 +12,7 @@ import {
   ensureDir,
   getSessionId,
   getSessionRoot,
+  resetByPpidCache,
 } from './paths.ts';
 
 // ---------------------------------------------------------------------------
@@ -187,6 +188,76 @@ describe('getSessionId', () => {
     } finally {
       fs.rmSync(isolated, { recursive: true, force: true });
     }
+  });
+});
+
+describe('getSessionId — by-ppid side-channel', () => {
+  const TEST_PPID = 99999;
+  let tmpDir: string;
+  let prevSid: string | undefined;
+  let prevTestPpid: string | undefined;
+
+  function byPpidFilePath(): string {
+    return path.join(tmpDir, '.nexus/state/runtime/by-ppid', `${TEST_PPID}.json`);
+  }
+
+  function writeByPpidFile(sessionId: string): void {
+    const dir = path.dirname(byPpidFilePath());
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(byPpidFilePath(), JSON.stringify({ session_id: sessionId, updated_at: new Date().toISOString(), cwd: tmpDir }));
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-ppid-'));
+    prevSid = process.env.NEXUS_SESSION_ID;
+    prevTestPpid = process.env.NEXUS_TEST_PPID;
+    delete process.env.NEXUS_SESSION_ID;
+    process.env.NEXUS_TEST_PPID = String(TEST_PPID);
+    resetByPpidCache();
+  });
+
+  afterEach(() => {
+    if (prevSid === undefined) delete process.env.NEXUS_SESSION_ID;
+    else process.env.NEXUS_SESSION_ID = prevSid;
+    if (prevTestPpid === undefined) delete process.env.NEXUS_TEST_PPID;
+    else process.env.NEXUS_TEST_PPID = prevTestPpid;
+    resetByPpidCache();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test('A. NEXUS_SESSION_ID env 최우선 — by-ppid 파일 무관하게 env 값 반환', () => {
+    writeByPpidFile('from-file-session');
+    process.env.NEXUS_SESSION_ID = 'env-wins';
+    expect(getSessionId(tmpDir)).toBe('env-wins');
+  });
+
+  test('B. by-ppid 파일 있을 때 — 파일의 session_id 반환', () => {
+    writeByPpidFile('session-from-ppid-file');
+    expect(getSessionId(tmpDir)).toBe('session-from-ppid-file');
+  });
+
+  test('C. by-ppid 파일 없으면 — branch-pid fallback', () => {
+    const isolated = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-ppid-nogit-'));
+    try {
+      const sid = getSessionId(isolated);
+      expect(sid).toBe(`unknown-${process.pid}`);
+    } finally {
+      fs.rmSync(isolated, { recursive: true, force: true });
+    }
+  });
+
+  test('D. by-ppid 파일 mtime 변경 시 캐시 invalidate — 갱신된 session_id 반환', () => {
+    writeByPpidFile('first-session');
+    expect(getSessionId(tmpDir)).toBe('first-session');
+
+    const before = fs.statSync(byPpidFilePath()).mtimeMs;
+    let after = before;
+    while (after === before) {
+      writeByPpidFile('second-session');
+      after = fs.statSync(byPpidFilePath()).mtimeMs;
+    }
+
+    expect(getSessionId(tmpDir)).toBe('second-session');
   });
 });
 

@@ -162,6 +162,7 @@ runtime.experimental_flag_required
 - `.nexus/state/<sid>/` 디렉토리 생성 (mkdir)
 - `agent-tracker.json` 초기화 (`[]`)
 - `tool-log.jsonl` 초기화 (빈 파일)
+- `.nexus/state/runtime/by-ppid/<process.ppid>.json` 작성 — `{ session_id, updated_at, cwd }`. MCP 서버가 `session_id`를 직접 수신하지 못하는 한계를 우회하는 side-channel. `getSessionId()`가 이 파일을 parent-PID 키로 읽어 session_id를 복원한다 (mtime 캐싱). 채택 이유: Claude/OpenCode/Codex 3 harness 모두 MCP에 session_id를 공식 노출하지 않으므로 hook→file→MCP 브리지가 필요. parent-PID 키잉은 같은 cwd 병렬 세션에서도 race-free.
 
 **additional_context**: 없음 (컨텍스트 주입 안 함)
 
@@ -222,7 +223,9 @@ Active plan session detected. Use [d] to record a decision or [run] to start exe
 
 **stdin 사용 필드**: `session_id`, `tool_name`, `tool_input`, `tool_response`
 
-**matcher**: `Read|Edit|Write|MultiEdit|ApplyPatch|NotebookEdit|Bash`
+**등록 harness**: Claude + OpenCode (tier=extended). Codex는 `event.post_tool_use.read`/`.edit` 미지원으로 제외 — `bash_parsed` 경유 우회는 requires_capabilities에서 제거됨.
+
+**matcher**: `Read|Edit|Write|MultiEdit|ApplyPatch|NotebookEdit`
 
 **부수효과 1 — memory-access 추적**:
 - 대상: `.nexus/memory/` 경로 접근 시

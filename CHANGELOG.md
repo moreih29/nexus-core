@@ -4,6 +4,29 @@
 
 ---
 
+## [0.17.0] - 2026-04-20
+
+### Fixed
+
+- v0.16.1 downstream에서 surfaced된 4건 회귀 일괄 수정 ([#50](https://github.com/moreih29/nexus-core/issues/50)).
+  - **MCP session_id wiring (P0)**: MCP server가 자기 session_id를 알 채널이 없어 `unknown-<pid>`로 fallback → `.nexus/state/` 가 두 경로로 쪼개져 `[d]`·`[run]` 태그 dispatch가 영구 차단되던 문제. Claude Code·OpenCode·Codex 3 harness 모두 공식 session_id 노출 메커니즘이 없음([upstream feature requests](https://github.com/anthropics/claude-code/issues/25642))이 확인되어 **parent-PID keyed side-channel** 방식으로 해결: `session-init` hook이 `.nexus/state/runtime/by-ppid/<process.ppid>.json`을 기록하고 `src/shared/paths.ts:getSessionId()`가 `process.ppid` 기반으로 읽어낸다(mtime 캐싱 포함). 우선순위는 `NEXUS_SESSION_ID` env → by-ppid 파일 → `<branch>-<pid>` → `unknown-<pid>`. 병렬 harness 세션이 같은 cwd에 있어도 ppid가 다르므로 race-free.
+  - **agent-bootstrap assets lookup (P1)**: `loadValidRoles(cwd)`가 `join(cwd, "assets/agents")` FS lookup에 의존해 consumer 설치에서 항상 `validRoles=[]`로 early-return, 모든 subagent의 memory/context index 주입이 skip되던 문제. #46과 동일 클래스. `scripts/build-hooks.ts`의 prompt-router inline 패턴을 `agent-bootstrap` entry에도 확장해 `globalThis.__NEXUS_INLINE_AGENT_ROLES__`를 빌드타임에 주입, handler가 이를 우선 사용하고 FS 탐색은 dev fallback으로 유지.
+  - **agent-tracker populate 주체 부재 (P1)**: `agent-tracker.json`에 running entry를 append 하는 코드 경로가 존재하지 않아 `agent-finalize`의 update가 영구 no-op이던 문제. `agent-bootstrap` SubagentStart 시점에 `updateJsonFileLocked` 기반 idempotent append 로직을 추가(`{agent_id, agent_type, started_at, status:"running"}`)해 lifecycle 관측이 복구됨. 추가로 `post-tool-telemetry/meta.yml`에서 over-declared `event.post_tool_use.bash_parsed` capability를 제거, Claude/OpenCode에 정상 등록되어 `tool-log.jsonl` append가 활성화됨(`tier=extended registered=[claude,opencode]`).
+  - **stale model IDs (P0)**: `assets/capability-matrix.yml` model_tier의 `claude-opus-4` / `claude-sonnet-4` / `claude-haiku-4`가 실제로는 존재하지 않는 model ID여서 subagent spawn이 outright 실패하던 문제. alias 형태(`opus` / `sonnet` / `haiku`)로 교체해 Claude Code의 latest-in-series resolution에 위임, 신규 dated ID 릴리스마다 업데이트하는 maintenance 부담을 제거.
+
+### Added
+
+- `scripts/smoke/smoke-consumer.ts` — Case C (session_id side-channel round-trip) + Case D (tracker lifecycle: init → bootstrap → finalize) integration 케이스 2건. 기존 handler isolation smoke가 miss했던 handler-MCP-hook 상호작용을 재발 방지 게이트로 고정.
+- `scripts/build-agents.ts:validateClaudeModel()` — 빌드타임 frontmatter gate. claude harness 모델 값이 alias(`opus|sonnet|haiku`) 또는 dated ID(`claude-{family}-\d+-\d+(-\d{8})?` — minor version 필수)가 아니면 build fail. 이번 cycle의 Bug #4 재발 방지.
+
+### Migration Notes
+
+- consumer 측 추가 작업 없음 — `.nexus/state/runtime/by-ppid/` 디렉터리는 `session-init` hook이 SessionStart 시점에 자동 생성.
+- v0.16.x에서 bump하는 경우 `bun add @moreih29/nexus-core@^0.17.0` 후 `nexus sync --harness=<harness>` 재실행을 권장.
+- 기존 `.nexus/state/<session_id>/` 레이아웃은 변경 없음. 새 `runtime/by-ppid/` 서브트리는 격리되어 기존 세션 상태에 영향 없음.
+
+---
+
 ## [0.16.2] - 2026-04-20
 
 ### Fixed

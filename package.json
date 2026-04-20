@@ -1,6 +1,6 @@
 {
   "name": "@moreih29/nexus-core",
-  "version": "0.16.2",
+  "version": "0.17.0",
   "description": "Nexus ecosystem authoring layer — canonical agents/skills/hooks and 3-harness build pipeline (Claude Code, OpenCode, Codex)",
   "license": "MIT",
   "type": "module",
