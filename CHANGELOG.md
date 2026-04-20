@@ -4,6 +4,21 @@
 
 ---
 
+## [0.15.2] - 2026-04-20
+
+### Fixed
+
+- 세 하네스(Claude·Codex·OpenCode) 공통 hook bundle이 `export default handler`만 담아 `node dist/hooks/<name>.js` 실행 시 handler가 호출되지 않고 silent no-op으로 종료되던 critical 버그 ([#39](https://github.com/moreih29/nexus-core/issues/39)).
+  `scripts/build-hooks.ts compileHandlers()`가 각 hook별로 stdin→JSON.parse→handler invoke→stdout write 부트스트랩을 수행하는 임시 entry 파일을 emit한 뒤 `bun build`에 이 entry를 입력으로 주입하도록 변경되었습니다. `assets/hooks/*/handler.ts` 소스는 순수 라이브러리로 유지되고, `dist/hooks/<name>.js`만 CLI 진입점으로 동작합니다.
+  영향: SessionStart 시 `.nexus/state/<sid>/` 생성, `[run]`·`[plan]`·`[sync]` tag dispatch, agent-tracker 기록, SubagentStop additional_context 주입 경로가 모두 복구됩니다. OpenCode `spawnHandler` (spawn+stdin+stdout JSON) 경로도 동일 번들로 정상 동작합니다.
+
+### Migration Notes
+
+- `bun add @moreih29/nexus-core@^0.15.2` / `npm i @moreih29/nexus-core@0.15.2`로 bump. Consumer sync를 재실행하여 새 번들을 target에 복사하세요(`bun run sync`).
+- v0.15.0 / v0.15.1은 hook 경로 전체가 silent no-op이므로 **deprecate 권장**.
+
+---
+
 ## [0.15.1] - 2026-04-20
 
 ### Fixed

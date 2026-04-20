@@ -22,8 +22,10 @@ import {
   mkdirSync,
   writeFileSync,
   copyFileSync,
+  rmSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { parse as parseYaml } from "yaml";
@@ -321,15 +323,52 @@ function compileHandlers(plans: PortabilityPlan[], hookIndex: Map<string, HookEn
     if (!hook) continue;
 
     const outFile = join(DIST_HOOKS_DIR, `${hook.name}.js`);
+    const entryDir = join(tmpdir(), `nexus-hook-entry-${hook.name}-${Date.now()}`);
+    mkdirSync(entryDir, { recursive: true });
+    const entryFile = join(entryDir, `${hook.name}-entry.ts`);
+
     try {
-      execSync(
-        `bun build ${hook.handlerPath} --outfile ${outFile} --target node --format esm`,
-        { cwd: ROOT, stdio: "inherit" },
+      const entryContent = [
+        `import handler from ${JSON.stringify(hook.handlerPath)};`,
+        `import { readFileSync } from "node:fs";`,
+        `async function main() {`,
+        `  let raw = "";`,
+        `  try { raw = readFileSync(0, "utf-8"); } catch {}`,
+        `  const input = raw ? JSON.parse(raw) : {};`,
+        `  const result = await handler(input);`,
+        `  if (result != null && result !== undefined) {`,
+        `    process.stdout.write(JSON.stringify(result));`,
+        `  }`,
+        `}`,
+        `main().then(`,
+        `  () => process.exit(0),`,
+        `  (err) => { process.stderr.write(String(err?.stack ?? err) + "\\n"); process.exit(1); }`,
+        `);`,
+      ].join("\n") + "\n";
+
+      writeFileSync(entryFile, entryContent);
+
+      try {
+        execSync(
+          `bun build ${entryFile} --outfile ${outFile} --target node --format esm`,
+          { cwd: ROOT, stdio: "inherit" },
+        );
+      } catch {
+        throw new Error(
+          `[build-hooks] Handler compilation failed for "${hook.name}" (bun build exit non-zero)`,
+        );
+      }
+    } catch (err) {
+      process.stderr.write(
+        `[build-hooks] wrapper-emit failed for "${hook.name}": ${String(err)}\n`,
       );
-    } catch {
-      throw new Error(
-        `[build-hooks] Handler compilation failed for "${hook.name}" (bun build exit non-zero)`,
-      );
+      throw err;
+    } finally {
+      try {
+        rmSync(entryDir, { recursive: true, force: true });
+      } catch {
+        // best effort
+      }
     }
   }
 }
