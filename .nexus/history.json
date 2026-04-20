@@ -5962,6 +5962,321 @@
           "created_at": "2026-04-20T04:17:19.501Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-20T07:49:04.310Z",
+      "branch": "main",
+      "plan": {
+        "id": 18,
+        "topic": "Hook bootstrap + Codex TOML + OpenCode fragment 수정 및 CI smoke gate 추가",
+        "issues": [
+          {
+            "id": 1,
+            "title": "#39 hotfix — 세 harness 공통 hook CLI bootstrap 추가 (v0.15.2)",
+            "status": "decided",
+            "decision": "**Option B 채택 — build-hooks.ts가 bootstrap entry wrapper를 생성하여 번들링.** 각 handler.ts 소스는 순수 라이브러리(`export default handler`)로 유지. build-hooks.ts `compileHandlers()`에서 각 hook에 대해 임시 entry 파일을 emit: `import handler from \"<handlerPath>\"; const raw = await new Promise(r=>{let d=\"\";process.stdin.on(\"data\",c=>d+=c);process.stdin.on(\"end\",()=>r(d))}); const input = raw?JSON.parse(raw):{}; const result = await handler(input); if(result) process.stdout.write(JSON.stringify(result)); process.exit(0);`. 이 entry를 `bun build`로 번들. Rejected Option A(각 handler.ts에 직접 bootstrap): 5파일 중복 + handler.ts의 라이브러리성을 깨고 `opencode-mount.ts` 외 직접 import 용도도 고려해야 함. Wrapper 방식은 entrypoint와 library 역할을 분리해 유지보수 개선. 검증: canned SessionStart payload을 stdin으로 주입 후 `.nexus/state/<sid>/` 생성 확인.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "wrapper entry 방식이 handler.ts의 라이브러리 역할(opencode-mount가 모듈 import 가능성)과 CLI entry 역할을 분리해 관심사 명확화. build-hooks.ts 한 곳에서만 bootstrap 패턴 관리. bun build --format=esm --target=node 와 호환."
+            }
+          },
+          {
+            "id": 2,
+            "title": "#42 fix — Codex agent TOML standalone schema 치환 (v0.16.0)",
+            "status": "decided",
+            "decision": "**codexAgentToml()을 standalone role file schema로 치환.** 출력 형식: root-level `name`, `description`, `developer_instructions` (multiline), `model`, `sandbox_mode`, `disabled_tools`. `[agents.<id>]` nested table + `[agents.<id>.system].content` 제거. 구체 형식: `name = \"strategist\"\\ndescription = \"...\"\\ndeveloper_instructions = \"\"\"<body>\"\"\"\\nmodel = \"...\"\\nsandbox_mode = \"...\"\\ndisabled_tools = [...]`. build-agents.test.ts에 schema snapshot 테스트 추가. Rejected: nested table 유지 + install.sh 변환(wrapper 부담 증가, 다른 consumer도 각자 변환해야 함).",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Codex core parser(agent_roles.rs) require_present=true 조건 충족이 선행. 이후 install.sh의 직접 복사가 의미를 가짐. 기존 [agents.<id>] 구조는 codex config.toml의 agent 등록 섹션용이므로 별도 경로라 standalone 파일과 혼용하지 말 것."
+            }
+          },
+          {
+            "id": 3,
+            "title": "#43 Option A — OpenCode fragment deprecate + harness-io.md §4-2 재작성 (v0.16.0)",
+            "status": "decided",
+            "decision": "**Option A — fragment 완전 제거.** `opencodeJsonFragment()` 삭제, `buildForOpencode()`에서 fragment 쓰기 코드 제거. `docs/contract/harness-io.md §4-2` 재작성: plugin auto-register가 canonical path임을 명시. Consumer canonical opencode.json 예제(R1), `@opencode-ai/plugin` devDep 요구(R2), `bun pm trust` 노트(R3) 반영. CHANGELOG에 BREAKING: fragment 파일 생성 중단 기록(consumer의 merge 경로 사용자는 §4-2 새 예제로 전환 필요). Rejected Option B(schema 수정): fragment가 구조적으로 plugin auto-register와 중복되어 교정해도 의미 없음. Rejected Option C(dev-only 라벨): 오해 소지 잔존.",
+            "how_agents": [
+              "architect",
+              "writer"
+            ],
+            "how_summary": {
+              "architect": "plugin auto-register(src/index.ts의 export const agents)가 이미 OpenCode canonical이므로 fragment는 불필요한 레이어. 제거가 구조적 정답.",
+              "writer": "§4-2는 consumer 실사용 가이드라인. fragment 언급 제거 + 최소 opencode.json 예제 + devDep/trust 주석을 포함해야 재시도 온보딩 부담이 없어짐."
+            }
+          },
+          {
+            "id": 4,
+            "title": "CI smoke gate 3개 — Claude/Codex/OpenCode distribution-invariant 검증 (v0.16.0)",
+            "status": "decided",
+            "decision": "**scripts/smoke/ 하위 3개 smoke 러너 + package.json smoke 스크립트 + GitHub Actions CI step 추가.** (1) `smoke-claude.ts`: `dist/hooks/session-init.js`에 canned SessionStart payload JSON을 stdin으로 주입 후 exit 0 + `.nexus/state/<sid>/agent-tracker.json` 생성 검증. (2) `smoke-codex.ts`: `dist/codex/agents/*.toml` 각 파일을 `yaml`(TOML 지원) 또는 `@iarna/toml` 파서로 파싱 + root-level `name`·`developer_instructions` 필드 존재 assert + `[agents.` nested header 부재 assert. (3) `smoke-opencode.ts`: `dist/manifests/opencode-manifest.json`과 `dist/hooks/session-init.js`를 `mountHooks()` 스타일로 spawn + stdin 주입 + stdout JSON 반환 검증 (handler side-effect 확인). `package.json`에 `smoke:*` 스크립트 + `ci: build && test && smoke:*`. GitHub Actions `.github/workflows/ci.yml`에 smoke 스텝 추가 또는 생성. Rejected: smoke를 bun test로 통합(오래 걸리면 unit test 전체가 느려짐 → 별도 script 유지).",
+            "how_agents": [
+              "architect",
+              "tester"
+            ],
+            "how_summary": {
+              "architect": "distribution-invariant 검증은 dist/ 산출물 자체를 대상으로 해야 하므로 unit test와 분리. scripts/smoke/ 디렉토리에 harness별 러너 3개 분리가 유지보수 유리.",
+              "tester": "smoke 러너는 실제 CLI 실행 경로(stdin→stdout)를 모사해야 #39 같은 no-op 번들을 잡아낼 수 있음. parser 단독 assert만으론 bootstrap 누락 감지 불가."
+            }
+          },
+          {
+            "id": 5,
+            "title": "이슈 코멘트 및 #40/#41 close — 모든 배포 완료 후",
+            "status": "decided",
+            "decision": "**모든 PR 머지 + npm 배포 확인 후, `gh issue comment`로 각 이슈에 대처 방안·적용 버전·PR 링크를 한국어로 기재. #40/#41은 #42 통합 명시하며 close. #39/#42/#43은 close하되 내용 코멘트 선행.** 코멘트 포맷: (1) 요약(원인/영향), (2) 적용 수정 방식, (3) 배포 버전(v0.15.2 또는 v0.16.0), (4) 관련 PR 링크, (5) consumer action 필요 여부. Rejected: 코멘트 없이 close(이슈 추적성 상실)."
+          }
+        ],
+        "research_summary": "\n검증 완료 사실:\n- #39: assets/hooks/session-init/handler.ts:30 등 5개 handler 모두 `export default handler`만 존재. build-hooks.ts:326 `bun build --format esm`로 번들링됨. CLI bootstrap(stdin→invoke) 없음. Claude/Codex hooks.json의 `node .../dist/hooks/<n>.js` 실행 시 모듈 평가만 되고 exit 0. OpenCode opencode-mount.ts:291,324 spawn+stdin 경로도 동일 번들 사용 → stdout 비어 있어 모든 side-effect 소실.\n- #42: build-agents.ts:785-814 codexAgentToml()이 [agents.<id>] / [agents.<id>.system].content nested 형식 출력. install.sh(941)가 $REPO_ROOT/agents/*.toml을 $CODEX_HOME/agents/에 그대로 복사하므로 standalone role file로 쓰이지만 Codex parser는 root-level name·developer_instructions 요구. 현재 출력은 전량 ignored.\n- #43: build-agents.ts:695-709 opencodeJsonFragment이 `{agents:[{id,module}]}` 복수·module 필드 출력. OpenCode canonical은 `{agent:{<id>:{mode,model}}}`. opencodePackageJson(651-680)은 files whitelist 없음 → tarball에서 fragment 누락. opencodePluginTs(683-693)는 mountHooks만 export, agents는 src/index.ts의 `export const agents` (opencodeIndexTs, 635-649)로 plugin auto-register가 canonical path. Fragment는 3중 불일치로 불필요.\n- 배포 전략: #39는 critical이므로 v0.15.2 hotfix 단독, 나머지는 v0.16.0 통합.\n\n사용자 직접 지시:\n- Option A(fragment deprecate) 채택\n- PR 2개 분리 (hotfix 먼저)\n- CI gate 추가\n- PR/배포 완료 후 각 이슈(#39, #40, #41, #42, #43)에 대처 방안 코멘트\n- 에이전트 구성은 nx-run이 자율 판단\n",
+        "created_at": "2026-04-20T07:18:16.623Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "T1: build-hooks.ts에 hook bootstrap wrapper entry 생성 로직 추가",
+          "context": "세 harness 공통 bug: assets/hooks/*/handler.ts가 export default handler만 있어서 dist/hooks/*.js를 `node`로 실행하거나 opencode-mount.ts의 spawn+stdin 경로를 거칠 때 handler가 호출되지 않음. build-hooks.ts:326의 `bun build`가 handler를 그대로 번들링.",
+          "approach": "scripts/build-hooks.ts의 compileHandlers()를 수정하여 각 hook에 대해 임시 entry 파일을 emit한 뒤 bun build에 해당 entry를 입력으로 사용. Entry 템플릿: handler를 dynamic import하여 stdin에서 JSON을 읽고, handler를 호출한 후, 결과가 있으면 stdout에 JSON으로 쓰고, exit 0. 실패 시 stderr + exit 1. 임시 entry 파일은 os.tmpdir() 아래에 생성하여 build 후 cleanup. 기존 handler.ts는 수정하지 않음(라이브러리 역할 유지).",
+          "acceptance": "- build-hooks.ts 수정 후 `bun run build` 성공\n- dist/hooks/session-init.js 등 5개 번들 모두 파일 마지막에 stdin read + handler invoke + stdout write 코드 포함 확인\n- `echo '{\"hook_event_name\":\"SessionStart\",\"session_id\":\"smoke-t1\",\"cwd\":\"/tmp/nexus-t1\"}' | node dist/hooks/session-init.js` 실행 시 `.nexus/state/smoke-t1/agent-tracker.json` 생성됨\n- 기존 scripts/build-hooks.test.ts 전부 pass",
+          "risk": "bun build의 entry 파일 경로가 상대 import를 해결하는 방식에 따라 tmpdir 밖의 handler.ts를 제대로 참조 못할 수 있음 → entry에서 절대 경로로 handler import 필요. opencode-mount.ts는 stdout JSON을 parse하므로 handler가 null/void 반환 시 빈 stdout 허용 필요(opencode-mount.ts:331은 이미 `stdout ? JSON.parse(...) : null`로 분기 처리됨 — 호환).",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-20T07:20:12.251Z"
+        },
+        {
+          "id": 2,
+          "title": "T2: #39 hook bootstrap smoke 검증",
+          "context": "T1 완료 후 세 harness 공통 bootstrap이 실제로 side-effect를 내는지 검증.",
+          "approach": "세 시나리오 smoke: (1) Claude 경로 — `echo '{\"hook_event_name\":\"SessionStart\",\"session_id\":\"t2-claude\",\"cwd\":\"/tmp/nexus-t2-claude\"}' | node dist/hooks/session-init.js` 후 `.nexus/state/t2-claude/agent-tracker.json` 생성 확인. (2) Codex 경로 — dist/manifests/codex-hooks.json의 command 필드 파싱 후 동일 실행 + 결과 확인. (3) OpenCode 경로 — src/hooks/opencode-mount.ts의 spawnHandler를 모사하여 stdin 주입 + stdout 수신 + 추가 JSON 반환 가능성 확인. 5개 handler 각각에 대해 최소 1개 이상의 이벤트로 검증.",
+          "acceptance": "- 3개 경로 smoke 모두 PASS\n- handler가 반환값 없는 경우(undefined) stdout이 비어 있어도 정상 exit 0\n- handler가 { additional_context: \"...\" } 반환하는 경우 stdout에 JSON 기록됨\n- handler 예외 시 stderr 출력 + exit 1",
+          "risk": "세션별 .nexus/state 디렉토리 cleanup 필요 — smoke 종료 시 tmpdir 전체 삭제.",
+          "status": "completed",
+          "deps": [
+            1
+          ],
+          "plan_issue": 1,
+          "owner": "tester",
+          "created_at": "2026-04-20T07:20:24.573Z"
+        },
+        {
+          "id": 3,
+          "title": "T3: v0.15.2 hotfix 브랜치 → PR → 머지 → npm publish",
+          "context": "#39 단독 hotfix 릴리즈. T1+T2 완료 후 수행.",
+          "approach": "(1) fix/hook-bootstrap-v0.15.2 브랜치 생성, (2) T1 변경사항 commit, (3) package.json version 0.15.2로 bump + CHANGELOG 패치 노트 추가, (4) gh pr create로 PR 생성, (5) CI 통과 확인 후 머지, (6) git tag v0.15.2 + push, (7) npm publish (또는 자동 publish 워크플로 확인), (8) 배포 성공 확인(npm view @moreih29/nexus-core@0.15.2).",
+          "acceptance": "- main에 hotfix PR 머지\n- v0.15.2 git tag 존재\n- npm에 v0.15.2 게시(`npm view @moreih29/nexus-core versions --json`에 포함)\n- 게시된 tarball의 dist/hooks/session-init.js에 CLI bootstrap 코드 존재",
+          "risk": "npm 게시는 PR 머지 후 CI가 자동 수행할 수도 있고 수동일 수도 있음 — 기존 .github/workflows/ 확인 후 절차 결정.",
+          "status": "completed",
+          "deps": [
+            1,
+            2
+          ],
+          "plan_issue": 1,
+          "owner": "lead",
+          "created_at": "2026-04-20T07:20:33.298Z"
+        },
+        {
+          "id": 4,
+          "title": "T4: build-agents.ts — Codex standalone TOML + OpenCode fragment 제거",
+          "context": "#42 + #43이 동일 파일(scripts/build-agents.ts) 수정이므로 한 태스크에 묶음. Codex standalone schema 전환(785-814 codexAgentToml) + OpenCode fragment 제거(695-709 opencodeJsonFragment + buildForOpencode 호출부).",
+          "approach": "(1) codexAgentToml() 전면 재작성: `name`, `description`, `developer_instructions`, `model`, `sandbox_mode`, `disabled_tools`를 모두 root-level로 출력. nested `[agents.<id>]` / `[agents.<id>.system]` 블록 제거. (2) opencodeJsonFragment() 함수 및 호출부(buildForOpencode의 fragment 쓰기) 제거. 해당 DryRunRecord 생성도 제거. (3) scripts/build-agents.test.ts 업데이트: 기존 fragment 테스트 삭제, Codex TOML에 대한 schema snapshot(root-level name/developer_instructions) 테스트 추가. (4) 영향받는 다른 test 파일도 적절히 수정.",
+          "acceptance": "- `bun run build` 성공\n- dist/codex/agents/strategist.toml 등 각 파일이 root-level `name = \"...\"`, `description = \"...\"`, `developer_instructions = \"\"\"...\"\"\"`로 시작\n- nested `[agents.<id>]` header 및 `[agents.<id>.system]` block이 파일에 전혀 존재하지 않음\n- dist/opencode/ 하위에 opencode.json.fragment 파일 생성 안 됨\n- `bun test scripts/` 전부 pass",
+          "risk": "기존 codex-nexus consumer가 [agents.<id>] 포맷을 별도로 rewrap해서 쓰고 있었다면 breaking. CHANGELOG에 BREAKING 명시 필요. tomlMultilineString 함수는 developer_instructions 용도로 재사용.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 2,
+          "owner": "engineer",
+          "created_at": "2026-04-20T07:20:47.010Z"
+        },
+        {
+          "id": 5,
+          "title": "T5: harness-io.md §4-2 재작성 + CHANGELOG BREAKING 기록",
+          "context": "#43 Option A에 따른 문서 업데이트. harness-io.md §4-2의 OpenCode consumer 가이드 전면 재작성 + R1/R2/R3 반영.",
+          "approach": "(1) docs/contract/harness-io.md §4-2(OpenCode)에서 fragment-merge 경로 기술 제거. (2) canonical path 기술: plugin `src/index.ts`의 `export const agents`가 OpenCode에 의해 auto-register됨을 명시. (3) R1 — canonical consumer opencode.json 예제 블록 삽입 (`plugin`, `mcp`, `default_agent` 구조). (4) R2 — consumer 측 `@opencode-ai/plugin` devDependency 요구 명시. (5) R3 — `bun pm trust <plugin-name>` 노트 한 줄 추가. (6) Codex 섹션(§4-3 또는 해당)에서 agents/*.toml이 standalone role file로 installed됨을 명시, schema는 root-level name/developer_instructions 형식임을 기록. (7) CHANGELOG.md에 v0.16.0 섹션 추가, BREAKING CHANGES로 \"opencode.json.fragment 생성 중단\"과 \"Codex agents/*.toml schema가 standalone role file format으로 변경\"을 기록.",
+          "acceptance": "- docs/contract/harness-io.md §4-2에 fragment 언급 0건\n- canonical opencode.json 예제 블록 존재 (plugin, mcp, default_agent 포함)\n- @opencode-ai/plugin 및 bun pm trust 언급 존재\n- Codex 섹션에 standalone schema 기술 존재\n- CHANGELOG.md에 v0.16.0 BREAKING 섹션 2건(OpenCode fragment, Codex TOML) 명시",
+          "risk": "기존 consumer 문서가 fragment 경로를 참조하고 있을 가능성 — docs/ 아래 cross-reference 점검 필요. plugin-guide.md에도 opencode fragment 관련 기술이 있을 수 있음.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-20T07:20:56.773Z"
+        },
+        {
+          "id": 6,
+          "title": "T6: scripts/smoke/ 3개 러너 + package.json scripts + CI workflow",
+          "context": "#37 후속 distribution-invariant 게이트. dist/ 산출물 자체를 대상으로 harness별 smoke 실행.",
+          "approach": "(1) scripts/smoke/smoke-claude.ts: dist/hooks/session-init.js에 canned SessionStart payload JSON을 stdin으로 주입 + exit 0 + 지정 tmpdir 아래 .nexus/state/<sid>/agent-tracker.json 생성 assert. (2) scripts/smoke/smoke-codex.ts: dist/codex/agents/*.toml 각 파일을 TOML 파서(smol-toml 또는 @iarna/toml)로 파싱 + 각 파일 최상위 키에 name·description·developer_instructions 존재 assert + `[agents.` nested header 부재 assert. (3) scripts/smoke/smoke-opencode.ts: dist/manifests/opencode-manifest.json의 session-init 엔트리를 찾아 dist/hooks/session-init.js를 child_process.spawn + stdin으로 canned SessionStart JSON 주입 + stdout을 JSON parse 시도 + handler side-effect(tmpdir .nexus/state) 생성 assert. (4) package.json scripts: `smoke:claude`, `smoke:codex`, `smoke:opencode`, `smoke: bun run smoke:claude && bun run smoke:codex && bun run smoke:opencode`. (5) `.github/workflows/ci.yml`에 build → test → smoke 순차 step 추가(기존 없으면 신규 생성).",
+          "acceptance": "- scripts/smoke/*.ts 3개 파일 존재 + 각각 단독 실행 시 PASS 출력\n- package.json에 smoke 스크립트 4개 존재\n- `bun run smoke` 전체 PASS\n- .github/workflows/ci.yml에 smoke step 존재\n- #39 상태(T1 이전)로 롤백 시 smoke-claude가 FAIL(bootstrap 누락 감지)\n- #42 상태(T4 이전)로 롤백 시 smoke-codex가 FAIL(schema 불일치 감지)",
+          "risk": "TOML 파서 선택(smol-toml vs @iarna/toml) — 의존성 최소화 우선. 기존 package.json 확인 후 적합한 것 추가. GitHub Actions 워크플로 기존 상태 확인 필요 — 신규 생성 vs 수정.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 4,
+          "owner": "engineer",
+          "created_at": "2026-04-20T07:21:10.590Z"
+        },
+        {
+          "id": 7,
+          "title": "T7: T5 문서 변경 리뷰 (reviewer)",
+          "context": "Writer 산출물(harness-io.md + CHANGELOG) 필수 페어링. 팩트 정합성, 한국어 문법, OpenCode/Codex canonical schema 정확성 검증.",
+          "approach": "(1) harness-io.md §4-2의 opencode.json 예제가 실제 OpenCode validator가 수용하는 형식인지 검증(이슈 #43 본문의 canonical shape 대비). (2) Codex 섹션의 standalone schema 기술이 issue #42 본문의 parser 요구와 일치하는지 검증. (3) CHANGELOG BREAKING 기술이 실제 코드 변경(T4)과 일치하는지 교차 확인. (4) 한국어 문법·용어 일관성 점검.",
+          "acceptance": "- 팩트 오류 0건\n- canonical schema 예제가 issue #43/#42에서 제시된 실제 Harness 요구 shape과 완전 일치\n- CHANGELOG BREAKING이 T4 실제 변경(코드)과 정합\n- 문법·용어 일관성 확인",
+          "status": "completed",
+          "deps": [
+            5
+          ],
+          "plan_issue": 3,
+          "owner": "reviewer",
+          "created_at": "2026-04-20T07:21:17.105Z"
+        },
+        {
+          "id": 8,
+          "title": "T8: v0.16.0 smoke 전량 실행 (tester)",
+          "context": "T4(build-agents 수정) + T6(smoke runner 구현) 완료 후, 최종 dist/ 산출물에 대해 smoke 게이트 3개 전량 실행.",
+          "approach": "(1) clean build(`bun run clean && bun run build`). (2) `bun run smoke` 실행 + 모든 harness PASS 확인. (3) 의도적 regression 시뮬레이션: handler.ts의 bootstrap을 제거한 번들 또는 codexAgentToml을 roll back한 상태를 재현하여 smoke가 FAIL을 감지하는지 검증(negative test). (4) 정상 상태로 복원 후 재실행하여 PASS 확인.",
+          "acceptance": "- 정상 빌드 후 `bun run smoke` 전량 PASS\n- regression 시뮬레이션에서 각 smoke가 의도대로 FAIL 감지\n- negative test 후 정상 상태 복원 완료 확인",
+          "status": "completed",
+          "deps": [
+            4,
+            6
+          ],
+          "plan_issue": 4,
+          "owner": "tester",
+          "created_at": "2026-04-20T07:21:23.146Z"
+        },
+        {
+          "id": 9,
+          "title": "T9: v0.16.0 브랜치 → PR → 머지 → npm publish",
+          "context": "T3(v0.15.2) 완료 + T4/T5/T6/T7/T8 통과 후 v0.16.0 통합 릴리즈.",
+          "approach": "(1) feat/harness-contracts-v0.16.0 브랜치 생성(v0.15.2 머지 후 main에서 분기), (2) T4/T5/T6 변경사항 commit, (3) package.json version 0.16.0 bump, (4) CHANGELOG v0.16.0 섹션 확정, (5) gh pr create(BREAKING 명시), (6) CI/smoke 통과 확인 후 머지, (7) git tag v0.16.0 + push, (8) npm publish 확인.",
+          "acceptance": "- v0.16.0 PR 머지\n- v0.16.0 git tag 존재\n- npm에 v0.16.0 게시(`npm view @moreih29/nexus-core@0.16.0`)\n- 게시된 tarball 내 dist/codex/agents/*.toml이 standalone schema이고 opencode.json.fragment 파일 없음 확인",
+          "status": "completed",
+          "deps": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "plan_issue": 4,
+          "owner": "lead",
+          "created_at": "2026-04-20T07:21:29.324Z"
+        },
+        {
+          "id": 10,
+          "title": "T10: 이슈 대처 방안 코멘트 + #39/#40/#41/#42/#43 close",
+          "context": "v0.15.2 + v0.16.0 배포 완료 후 각 이슈에 대처 방안을 한국어로 기재하고 close.",
+          "approach": "5개 이슈에 `gh issue comment` + `gh issue close`. 코멘트 포맷: (1) 원인 요약, (2) 적용 수정(파일·함수 언급), (3) 적용 버전(v0.15.2 또는 v0.16.0), (4) PR 링크, (5) consumer action 필요 여부(특히 #43은 consumer 측 opencode.json 재구성 필요 명시, #42는 기존 agents/*.toml 재생성 필요 명시). #40, #41은 \"#42에 통합되어 #42로 추적 중, 중복으로 close\" 기재. 모든 코멘트는 한국어.",
+          "acceptance": "- 5개 이슈 각각 대처 방안 코멘트 남김\n- 5개 이슈 전부 close 상태\n- 코멘트에 버전·PR 링크 모두 포함\n- #40, #41 코멘트에 #42 참조 존재",
+          "status": "completed",
+          "deps": [
+            3,
+            9
+          ],
+          "plan_issue": 5,
+          "owner": "lead",
+          "created_at": "2026-04-20T07:21:35.853Z"
+        }
+      ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-20T08:12:07.413Z",
+      "branch": "main",
+      "plan": {
+        "id": 19,
+        "topic": "v0.16.1 hotfix — prompt-router bundle self-contained + smoke gate 확장 (#46)",
+        "issues": [
+          {
+            "id": 1,
+            "title": "#46 primary: prompt-router에 tool-name-map.yml invocations inline",
+            "status": "decided",
+            "decision": "**build-hooks.ts가 prompt-router entry wrapper에 tool-name-map.yml invocations를 JSON으로 inline**. 기존 Lead가 T1에서 도입한 entry wrapper 패턴을 그대로 확장: prompt-router에 한해 entry에 `const __INLINE_INVOCATIONS__ = { ... }` (tool-name-map.yml의 invocations 섹션을 YAML parse → JSON stringify)를 prepend하고 globalThis에 꽂는다. handler의 loadInvocations()를 globalThis 우선 참조 → 없을 때만 FS lookup fallback으로 수정하여 nexus-core repo 내 개발 시나리오도 유지. Rejected: syncHooksToTarget이 assets/tools 복사(flat consumer 모델 위반), require.resolve fallback(harness 간 모듈 가시성 가정 불안정)."
+          },
+          {
+            "id": 2,
+            "title": "#46 secondary: loadValidRuleTargets의 cwd 의존 제거",
+            "status": "decided",
+            "decision": "**loadValidRuleTargets를 build-time static list로 전환**. build-hooks.ts가 prompt-router entry emit 시 `assets/agents/*/`·`assets/skills/*/` 디렉토리명을 scan해서 배열을 JSON으로 inline (globalThis.__INLINE_RULE_TARGETS__). handler의 loadValidRuleTargets는 globalThis 우선 → cwd FS fallback 순서. input.cwd가 nexus-core repo인 개발 시나리오도 유지. Rejected: handler 소스에 하드코드(assets 추가 시 매번 수정), cwd 검증 유지(consumer 환경 dead)."
+          },
+          {
+            "id": 3,
+            "title": "#46 gate miss: smoke-consumer fixture 기반 prompt-router 검증 추가",
+            "status": "decided",
+            "decision": "**scripts/smoke/smoke-consumer.ts 신설**. mktemp target → `node dist/scripts/cli.js sync --harness=claude --target=<tmp>` → prompt-router.js에 `{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"[run] smoke\",\"cwd\":<tmp>,...}` stdin 주입 → exit 0 + stdout에 `<system-notice>` 포함 assert. package.json smoke:consumer + 기존 smoke aggregate에 추가. validate.yml/publish-npm.yml은 `bun run smoke`를 그대로 호출하므로 스텝 변경 불필요. 기존 smoke-claude.ts는 그대로 유지(authoring-tree 기반 session-init 검증은 여전히 유효)."
+          },
+          {
+            "id": 4,
+            "title": "v0.16.1 release + issue close",
+            "status": "decided",
+            "decision": "**v0.15.2·v0.16.0과 동일한 flow**: fix/prompt-router-selfcontained-v0.16.1 브랜치(이미 생성됨) → CHANGELOG v0.16.1 섹션 + package.json version 0.16.1 → commit → gh pr create → CI 통과 후 merge → tag v0.16.1 push → publish-npm.yml 자동 트리거 → npm view로 배포 확인 → 이슈 #46에 한국어 대처 코멘트(원인·적용 수정·버전·PR 링크·consumer action) + close."
+          }
+        ],
+        "research_summary": "\n재현 완료:\n- /tmp/nxr46에 fresh sync (node dist/scripts/cli.js sync --harness=claude --target=./) → consumer target에 assets/ 트리 없음.\n- echo '{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"[run] test\",...}' | node /tmp/nxr46/dist/hooks/prompt-router.js → Error: Cannot locate assets/tools/tool-name-map.yml, exit 1. 이슈 #46 본문 스택과 100% 일치.\n\n원인 3계층 (모두 nexus-core scope):\n1. assets/hooks/prompt-router/handler.ts:32-55 loadInvocations()가 selfDir 상향 탐색 — consumer target 레이아웃에서 실패.\n2. handler.ts:84-95 loadValidRuleTargets(input.cwd)가 cwd의 assets/agents·assets/skills 검사 — nexus-core cwd가 아니면 빈 배열, [rule]/[rule:<name>] dispatch dead.\n3. scripts/smoke/smoke-claude.ts는 ROOT/dist/hooks/session-init.js만 스폰 — source tree 내부라 assets/ 상향 탐색 우연히 성공. prompt-router 미검증 + consumer 모사 부재로 #46 class 감지 불가.\n\n사용자 지시:\n- Option 1(inline at build time) 채택: tool-name-map.yml 및 agents/skills name list를 prompt-router wrapper entry에 embed, handler는 inline 데이터 사용.\n- smoke-consumer.ts 신설: mktemp sync → prompt-router [run] payload exit 0 + system-notice stdout assert.\n- v0.16.1 tag push → publish-npm.yml 자동 배포.\n- 이슈 #46 close 코멘트.\n\n참고: 다른 4개 handler(session-init, agent-bootstrap, agent-finalize, post-tool-telemetry)는 invocations 의존 없음 — 영향 없음. build-hooks.ts 수정 시 prompt-router만 특별 처리.\n",
+        "created_at": "2026-04-20T08:03:17.123Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "T1: build-hooks.ts prompt-router entry에 invocations + rule_targets inline + handler 수정",
+          "context": "v0.16.0 regression #46: prompt-router 번들이 런타임에 assets/tools/tool-name-map.yml과 assets/agents·assets/skills 디렉토리를 FS lookup해서 consumer target에서 throw. Option 1(inline at build time)로 번들 self-contained화.",
+          "approach": "(1) scripts/build-hooks.ts compileHandlers(): prompt-router에 한해 entry 템플릿에 추가 prepend — tool-name-map.yml을 YAML parse → invocations 섹션만 추출 → JSON.stringify → `globalThis.__NEXUS_INLINE_INVOCATIONS__ = <json>;` 삽입. 그리고 assets/agents/*와 assets/skills/*의 이름 배열을 scan → `globalThis.__NEXUS_INLINE_RULE_TARGETS__ = [...]` 삽입. 다른 handler는 기존 entry 로직 그대로 유지. (2) assets/hooks/prompt-router/handler.ts: loadInvocations() 맨 앞에 `const inlined = (globalThis as any).__NEXUS_INLINE_INVOCATIONS__; if (inlined) { _invocationsCache = inlined; return inlined; }` 추가. 기존 FS 상향 탐색은 fallback으로 유지(nexus-core repo 내 dev 시나리오). loadValidRuleTargets도 동일 패턴: globalThis 우선 → cwd FS fallback. (3) scripts/build-hooks.test.ts에 두 inline global 주입 assert 추가(번들 파일 내용에 `__NEXUS_INLINE_INVOCATIONS__` 문자열 존재 확인).",
+          "acceptance": "- bun run build 성공\n- /tmp fresh sync 재현: `mkdir /tmp/nxt46-t1 && cd /tmp/nxt46-t1 && node dist/scripts/cli.js sync --harness=claude --target=./` 후 `echo '{\"hook_event_name\":\"UserPromptSubmit\",\"session_id\":\"t1\",\"cwd\":\"/tmp/nxt46-t1\",\"prompt\":\"[run] test\"}' | node /tmp/nxt46-t1/dist/hooks/prompt-router.js` → exit 0 + stdout에 `<system-notice>` 포함\n- `echo '{...,\"prompt\":\"[rule]\"}' | node ...prompt-router.js` → exit 0 + stdout의 Valid targets에 최소 1개 agent/skill 이름 포함\n- 기존 nexus-core repo 내 dev 시나리오 동작 유지 (ROOT에서 직접 실행)\n- bun test scripts/build-hooks.test.ts PASS",
+          "risk": "globalThis 주입은 ESM strict 모드에서도 허용되지만 번들러의 tree-shaking이 globalThis 할당을 제거하지 않도록 확인 필요. handler가 globalThis를 읽는 시점은 loadInvocations 호출 시 — entry가 handler import보다 먼저 평가되므로 순서 안전.",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-20T08:04:11.658Z"
+        },
+        {
+          "id": 2,
+          "title": "T2: smoke-consumer.ts 신설 + smoke aggregate 업데이트",
+          "context": "기존 smoke-claude는 nexus-core source tree 내 session-init만 검증 — consumer target 모사 부재로 #46 감지 못함. distribution-invariant 검증을 prompt-router + fresh consumer fixture로 확장.",
+          "approach": "(1) scripts/smoke/smoke-consumer.ts 신설. 흐름: (a) mkdtempSync(join(tmpdir(),\"nexus-smoke-consumer-\")) 생성, (b) `node ${ROOT}/dist/scripts/cli.js sync --harness=claude --target=<tmp>` execSync 실행, (c) 생성된 `<tmp>/dist/hooks/prompt-router.js`가 존재하는지 existsSync assert, (d) `[run] smoke` payload을 stdin.write로 주입 + spawn → exit 0 assert + stdout에 `<system-notice>` 포함 assert, (e) `[rule]` payload도 exit 0 + \"Valid targets:\" 이후 최소 1개 이름 assert, (f) finally cleanup. (2) package.json scripts에 `\"smoke:consumer\": \"bun run scripts/smoke/smoke-consumer.ts\"` 추가, `smoke` aggregate에 체인. (3) 파일 상단 주석 한 줄: \"Issue #46 — prompt-router runtime asset lookup 회귀 감지 (consumer target 모사)\".",
+          "acceptance": "- scripts/smoke/smoke-consumer.ts 파일 존재\n- package.json smoke:consumer 스크립트 존재 + aggregate smoke에 포함\n- T1 변경 적용된 후 `bun run smoke:consumer` PASS\n- T1 변경 롤백 상태(handler에 globalThis 분기 제거)에서 smoke-consumer가 FAIL — negative regression 감지 가능 구조임\n- validate.yml·publish-npm.yml은 `bun run smoke`를 이미 호출하므로 CI 워크플로 수정 불필요",
+          "risk": "execSync sync 호출이 stdout/stderr 섞여 지저분할 수 있음 → stdio 설정 조정. mktemp 디렉토리에 대한 cleanup은 try/finally로 반드시 보장(CI runner 디스크 누수 방지).",
+          "status": "completed",
+          "deps": [],
+          "plan_issue": 3,
+          "owner": "engineer",
+          "created_at": "2026-04-20T08:04:29.420Z"
+        },
+        {
+          "id": 3,
+          "title": "T3: v0.16.1 smoke 전량 실행 + acceptance 검증",
+          "context": "T1+T2 완료 후 최종 검증. bun run smoke 4개 러너(claude, codex, opencode, consumer) 전량 PASS + T1의 fresh-sync 재현 acceptance 항목 실제 재현.",
+          "approach": "(1) clean build(`bun run clean && bun run build`), (2) `bun run smoke` 전량 PASS 확인, (3) /tmp fresh sync 재현(T1 acceptance): `[run]` + `[rule]` 두 케이스 직접 실행해 stdout system-notice + valid targets 포함 확인, (4) 기존 nexus-core repo 내 dev 시나리오(source tree)에서도 prompt-router가 FS fallback으로 동작함을 확인.",
+          "acceptance": "- `bun run smoke` 4개 러너 전량 PASS\n- fresh sync 재현 시 `[run]` payload → exit 0 + stdout에 `<system-notice>` 포함\n- fresh sync 재현 시 `[rule]` payload → exit 0 + Valid targets 비어있지 않음\n- bun test 전체 pass",
+          "status": "completed",
+          "deps": [
+            1,
+            2
+          ],
+          "plan_issue": 3,
+          "owner": "tester",
+          "created_at": "2026-04-20T08:04:35.865Z"
+        },
+        {
+          "id": 4,
+          "title": "T4: v0.16.1 release + 이슈 #46 close",
+          "context": "T1/T2/T3 통과 후 v0.16.1 hotfix 배포 및 이슈 close.",
+          "approach": "(1) CHANGELOG.md 최상단에 `## [0.16.1] - 2026-04-20` 섹션 추가 — Fixed(#46 prompt-router runtime asset lookup), Added(smoke-consumer gate), Migration Notes. (2) package.json version 0.16.1 bump. (3) git add (명시적 경로) + commit with HEREDOC. (4) git push -u origin fix/prompt-router-selfcontained-v0.16.1. (5) gh pr create(Closes #46 명시). (6) gh pr checks --watch로 CI 통과 확인. (7) gh pr merge --squash --delete-branch. (8) git checkout main && pull. (9) git tag v0.16.1 + push. (10) publish-npm.yml 완료 대기 + npm view @moreih29/nexus-core@0.16.1로 배포 확인. (11) gh issue comment 46 한국어 대처 코멘트(원인·수정·버전·PR링크·consumer action). (12) gh issue close 46.",
+          "acceptance": "- v0.16.1 PR merge + tag + npm 게시\n- 이슈 #46 close + 대처 방안 한국어 코멘트",
+          "status": "completed",
+          "deps": [
+            1,
+            2,
+            3
+          ],
+          "plan_issue": 4,
+          "owner": "lead",
+          "created_at": "2026-04-20T08:04:44.447Z"
+        }
+      ]
     }
   ]
 }
