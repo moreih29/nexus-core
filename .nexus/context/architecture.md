@@ -35,9 +35,10 @@ nexus-core (@moreih29/nexus-core)
   ├── SSOT 자산 (capability-matrix.yml, tool-name-map.yml invocations)
   └── MCP 서버 (src/mcp/) + 빌드 파이프라인 (scripts/)
           │
-          │ nexus-core sync (build-agents + build-hooks)
+          │ nexus-core sync --harness=<x> --target=<dir>
+          │ (build-agents + build-hooks, flat 출력)
           ▼
-  dist/<harness>/   ← 하네스별 빌드 산출물
+  <dir>/*   ← plugin repo 루트에 직접 생성 (harness prefix 없음)
           │
           │ 플러그인 레포가 소비
           ▼
@@ -48,30 +49,32 @@ nexus-core (@moreih29/nexus-core)
   End user
 ```
 
-### 2-1. dist/ 하네스별 출력 트리
+### 2-1. sync 출력 구조
 
-`nexus-core sync` 실행 후 `dist/` 아래에 하네스별 파일이 생성된다.
+`nexus-core sync --harness=<x> --target=<dir>`는 `<dir>` 직속에 자산을 기록한다. harness 이름 prefix를 붙이지 않는다. 3 plugin repo(claude-nexus·opencode-nexus·codex-nexus)가 모두 "repo 루트 = plugin 루트"를 요구하므로 flat 출력이 기본값이다. Multi-harness 빌드가 필요한 경우 consumer가 `--target=dist/claude`·`--target=dist/opencode`·`--target=dist/codex`로 3회 호출해 sibling 레이아웃을 구성한다.
 
-| 하네스 | 경로 | 내용 |
-|---|---|---|
-| Claude | `dist/claude/.claude-plugin/plugin.json` | 플러그인 메타 (Template — 최초 1회 생성) |
-| Claude | `dist/claude/.claude-plugin/marketplace.json` | 마켓플레이스 메타 (Template) |
-| Claude | `dist/claude/agents/<name>.md` | 하네스 네이티브 에이전트 .md (Managed) |
-| Claude | `dist/claude/skills/<name>/SKILL.md` | 스킬 .md (Managed) |
-| OpenCode | `dist/opencode/package.json` | 플러그인 패키지 (Template) |
-| OpenCode | `dist/opencode/opencode.json.fragment` | 에이전트 등록 fragment (Managed) |
-| OpenCode | `dist/opencode/src/index.ts` | 에이전트 export 인덱스 (Managed) |
-| OpenCode | `dist/opencode/src/agents/<name>.ts` | 에이전트 TS 모듈 (Managed) |
-| OpenCode | `dist/opencode/.opencode/skills/<name>/SKILL.md` | 스킬 .md (Managed) |
-| Codex | `dist/codex/plugin/.codex-plugin/plugin.json` | 플러그인 메타 (Managed) |
-| Codex | `dist/codex/agents/<name>.toml` | 에이전트 TOML (Managed) |
-| Codex | `dist/codex/prompts/<name>.md` | 에이전트 프롬프트 .md (Managed) |
-| Codex | `dist/codex/plugin/skills/<name>/SKILL.md` | 스킬 .md (Managed) |
-| Codex | `dist/codex/install/config.fragment.toml` | MCP 서버 등록 fragment (Managed) |
-| Claude | `dist/claude/settings.json` | Managed — plugin settings, `{ "agent": "<primary>" }` 키로 main thread 시스템 프롬프트 주입 |
-| Codex | `dist/codex/install/AGENTS.fragment.md` | Managed — primary agent body를 마커로 감싸 consumer가 수동 머지 |
+| 하네스 | 경로(target 루트 기준) | 분류 | 내용 |
+|---|---|---|---|
+| Claude | `.claude-plugin/plugin.json` | Template | 플러그인 메타 |
+| Claude | `.claude-plugin/marketplace.json` | Template | 마켓플레이스 메타 |
+| Claude | `agents/<name>.md` | Managed | 하네스 네이티브 에이전트 .md |
+| Claude | `skills/<name>/SKILL.md` | Managed | 스킬 .md |
+| Claude | `settings.json` | Managed | `{ "agent": "<primary>" }` 키로 main thread 시스템 프롬프트 주입 |
+| OpenCode | `package.json` | Template | 플러그인 패키지 |
+| OpenCode | `opencode.json.fragment` | Managed | 에이전트 등록 fragment |
+| OpenCode | `src/index.ts` | Managed | 에이전트 export 인덱스 |
+| OpenCode | `src/agents/<name>.ts` | Managed | 에이전트 TS 모듈 |
+| OpenCode | `.opencode/skills/<name>/SKILL.md` | Managed | 스킬 .md |
+| Codex | `plugin/.codex-plugin/plugin.json` | Managed | 플러그인 메타 |
+| Codex | `plugin/skills/<name>/SKILL.md` | Managed | 스킬 .md |
+| Codex | `agents/<name>.toml` | Managed | native agent TOML |
+| Codex | `prompts/<name>.md` | Managed | 에이전트 프롬프트 .md |
+| Codex | `install/config.fragment.toml` | Managed | MCP 서버 등록 fragment |
+| Codex | `install/AGENTS.fragment.md` | Managed | primary agent body 마커 블록 |
 
-**덮어쓰기 정책**: `Managed` 경로는 빌드 시마다 항상 덮어씀. `Template` 경로는 파일이 이미 존재하면 건너뜀(`--force`로 강제 덮어쓰기 가능).
+**덮어쓰기 정책**: `Managed` 경로는 빌드 시마다 항상 덮어씀. `Template` 경로는 파일이 이미 존재하면 건너뜀(`--force`로 강제 덮어쓰기 가능). dry-run 출력은 kind별 카운트(`N managed, M template-create, K template-skipped, L template-force-overwrite`)와 `[M]`/`[T]`/`[T]{skip}`/`[T]{force}` prefix로 구분한다. `--strict`는 managed 파일 drift에서만 실패하며 template skip은 정상 통과.
+
+Codex 내부 `plugin/`·`agents/`·`install/` 도메인 서브디렉터리는 Codex 생태계가 `~/.codex/plugins/`·`~/.codex/agents/`·`~/.codex/config.toml` 3곳에 분리 설치되는 구조 반영이며, flat 출력 규칙과 직교한다.
 
 ### 2-2. 빌드 SSOT 2종
 

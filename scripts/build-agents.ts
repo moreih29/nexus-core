@@ -135,8 +135,22 @@ export interface BuildOptions {
   only?: string;
 }
 
-// Track dry-run affected files
-const dryRunFiles: string[] = [];
+export type DryRunKind = "managed" | "template";
+export type DryRunReason =
+  | "managed"
+  | "template-create"
+  | "template-skipped"
+  | "template-force-overwrite";
+
+export interface DryRunRecord {
+  path: string;
+  kind: DryRunKind;
+  willWrite: boolean;
+  reason: DryRunReason;
+}
+
+// Track dry-run affected files (cleared after each buildAgents call)
+const dryRunRecords: DryRunRecord[] = [];
 
 // ---------------------------------------------------------------------------
 // Frontmatter parsing
@@ -355,7 +369,7 @@ export function resolveModel(
  *
  * Managed: always overwrite (unless --dry-run)
  * Template: skip if exists (overwrite only with --force)
- * --dry-run: record path, no write
+ * --dry-run: record path and intent, no write
  * --strict: error if Managed path has untracked git modifications
  */
 export function applyOverwritePolicy(
@@ -363,15 +377,22 @@ export function applyOverwritePolicy(
   content: string,
   isManaged: boolean,
   opts: BuildOptions,
-): void {
-  if (opts.dryRun) {
-    dryRunFiles.push(filePath);
-    return;
-  }
-
+): DryRunRecord {
   if (isManaged) {
+    const record: DryRunRecord = {
+      path: filePath,
+      kind: "managed",
+      willWrite: true,
+      reason: "managed",
+    };
+
+    if (opts.dryRun) {
+      dryRunRecords.push(record);
+      return record;
+    }
+
     if (opts.strict) {
-      // Check if the file is tracked by git and has local modifications
+      // managed 파일에 대해서만 git drift 검사 — template skip은 strict 대상 아님
       if (existsSync(filePath)) {
         try {
           const rel = filePath.startsWith(ROOT)
@@ -389,19 +410,45 @@ export function applyOverwritePolicy(
           }
         } catch (err) {
           if (String(err).includes("--strict:")) throw err;
-          // git not available or file not tracked — allow
+          // git 미설치 또는 미추적 파일 — 허용
         }
       }
     }
+
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, content, "utf-8");
+    return record;
   } else {
     // Template: skip if exists unless --force
-    if (existsSync(filePath) && !opts.force) {
-      return;
+    const exists = existsSync(filePath);
+    let reason: DryRunReason;
+    let willWrite: boolean;
+
+    if (exists && !opts.force) {
+      reason = "template-skipped";
+      willWrite = false;
+    } else if (exists && opts.force) {
+      reason = "template-force-overwrite";
+      willWrite = true;
+    } else {
+      reason = "template-create";
+      willWrite = true;
     }
+
+    const record: DryRunRecord = { path: filePath, kind: "template", willWrite, reason };
+
+    if (opts.dryRun) {
+      dryRunRecords.push(record);
+      return record;
+    }
+
+    if (!willWrite) {
+      return record;
+    }
+
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, content, "utf-8");
+    return record;
   }
 }
 
@@ -491,7 +538,7 @@ export function buildForClaude(
   invocations: InvocationsMap,
   opts: BuildOptions,
 ): void {
-  const baseDir = join(opts.targetDir, "claude");
+  const baseDir = opts.targetDir;
   const agentAssets = assets.filter((a) => a.type === "agent");
   const skillAssets = assets.filter((a) => a.type === "skill");
 
@@ -609,18 +656,40 @@ function opencodePackageJson(agents: AssetEntry[]): string {
         version: "0.13.0",
         description: "Nexus agent suite for OpenCode",
         type: "module",
-        main: "./src/index.ts",
+        main: "./src/plugin.ts",
         exports: {
-          ".": "./src/index.ts",
+          ".": "./src/plugin.ts",
         },
         peerDependencies: {
           opencode: "*",
+        },
+        dependencies: {
+          "@moreih29/nexus-core": "^0.14.0",
+        },
+        devDependencies: {
+          "@opencode-ai/plugin": "*",
+          typescript: "^5",
+        },
+        engines: {
+          node: ">=22",
         },
       },
       null,
       2,
     ) + "\n"
   );
+}
+
+function opencodePluginTs(): string {
+  return [
+    `import type { Plugin } from "@opencode-ai/plugin";`,
+    `import { mountHooks } from "@moreih29/nexus-core/hooks/opencode-mount";`,
+    `import manifest from "@moreih29/nexus-core/hooks/opencode-manifest" with { type: "json" };`,
+    ``,
+    `export const OpencodeNexus: Plugin = async (ctx) => mountHooks(ctx, manifest);`,
+    `export default OpencodeNexus;`,
+    ``,
+  ].join("\n");
 }
 
 function opencodeJsonFragment(agents: AssetEntry[]): string {
@@ -662,13 +731,17 @@ export function buildForOpencode(
   invocations: InvocationsMap,
   opts: BuildOptions,
 ): void {
-  const baseDir = join(opts.targetDir, "opencode");
+  const baseDir = opts.targetDir;
   const agentAssets = assets.filter((a) => a.type === "agent");
   const skillAssets = assets.filter((a) => a.type === "skill");
 
   // Template: package.json
   const pkgPath = join(baseDir, "package.json");
   applyOverwritePolicy(pkgPath, opencodePackageJson(agentAssets), false, opts);
+
+  // Template: src/plugin.ts (mountHooks 진입점)
+  const pluginTsPath = join(baseDir, "src", "plugin.ts");
+  applyOverwritePolicy(pluginTsPath, opencodePluginTs(), false, opts);
 
   // Managed: opencode.json.fragment
   const fragmentPath = join(baseDir, "opencode.json.fragment");
@@ -801,15 +874,118 @@ function codexConfigFragment(agents: AssetEntry[]): string {
   return lines.join("\n");
 }
 
+function codexPackageJson(): string {
+  return (
+    JSON.stringify(
+      {
+        name: "codex-nexus",
+        version: "0.13.0",
+        description: "Nexus agent suite for Codex CLI",
+        private: true,
+        scripts: {
+          sync: "bunx @moreih29/nexus-core sync --harness=codex --target=./",
+          "sync:dry": "bunx @moreih29/nexus-core sync --harness=codex --target=./ --dry-run",
+          build: "bun run sync",
+          validate: "bunx @moreih29/nexus-core validate",
+          list: "bunx @moreih29/nexus-core list",
+          "install-plugin": "bash install/install.sh",
+        },
+        devDependencies: {
+          "@moreih29/nexus-core": "^0.14.0",
+        },
+        engines: {
+          node: ">=22",
+        },
+      },
+      null,
+      2,
+    ) + "\n"
+  );
+}
+
+function codexInstallSh(): string {
+  return [
+    `#!/usr/bin/env bash`,
+    `# Codex plugin installer — block-marker merge pattern.`,
+    `# nexus-core Model 2: wrapper owns integration seams.`,
+    `# Merges config.fragment.toml into ~/.codex/config.toml,`,
+    `# copies native agent TOMLs to ~/.codex/agents/,`,
+    `# and merges AGENTS.fragment.md into ~/.codex/AGENTS.md.`,
+    `set -euo pipefail`,
+    ``,
+    `PLUGIN_NAME="\${PLUGIN_NAME:-codex-nexus}"`,
+    `CODEX_HOME="\${CODEX_HOME:-\$HOME/.codex}"`,
+    `SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"`,
+    `REPO_ROOT="\$(cd "\$SCRIPT_DIR/.." && pwd)"`,
+    ``,
+    `mkdir -p "\$CODEX_HOME" "\$CODEX_HOME/agents" "\$CODEX_HOME/plugins"`,
+    ``,
+    `# 1. config.toml — block-marker merge`,
+    `MARKER_BEGIN="# BEGIN \${PLUGIN_NAME}"`,
+    `MARKER_END="# END \${PLUGIN_NAME}"`,
+    `CONFIG="\$CODEX_HOME/config.toml"`,
+    `CONFIG_FRAGMENT="\$SCRIPT_DIR/config.fragment.toml"`,
+    ``,
+    `touch "\$CONFIG"`,
+    `if grep -q "\${MARKER_BEGIN}" "\$CONFIG" 2>/dev/null; then`,
+    `  sed -i.bak "/\${MARKER_BEGIN}/,/\${MARKER_END}/d" "\$CONFIG"`,
+    `fi`,
+    `{`,
+    `  echo ""`,
+    `  echo "\${MARKER_BEGIN}"`,
+    `  cat "\$CONFIG_FRAGMENT"`,
+    `  echo "\${MARKER_END}"`,
+    `} >> "\$CONFIG"`,
+    ``,
+    `# 2. native agent TOMLs`,
+    `cp "\$REPO_ROOT"/agents/*.toml "\$CODEX_HOME/agents/" 2>/dev/null || true`,
+    ``,
+    `# 3. plugin body → ~/.codex/plugins/<name>/`,
+    `PLUGIN_DEST="\$CODEX_HOME/plugins/\${PLUGIN_NAME}"`,
+    `rm -rf "\$PLUGIN_DEST"`,
+    `mkdir -p "\$PLUGIN_DEST"`,
+    `cp -R "\$REPO_ROOT"/plugin/. "\$PLUGIN_DEST/"`,
+    ``,
+    `# 4. AGENTS.md — block-marker merge`,
+    `AGENTS_TARGET="\$CODEX_HOME/AGENTS.md"`,
+    `AGENTS_FRAGMENT="\$SCRIPT_DIR/AGENTS.fragment.md"`,
+    `FRAG_BEGIN="<!-- nexus-core:lead:start -->"`,
+    `FRAG_END="<!-- nexus-core:lead:end -->"`,
+    ``,
+    `if [ -f "\$AGENTS_FRAGMENT" ]; then`,
+    `  touch "\$AGENTS_TARGET"`,
+    `  if grep -q "\${FRAG_BEGIN}" "\$AGENTS_TARGET" 2>/dev/null; then`,
+    `    awk -v begin="\${FRAG_BEGIN}" -v end="\${FRAG_END}" '`,
+    `      \$0 ~ begin { skip=1; next }`,
+    `      \$0 ~ end { skip=0; next }`,
+    `      !skip { print }`,
+    `    ' "\$AGENTS_TARGET" > "\$AGENTS_TARGET.tmp" && mv "\$AGENTS_TARGET.tmp" "\$AGENTS_TARGET"`,
+    `  fi`,
+    `  cat "\$AGENTS_FRAGMENT" >> "\$AGENTS_TARGET"`,
+    `fi`,
+    ``,
+    `echo "Installed \${PLUGIN_NAME} → \$CODEX_HOME"`,
+    ``,
+  ].join("\n");
+}
+
 export function buildForCodex(
   assets: AssetEntry[],
   capMatrix: CapabilityMatrix,
   invocations: InvocationsMap,
   opts: BuildOptions,
 ): void {
-  const baseDir = join(opts.targetDir, "codex");
+  const baseDir = opts.targetDir;
   const agentAssets = assets.filter((a) => a.type === "agent");
   const skillAssets = assets.filter((a) => a.type === "skill");
+
+  // Template: package.json (wrapper meta)
+  const pkgPath = join(baseDir, "package.json");
+  applyOverwritePolicy(pkgPath, codexPackageJson(), false, opts);
+
+  // Template: install/install.sh (block-marker merge installer)
+  const installShPath = join(baseDir, "install", "install.sh");
+  applyOverwritePolicy(installShPath, codexInstallSh(), false, opts);
 
   // Managed: plugin/.codex-plugin/plugin.json
   const pluginJsonPath = join(baseDir, "plugin", ".codex-plugin", "plugin.json");
@@ -953,12 +1129,29 @@ export async function buildAgents(opts: BuildOptions): Promise<void> {
   }
 
   if (opts.dryRun) {
-    console.log(`[build-agents] Affected files (${dryRunFiles.length}):`);
-    for (const f of dryRunFiles) {
-      console.log(`  ${f}`);
+    const managed = dryRunRecords.filter((r) => r.reason === "managed").length;
+    const templateCreate = dryRunRecords.filter((r) => r.reason === "template-create").length;
+    const templateSkipped = dryRunRecords.filter((r) => r.reason === "template-skipped").length;
+    const templateForce = dryRunRecords.filter((r) => r.reason === "template-force-overwrite").length;
+
+    console.log(
+      `[build-agents] ${managed} managed, ${templateCreate} template-create, ${templateSkipped} template-skipped, ${templateForce} template-force-overwrite`,
+    );
+
+    for (const r of dryRunRecords) {
+      if (r.kind === "managed") {
+        console.log(`  [M] ${r.path}`);
+      } else if (r.reason === "template-skipped") {
+        console.log(`  [T]{skip} ${r.path}`);
+      } else if (r.reason === "template-force-overwrite") {
+        console.log(`  [T]{force} ${r.path}`);
+      } else {
+        console.log(`  [T] ${r.path}`);
+      }
     }
-    // Clear for next run
-    dryRunFiles.length = 0;
+
+    // 다음 호출을 위해 초기화
+    dryRunRecords.length = 0;
     return;
   }
 

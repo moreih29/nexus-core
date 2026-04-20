@@ -5691,6 +5691,277 @@
           "created_at": "2026-04-20T03:19:32.175Z"
         }
       ]
+    },
+    {
+      "schema_version": "0.5",
+      "completed_at": "2026-04-20T04:46:10.717Z",
+      "branch": "feat/harness-io-contract",
+      "plan": {
+        "id": 17,
+        "topic": "3-harness consumer plugin I/O 계약 재정렬",
+        "issues": [
+          {
+            "id": 1,
+            "title": "Flat 출력 전략: 자동 평탄화 vs 명시적 --flat 플래그",
+            "status": "decided",
+            "decision": "D 채택 — prefix 제거를 기본값으로. `sync --harness=<x> --target=<dir>`가 `<dir>` 직속에 자산을 기록. `--flat` 플래그 신설 없음. multi-harness `dist/` 빌드는 nexus-core 자신의 `package.json` scripts에서 `--target=dist/claude`·`dist/opencode`·`dist/codex`로 3회 호출하여 대응. 근거: (1) 지배적 use case는 3개 plugin repo 모두 repo 루트 = plugin 루트를 요구 — prefix는 방해물. (2) 현 prefix는 multi-harness 동시 빌드(nexus-core 내부 dev 편의)가 사용자 인터페이스로 샌 결과. (3) `--flat`(B)/자동평탄화(A)는 각각 \"flag 기억\"·\"조합 의존 규칙\" 실수 경로를 남기지만 D는 경로 자체가 없음. (4) Codex의 내부 `plugin/`·`agents/`·`install/` 도메인 prefix는 Codex 생태계 구조 반영이라 D와 직교, 유지. 기각: A(자동 평탄화) — targetDir 의미가 flag 조합에 의존하는 컨텍스트 경로 유발. B(명시적 --flat) — 지배 use case에 flag 세금. C(현상 유지) — 3 plugin repo가 각자 동일 mv 후처리 중복 구현 반패턴.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "접근 승인 - 조건부. baseDir 하드코딩(build-agents.ts:494/665/810) 일원화 필요. `--target`의 의미가 flag 조합과 무관하게 고정되는 것이 장기 유지비를 낮춤. multi-harness 빌드는 nexus-core 내부 스크립트 영역으로 제한 가능. Codex plugin/ 도메인 층은 D와 무관 (Codex 생태계 install 대상 3곳 분리 반영)."
+            },
+            "how_agent_ids": {
+              "architect": "a4de2880c15b6582e"
+            }
+          },
+          {
+            "id": 2,
+            "title": "consumer-manifest.json 도입 여부 (#33)",
+            "status": "decided",
+            "decision": "B 채택 — consumer-manifest.json 도입 유보. `package.json exports`(런타임 계약 SSOT) + `docs/contract/harness-io.md`(빌드 산출물 계약 SSOT) 두 축으로 충족. 단 `docs/contract/harness-io.md`에 \"예약된 확장점: consumer-manifest.json — 자동화 소비처 등장 시 재검토\" 항목 기록하여 향후 도입 여지 보존. 근거: (1) 현 3 wrapper(claude-nexus·opencode-nexus·codex-nexus) 어느 쪽도 managed_outputs 기계 소비 코드 없음 — 생성-무소비 스키마는 드리프트 주원인. (2) exports가 Node resolver·TS가 실제로 읽는 기계 판독 SSOT 역할 이미 수행. (3) Codex install.sh는 정적 경로 참조라 manifest 불필요. schema_version은 자동화가 그 manifest를 실제로 읽기 시작하는 순간 정당화. 기각: A(지금 생성) — 소비처 0 상태 도입 시 형식적 1.0 동결 + 산출물 드리프트 위험. C(synced.json 절충) — 여전히 소비처 없고 naming 혼선 유발.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "YAGNI. package.json exports + docs/contract/harness-io.md 두 축으로 충분. 자동화가 매니페스트를 읽기 시작하는 순간 재검토. 예약된 확장점으로 문서에만 명기 권장."
+            }
+          },
+          {
+            "id": 3,
+            "title": "I/O contract 문서화 범위 — plugin-guide 혼합 vs docs/contract/ 분리",
+            "status": "decided",
+            "decision": "B 채택 — `docs/contract/harness-io.md` 신설. 튜토리얼(plugin-guide.md)과 규범 계약을 문서 레벨에서 분리. 내부 섹션: (1) 스코프 선언 — 규범 vs 튜토리얼 구분, (2) Runtime exports 계약 — `./hooks/opencode-mount`·`./hooks/opencode-manifest`·`./mcp`·`./hooks/runtime`·`./agents/*`·`./skills/*`·`./assets/*`·`./docs/*` / `.`=null, (3) bin 계약 — `nexus-core`·`nexus-mcp`, (4) sync 출력 set (3 하네스별) — 경로·Managed/Template 분류, (5) Ownership line — 안건 #4 결정 반영, (6) Template vs Managed 정책 — 안건 #6 결정 반영, (7) 예약된 확장점 — consumer-manifest.json 미도입(안건 #2), (8) Semver 커버리지 분리 — runtime exports(엄격 semver) vs sync output set(경로·파일명·managed/template 속성 minor 이상 불변) vs 프론트매터 스키마(assets/schema/ 별도 버전). plugin-guide.md §1에 cross-link 한 줄 추가. 근거: (1) 튜토리얼과 규범은 변경 사유가 달라 한 파일에 섞으면 드리프트 빨라짐. (2) 3 wrapper 저자가 공통으로 읽는 계약(exports·bin·managed/template·ownership)이 70%+ — 하네스별 분리는 중복 기술 유발. (3) `docs/contract/` 디렉토리 architecture.md §1에 이미 규범 명세 공간으로 선언. 기각: A(plugin-guide 확장) — 튜토리얼+규범 혼재로 업데이트 위험 증폭, 396줄 문서가 더 비대해짐. C(하네스별 3파일) — 공통 계약 70% 중복 → 드리프트 3배 위험.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "docs/contract/ 신설 권장. semver 두 축(runtime exports 엄격 / sync output set minor 이상 불변) 분리. 프론트매터 스키마는 별도 버전."
+            }
+          },
+          {
+            "id": 4,
+            "title": "Codex ownership line — Model 1 core-owns vs Model 2 wrapper-owns (3 하네스 통일 여부)",
+            "status": "decided",
+            "decision": "B 채택 — 3 하네스 통일 Model 2 (wrapper owns integration seams). core 책임: (i) agents/skills 원본 생성, (ii) 하네스 네이티브 자산 빌드(agents .md/.ts/.toml, skills SKILL.md, plugin manifest), (iii) integration fragment 제공 — Claude `settings.json`, OpenCode `opencode.json.fragment`, Codex `install/config.fragment.toml`·`AGENTS.fragment.md`, (iv) runtime exports(mountHooks, manifest JSON, mcp 서버). wrapper 책임: (i) fragment의 consumer 환경 실제 머지 로직 — block-marker·conditional merge·OS 경로 해석, (ii) 배포 — marketplace 등록·npm publish·install.sh, (iii) plugin 진입점 코드(예: opencode `src/plugin.ts`), (iv) version/changelog 관리. 조건부: 이 통일 규범의 실효성은 `docs/contract/harness-io.md`가 3 하네스별로 fragment 경로·merge 지점·consumer 작업 범위를 **꼼꼼하게** 명시하는 것에 달림 — harness-io.md §4 sync 출력 set 섹션에 3 하네스 각각 하위 섹션으로 상세 기술 의무화(안건 #3 결정과 연결). 근거: (1) 현 구현이 이미 사실상 Model 2 — wrapper 3명에게 새 부담 없음, 규범화만 추가. (2) 철학 §3 \"플러그인 자체의 빌드·배포·실행 — 하네스 책임\" 선언과 정합. A(Codex만 특례)는 §3 비대칭 유발. (3) 새 하네스 추가 시 \"wrapper가 integration seam 소유\" 단일 규칙으로 온보딩 가능. 기각: A(Codex 단독 Model 2) — 하네스별 케이스 판정 비용 누적, 1년 뒤 \"왜 Claude는 다른가\" 설명 부담. C(Model 1 core-owns) — core가 OS별 config.toml 경로·sudo 권한·block-marker 로직 떠안음, 철학 §3 비목표 위배.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Model 2 3 하네스 통일 권장. 철학 §3과 정합. 현 구현 중 사실상 Model 2로 동작 중 — 규범화만 추가. fragment 제공은 core, merge 실행은 wrapper."
+            }
+          },
+          {
+            "id": 5,
+            "title": "canonical plugin 진입 템플릿 배포 수단 — sync Template vs docs 코드블록",
+            "status": "decided",
+            "decision": "C 채택 — sync Template + plugin-guide cross-link 하이브리드. 3 하네스 대칭으로 wrapper 보일러플레이트를 Template으로 표준 제공. 신규 Template: (i) OpenCode `src/plugin.ts` — mountHooks/manifest 진입점, (ii) Codex `install/install.sh` — block-marker 머지 스크립트, (iii) Codex `package.json` — wrapper meta(OpenCode 대칭). 모두 Template 정책(최초 1회 생성, 이후 wrapper 저자 소유, `--force`로 강제 리베이스). plugin-guide.md §4-1/§4-2/§4-3는 코드블록 인라인 대신 `docs/plugin-template/<harness>/` 경로 링크로 변경 — Template 내용이 SSOT. 조건부: 안건 #6(dry-run 라벨링) 해결 선행 필수 — Template 수 증가 시 managed/template 구분 부재는 혼란 증폭. 근거: (1) Template이 SSOT, docs는 참조 — 코드블록 inline 유지는 Template·docs·실사용 repo 3중 드리프트 유발. (2) 안건 #4 Model 2 통일과 대칭 — wrapper 보일러플레이트 지원에 하네스 차별 금지. Codex Template 0 상태는 안건 #4 결정과 충돌. (3) runtime API 변경 시 `--force` 리베이스로 자동 업데이트 채널 확보. 기각: A(Template만) — docs가 cross-link 없이 방치되면 신규 저자 온보딩 경로 불명. B(docs만) — runtime API 변동 시 stale, 저자 합성 부담 유지, 3 하네스 대칭 깨짐.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Template 배포 권장, 단 Gap 2 선행 필수. Template 정책이 runtime API 변화 시 자동 업데이트 채널 제공. Codex Template 0 상태는 3 하네스 대칭성 깨짐."
+            }
+          },
+          {
+            "id": 6,
+            "title": "Template vs Managed 정책 — 런타임 정합과 dry-run 레이블링 (#32 Gap 2)",
+            "status": "decided",
+            "decision": "A 채택 — dry-run 레코드 구조 확장. Template 런타임 동작(isManaged 기반 skip/overwrite) 자체는 유지, dry-run/CI 통합만 구조화. 변경: (i) `dryRunFiles` → `dryRunRecords: Array<{path, kind: \"managed\"|\"template\", willWrite: boolean, reason}>`, (ii) `applyOverwritePolicy` 반환에 kind/willWrite 포함, (iii) summary 포맷 개정 — `[build-agents] N managed, M template-create, K template-skipped, L template-force-overwrite`, (iv) `--strict` 시맨틱 명시 — managed drift만 실패, template skip은 정상. 검증: `build-agents.test.ts`에 `package.json` Template skip 케이스 추가하여 \"실제 skip되는가\" 실증 고정. 근거: (1) 안건 #5와 불가분 — 추가 Template 3종(src/plugin.ts·install.sh·Codex package.json)이 \"Affected\" 표시되면 wrapper 저자 sync 공포 유발. (2) 안건 #3 harness-io.md §8 \"sync output set managed/template 속성 minor 이상 불변\" 선언 효력 위해 CI가 kind 기반 diff 읽기 필요. (3) B(주석만 추가)는 --strict CI가 template skip을 tamper 오판. 기각: B(출력 주석만) — summary 카운트 부재로 CI 자동화 불가. C(Template 폐기·전부 overwrite) — 안건 #5 결정(wrapper 보일러플레이트 Template 배포)과 정면 충돌, wrapper 저자 커스텀 손실.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "dry-run 레노드에 kind 확장 필수 — 시증상 warning 영역. Template 정책 런타임은 이미 정합은 맞음(applyOverwritePolicy 398-), 출력과 --strict 시맨틱만 보완."
+            }
+          },
+          {
+            "id": 7,
+            "title": "Skill discovery 계약 범위 (#32 Gap 5) — consumer-local vs node_modules 추정 의존",
+            "status": "decided",
+            "decision": "B 채택 — consumer-local `.opencode/skills/<name>/SKILL.md`만 nexus-core 계약으로 보장. `node_modules/<plugin>/.opencode/skills/` 자동 감지 여부는 OpenCode 런타임 영역으로 계약 외부 명시. wrapper(opencode-nexus)는 postinstall 스크립트로 패키지 내부 `.opencode/skills/`를 consumer 경로로 복사 수행(Codex install.sh와 대칭). harness-io.md §4 OpenCode 하위에 경계 문구 기록: consumer 경로 보장 / 복사는 wrapper 책임 / node_modules 행위는 OpenCode 런타임 의존. 근거: (1) 철학 §3 비목표 — \"플러그인 빌드·배포·실행 하네스 책임\" — 제3자(sst/opencode) 런타임 행위에 nexus-core 계약 종속 금지. (2) 안건 #4 Model 2 통일 원칙과 정합 — skill 배치는 integration seam, wrapper 소유. (3) Codex install.sh 패턴과 대칭으로 3 하네스 일관성 확보. (4) OpenCode가 node_modules discovery를 장래 공식 지원하면 그때 계약 확장 — 실증 전 선행 기입은 허위 계약 위험. 기각: A(node_modules 동작 명시) — 실증 없이 기록 시 OpenCode 구현 변경만으로 계약 위반 유발, 제3자 의존 금지 원칙 위배. C(모호 유지) — 3 wrapper 저자별 해법 드리프트 유발. 파생 안건(보류): OpenCode postinstall 스크립트를 nexus-core Template으로 제공할지 — wrapper 저자 3명이 독립 구현 후 드리프트 징후 확인 시 재평가.",
+            "how_agents": [
+              "architect"
+            ],
+            "how_summary": {
+              "architect": "Skill discovery 계약은 consumer-local만. OpenCode 런타임 행위에 nexus-core 계약 종속 금지. wrapper 책임으로 돌리는 것이 Model 2 정합 + 3 하네스 대칭."
+            }
+          }
+        ],
+        "research_summary": "이슈 #30/#31/#32/#33을 검토한 결과, 3 하네스 plugin repo가 모두 같은 근본 문제를 보고: nexus-core sync가 multi-harness `dist/<harness>/` 가정으로 설계되어 single-harness plugin repo에 flat 루트 배포가 불가. scripts/build-agents.ts:494/665/810에 baseDir 하드코딩. Architect 분석(agentId a4de2880c15b6582e)은 다음을 추천: (1) 명시적 --flat 플래그(예측 가능성·3 하네스 일관성), (2) consumer-manifest.json은 YAGNI — package.json exports + docs/contract가 대체 가능, (3) I/O contract는 docs/contract/harness-io.md 신설 — semver는 runtime exports와 sync output set 두 축으로 분리, (4) Codex만 Model 1 특례 없이 Model 2(wrapper owns integration seams)를 3 하네스 공통 원칙으로 통일 — philosophy.md §3 비목표 선언과 정합, (5) src/plugin.ts는 sync Template로 배포 권장(단 Gap 2 선행 필요), (6) dry-run이 managed/template 미구분 — 라벨링 분리 필요, (7) skill discovery는 consumer-local `.opencode/skills/`만 계약으로 보장, OpenCode 런타임 행위 의존 금지. 핵심 아키텍트 판단: \"접근 승인 — 조건부.\" critical 없음, warning은 baseDir 하드코딩 일원화 + dry-run 라벨링.",
+        "created_at": "2026-04-20T04:00:23.168Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "dry-run 레코드 구조 확장 — dryRunRecords 스키마와 summary 포맷 개정",
+          "context": "결정 #6 구현. Template 수 증가(#5) 및 harness-io.md semver 선언(#3) 전 선행 필수. applyOverwritePolicy 반환 확장과 --strict 시맨틱 명시.",
+          "approach": "scripts/build-agents.ts:398- applyOverwritePolicy 반환에 {kind: \"managed\"|\"template\", willWrite: boolean, reason} 추가. dryRunFiles 배열을 dryRunRecords로 교체. summary 포맷을 `N managed, M template-create, K template-skipped, L template-force-overwrite`로 개정. --strict는 managed drift만 exit 1, template skip은 정상 경로로 통과.",
+          "acceptance": "(1) applyOverwritePolicy가 kind/willWrite를 포함한 레코드 반환. (2) --dry-run 실행 시 4가지 kind별 카운트가 summary에 표시. (3) --strict 플래그가 managed 파일 drift에서만 exit 1, template skip은 통과. (4) 기존 테스트 통과 + 신규 kind 출력 스냅샷 테스트 1건 이상 추가.",
+          "risk": "applyOverwritePolicy 반환 변경이 호출부 전체에 파급. 3 하네스 build 함수 모두 수정 필요. summary 포맷 변경으로 CI 스크립트 의존성 있으면 회귀.",
+          "status": "pending",
+          "deps": [],
+          "plan_issue": 6,
+          "owner": "engineer",
+          "created_at": "2026-04-20T04:15:38.929Z"
+        },
+        {
+          "id": 2,
+          "title": "Template skip 런타임 실증 — package.json skip/force 케이스 테스트",
+          "context": "결정 #6 검증. 저자 의심 \"package.json이 실제 skip되나 overwrite되나\" 실증 고정. 회귀 방지.",
+          "approach": "build-agents.test.ts에 케이스 추가: (a) 기존 package.json 있을 때 --dry-run → template-skipped 카운트 +1, (b) --force 시 template-force-overwrite 카운트 +1, (c) --strict + template skip → exit 0, (d) --strict + managed drift → exit 1.",
+          "acceptance": "위 4 케이스 모두 테스트로 고정. bun test scripts/build-agents.test.ts 통과.",
+          "risk": "테스트 격리 위해 tmpdir 사용 필요. 3 하네스 모두 동일 패턴 적용 시 테스트 증식.",
+          "status": "pending",
+          "deps": [
+            1
+          ],
+          "plan_issue": 6,
+          "owner": "tester",
+          "created_at": "2026-04-20T04:15:49.328Z"
+        },
+        {
+          "id": 3,
+          "title": "baseDir 하드코딩 제거 — flat 출력을 기본값으로 전환",
+          "context": "결정 #1 구현. scripts/build-agents.ts:494/665/810의 `baseDir = join(opts.targetDir, \"<harness>\")` 3곳 제거. targetDir가 곧 출력 루트.",
+          "approach": "scripts/build-agents.ts 494/665/810 라인 `const baseDir = opts.targetDir`로 통일. nexus-core 자신의 multi-harness dist 빌드는 package.json scripts.build에 `--target=dist/claude --harness=claude && --target=dist/opencode --harness=opencode && --target=dist/codex --harness=codex` 순차 호출 체인으로 재구성. 기존 테스트의 경로 기대값 갱신.",
+          "acceptance": "(1) `nexus-core sync --harness=claude --target=./tmp`가 `./tmp/.claude-plugin/`·`./tmp/agents/`·`./tmp/skills/` 생성. (2) 3 하네스 모두 대칭. (3) package.json의 `bun run build` 또는 `bun run sync` 스크립트가 dist/claude·dist/opencode·dist/codex를 개별 호출로 생성. (4) scripts/build-agents.test.ts 및 cli.test.ts 경로 assertion 갱신.",
+          "risk": "CI publish-smoke 테스트가 dist 경로를 참조하면 회귀. .nexus/context/architecture.md §2-1 dist 출력 트리 기술과 동기화 필요(별도 태스크).",
+          "status": "pending",
+          "deps": [
+            1
+          ],
+          "plan_issue": 1,
+          "owner": "engineer",
+          "created_at": "2026-04-20T04:15:58.424Z"
+        },
+        {
+          "id": 4,
+          "title": "flat 출력 end-to-end 검증 — 3 하네스 fresh sync 스모크",
+          "context": "결정 #1 검증. flat 출력이 3 하네스에 모두 정상 적용되고 CI publish-smoke 시나리오에 회귀 없음 확인.",
+          "approach": "임시 디렉토리 3개에 각각 `nexus-core sync --harness=<x> --target=<tmp>` 실행 후 (a) harness prefix 없음, (b) 예상 경로(claude=.claude-plugin/·agents/·skills/·settings.json / opencode=package.json·src/·.opencode/skills/·opencode.json.fragment / codex=plugin/·agents/·prompts/·install/) 모두 존재 확인. CI .github/workflows/publish-npm.yml·validate.yml의 dist 경로 참조 있는지 grep.",
+          "acceptance": "3 하네스 스모크 모두 성공. publish-npm 워크플로 dry-run 통과. dist/<harness>/ 구조가 기존과 동일 (package.json 3x 호출 체인으로 보존).",
+          "risk": "publish-smoke가 dist를 생산한다면 3x 호출 체인 구성 시 실패 가능. CI 워크플로 조정 필요할 수 있음.",
+          "status": "pending",
+          "deps": [
+            3
+          ],
+          "plan_issue": 1,
+          "owner": "tester",
+          "created_at": "2026-04-20T04:16:09.641Z"
+        },
+        {
+          "id": 5,
+          "title": "canonical plugin 진입 Template 3종 추가 — OpenCode src/plugin.ts, Codex install.sh, Codex package.json",
+          "context": "결정 #5 구현. 3 하네스 대칭으로 wrapper 보일러플레이트를 Template 정책(최초 1회 생성, --force 시 리베이스)으로 제공.",
+          "approach": "(1) `docs/plugin-template/opencode/src/plugin.ts` 생성 — mountHooks/manifest 진입점. (2) `docs/plugin-template/codex/install/install.sh` 생성 — block-marker 머지 스크립트(현 plugin-guide §4-3 예시 이식). (3) `docs/plugin-template/codex/package.json` 생성 — OpenCode Template와 대칭 구조. (4) scripts/build-agents.ts buildClaude/buildOpenCode/buildCodex에 위 경로를 Template 정책(isManaged=false)으로 기록하도록 추가. (5) init 서브커맨드(cli.ts)가 해당 Template도 복사하도록 점검.",
+          "acceptance": "(1) 3 신규 파일이 `docs/plugin-template/<harness>/`에 존재. (2) `nexus-core sync --harness=opencode --target=<fresh>` 시 `src/plugin.ts`·`package.json`이 Template로 생성되고 기존 존재 시 skip. (3) `--force` 시 overwrite 동작. (4) dry-run 출력에 `template-create`/`template-skipped` kind로 표시.",
+          "risk": "install.sh는 shell 스크립트 — shellcheck 경고 있을 수 있음. Codex package.json 구조가 opencode와 완전 일치하지 않을 수 있음(Codex는 npm 배포 공식 지원 불명) — 저자가 편집 후 커스터마이즈 전제.",
+          "status": "pending",
+          "deps": [
+            2,
+            3
+          ],
+          "plan_issue": 5,
+          "owner": "engineer",
+          "created_at": "2026-04-20T04:16:21.857Z"
+        },
+        {
+          "id": 6,
+          "title": "신규 Template 동작 검증 — fresh sync · skip-if-exists · --force 리베이스",
+          "context": "결정 #5 검증. 3 신규 Template이 Template 정책대로 동작하는지 실증.",
+          "approach": "build-agents.test.ts 또는 통합 테스트 파일에 (a) fresh 디렉토리에서 sync → 3 신규 Template 생성, (b) 저자 편집 후 sync → skip, dry-run kind=template-skipped, (c) --force sync → overwrite, dry-run kind=template-force-overwrite. OpenCode src/plugin.ts 문법 유효성(Node 22 import attributes) 스모크 체크.",
+          "acceptance": "3 시나리오 테스트 통과. OpenCode src/plugin.ts가 `@opencode-ai/plugin` 타입으로 lint/type 에러 없이 컴파일됨 (tsc --noEmit 스모크).",
+          "risk": "OpenCode `@opencode-ai/plugin` 의존 — nexus-core devDep에 없으면 type check 불가. 필요 시 skip-on-missing-dep로 처리.",
+          "status": "pending",
+          "deps": [
+            5
+          ],
+          "plan_issue": 5,
+          "owner": "tester",
+          "created_at": "2026-04-20T04:16:27.425Z"
+        },
+        {
+          "id": 7,
+          "title": "docs/contract/harness-io.md 신설 — 3 하네스 I/O 규범 계약 문서",
+          "context": "결정 #3 구현. #2·#4·#7 결정도 이 문서에 반영. 튜토리얼(plugin-guide.md)과 분리된 규범 SSOT.",
+          "approach": "8 섹션 작성: (1) 스코프 — 규범 vs 튜토리얼 구분, (2) Runtime exports 계약 — 서브패스 전수, `.`=null, (3) bin 계약 — `nexus-core`·`nexus-mcp`, (4) sync 출력 set — 3 하네스별 하위 섹션(Claude/OpenCode/Codex 각각 경로·Managed/Template 분류·파일별 기능). 여기서 3 하네스별 꼼꼼한 기술(결정 #4 연결) — fragment 경로·merge 지점·consumer 작업 범위 명시. OpenCode 하위 섹션에 skill discovery 경계 문구(결정 #7) 포함, (5) Ownership line — Model 2 통일(결정 #4), core vs wrapper 책임 표, (6) Template vs Managed 정책 — isManaged 기반 동작·dry-run kind 의미·`--strict` 시맨틱(결정 #6), (7) 예약된 확장점 — consumer-manifest.json 미도입(결정 #2), (8) Semver 커버리지 — runtime exports 엄격 / sync output set minor 이상 불변 / 프론트매터 스키마 별도. plugin-guide.md §1에 cross-link 한 줄 추가.",
+          "acceptance": "(1) `docs/contract/harness-io.md` 존재, 8 섹션 완비. (2) plugin-guide.md §1에 \"📘 계약 명세: docs/contract/harness-io.md 참조\" cross-link. (3) 3 하네스 §4 하위 섹션에 fragment 경로·Managed/Template 분류·consumer 작업 범위 각각 명시. (4) semver 두 축(또는 세 축) 분리 원칙 §8에 기록. (5) 실제 package.json exports·bin과 §2/§3 내용 일치.",
+          "risk": "Template 경로 목록이 결정 #5 구현(Task 5) 결과에 의존 — 순서 지켜야 정확. skill discovery §4-OpenCode 문구가 OpenCode 런타임 진화 시 재검토 필요.",
+          "status": "pending",
+          "deps": [
+            5
+          ],
+          "plan_issue": 3,
+          "owner": "writer",
+          "created_at": "2026-04-20T04:16:47.194Z"
+        },
+        {
+          "id": 8,
+          "title": "harness-io.md 검증 — 실제 exports·bin·sync 산출물과 정합 확인",
+          "context": "결정 #3 CHECK. 규범 문서와 실제 구현 사이 drift 0 보장.",
+          "approach": "(1) package.json exports 각 서브패스가 harness-io.md §2와 1:1 대응 확인. (2) bin 목록이 §3과 일치. (3) 3 하네스 sync 산출물 경로(§4)가 scripts/build-agents.ts 실제 write 경로와 일치. (4) Template 목록이 build-agents.ts의 isManaged=false 파일 집합과 일치. (5) 문서 한국어 문법·링크 유효성 확인.",
+          "acceptance": "exports·bin·sync 산출물·Template 목록 4 축 모두 문서와 코드 일치. 내부 cross-link 끊김 없음. plugin-guide.md §1 cross-link 렌더링 확인.",
+          "risk": "Task 5 구현 디테일 변경 시 문서 동시 갱신 필요.",
+          "status": "pending",
+          "deps": [
+            7
+          ],
+          "plan_issue": 3,
+          "owner": "reviewer",
+          "created_at": "2026-04-20T04:16:53.414Z"
+        },
+        {
+          "id": 9,
+          "title": "plugin-guide.md 업데이트 — Template 경로 cross-link화 + flat 출력 반영",
+          "context": "결정 #1·#5 문서 동기화. §2 Quick Start(flat 전환), §4-1/§4-2/§4-3 코드블록을 Template 경로 링크로 교체.",
+          "approach": "(1) §2 Quick Start·플래그 목록에서 `--target=./` 예시가 flat 루트 출력 보장임을 명시. (2) §4-1(Claude)·§4-2(OpenCode) `src/plugin.ts` 인라인 코드블록 → `docs/plugin-template/opencode/src/plugin.ts` 링크. (3) §4-3(Codex) install.sh 인라인 → `docs/plugin-template/codex/install/install.sh` 링크. (4) harness-io.md 참조 한 줄 §1에 추가. (5) §5 FAQ에 \"다중 하네스 동시 sync\" 항목 유지 — 이제 nexus-core 내부 스크립트 사례로 각주 이동.",
+          "acceptance": "(1) 인라인 보일러플레이트 코드블록 0개. (2) 3 하네스 §4-*에 Template 링크. (3) §1 cross-link. (4) §2 Quick Start 예시가 실제 flat 동작과 일치.",
+          "risk": "링크 상대 경로 오류. 기존 독자가 코드블록 직접 복사에 익숙하면 UX 혼선 — Template 파일에 해당 보일러플레이트가 있음을 강조 필요.",
+          "status": "pending",
+          "deps": [
+            5,
+            7
+          ],
+          "plan_issue": 5,
+          "owner": "writer",
+          "created_at": "2026-04-20T04:17:02.486Z"
+        },
+        {
+          "id": 10,
+          "title": ".nexus/context/architecture.md §2-1 업데이트 — flat 출력 트리 반영",
+          "context": "결정 #1 동기화. architecture.md §2-1 dist 출력 트리 기술이 multi-harness `dist/<harness>/` 가정을 전제 — flat 전환 후 실제 구조는 nexus-core 자기 자신의 package.json 3x 호출 체인으로 생산된다는 설명 필요.",
+          "approach": "§2 3-레이어 스택 다이어그램 유지(multi-harness dist는 nexus-core 자체 dev 산출물). §2-1 표 위에 \"nexus-core 자체는 dist/claude·dist/opencode·dist/codex를 독립 sync 호출로 생성하며, 일반 plugin repo는 `sync --harness=<x> --target=./`로 flat 루트 출력을 받는다\" 문단 추가. 표 자체는 현 내부 dist 구조 유지(Template/Managed 의미는 변함 없음).",
+          "acceptance": "(1) §2-1에 flat 전환 반영 문단 존재. (2) architecture.md 내 다른 섹션(§4 패키징·배포)과 모순 없음. (3) plan #15 결정 각주 유지.",
+          "risk": "§4 Build 파이프라인 기술이 `bun run build` 호출 체인 변경 반영 필요할 수 있음.",
+          "status": "pending",
+          "deps": [
+            3
+          ],
+          "plan_issue": 1,
+          "owner": "writer",
+          "created_at": "2026-04-20T04:17:12.081Z"
+        },
+        {
+          "id": 11,
+          "title": "GitHub 이슈 #30/#31/#32/#33 해결 요약 커멘트 + close",
+          "context": "4 이슈 해결 후 wrapper 저자(하네스 3곳)가 후속 마이그레이션 가능하도록 결정 요약을 각 이슈에 게시.",
+          "approach": "이슈별 맞춤 요약: #30(flat 기본값, baseDir 제거) / #31(--flat 신설 대신 기본값 전환) / #32(7 결정 요약 + harness-io.md 링크) / #33(Model 2 통일 + consumer-manifest 유보 이유). 각 이슈에 harness-io.md 신설 위치와 Template 3종 경로를 링크. gh issue close로 종료.",
+          "acceptance": "(1) 4 이슈 각각에 한국어 요약 커멘트 1건. (2) 4 이슈 모두 closed 상태. (3) 각 요약에 관련 커밋/PR 링크 포함.",
+          "risk": "PR 병합 전 close 시 저자 혼선. PR 병합 완료 후 close 순서 지킬 것.",
+          "status": "pending",
+          "deps": [
+            4,
+            6,
+            8,
+            9,
+            10
+          ],
+          "plan_issue": 3,
+          "owner": "lead",
+          "created_at": "2026-04-20T04:17:19.501Z"
+        }
+      ]
     }
   ]
 }

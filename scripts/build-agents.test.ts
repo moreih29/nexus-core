@@ -44,6 +44,7 @@ import {
   type AssetEntry,
   type CapabilityMatrix,
   type BuildOptions,
+  type DryRunRecord,
 } from "./build-agents.js";
 
 import {
@@ -477,7 +478,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const outPath = join(tmp, "claude", "agents", "sample-architect.md");
+    const outPath = join(tmp, "agents", "sample-architect.md");
     expect(existsSync(outPath)).toBe(true);
     const content = readFileSync(outPath, "utf-8");
     expect(content).toContain("---");
@@ -492,7 +493,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const content = readFileSync(join(tmp, "claude", "agents", "sample-architect.md"), "utf-8");
+    const content = readFileSync(join(tmp, "agents", "sample-architect.md"), "utf-8");
     expect(content).toContain("mcp__plugin_claude-nexus_nx__nx_task_add");
     expect(content).toContain("mcp__plugin_claude-nexus_nx__nx_task_update");
     expect(content).toContain("NotebookEdit");
@@ -503,7 +504,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const content = readFileSync(join(tmp, "claude", "agents", "sample-architect.md"), "utf-8");
+    const content = readFileSync(join(tmp, "agents", "sample-architect.md"), "utf-8");
     expect(content).toContain("model: claude-opus-4");
   });
 
@@ -512,7 +513,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeSkillEntry()];
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const outPath = join(tmp, "claude", "skills", "sample-skill", "SKILL.md");
+    const outPath = join(tmp, "skills", "sample-skill", "SKILL.md");
     expect(existsSync(outPath)).toBe(true);
     const content = readFileSync(outPath, "utf-8");
     expect(content).toContain("description:");
@@ -524,7 +525,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const pluginPath = join(tmp, "claude", ".claude-plugin", "plugin.json");
+    const pluginPath = join(tmp, ".claude-plugin", "plugin.json");
     expect(existsSync(pluginPath)).toBe(true);
     const parsed = JSON.parse(readFileSync(pluginPath, "utf-8")) as { name: string; agents: unknown[] };
     expect(parsed.name).toBe("claude-nexus");
@@ -537,7 +538,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const marketPath = join(tmp, "claude", ".claude-plugin", "marketplace.json");
+    const marketPath = join(tmp, ".claude-plugin", "marketplace.json");
     expect(existsSync(marketPath)).toBe(true);
     const parsed = JSON.parse(readFileSync(marketPath, "utf-8")) as { agents: unknown[] };
     expect(Array.isArray(parsed.agents)).toBe(true);
@@ -548,7 +549,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const pkgPath = join(tmp, "opencode", "package.json");
+    const pkgPath = join(tmp, "package.json");
     expect(existsSync(pkgPath)).toBe(true);
     const parsed = JSON.parse(readFileSync(pkgPath, "utf-8")) as { name: string };
     expect(parsed.name).toBe("opencode-nexus");
@@ -559,7 +560,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const tsPath = join(tmp, "opencode", "src", "agents", "sample-architect.ts");
+    const tsPath = join(tmp, "src", "agents", "sample-architect.ts");
     expect(existsSync(tsPath)).toBe(true);
     const content = readFileSync(tsPath, "utf-8");
     expect(content).toContain("AgentConfig");
@@ -577,7 +578,7 @@ describe("Scenario 3 — Manifest file content", () => {
     buildForOpencode([entry], capMatrix, invocations, defaultBuildOpts(tmp));
 
     const content = readFileSync(
-      join(tmp, "opencode", "src", "agents", "sample-architect.ts"),
+      join(tmp, "src", "agents", "sample-architect.ts"),
       "utf-8",
     );
     // The file should be parseable: no raw unescaped backtick breaking template literal
@@ -593,7 +594,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry(), makeEngineerEntry()];
     buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const indexContent = readFileSync(join(tmp, "opencode", "src", "index.ts"), "utf-8");
+    const indexContent = readFileSync(join(tmp,"src", "index.ts"), "utf-8");
     expect(indexContent).toContain("sample-architect");
     expect(indexContent).toContain("sample-engineer");
     expect(indexContent).toContain("export const agents");
@@ -604,7 +605,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeSkillEntry()];
     buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const skillPath = join(tmp, "opencode", ".opencode", "skills", "sample-skill", "SKILL.md");
+    const skillPath = join(tmp,".opencode", "skills", "sample-skill", "SKILL.md");
     expect(existsSync(skillPath)).toBe(true);
   });
 
@@ -613,7 +614,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const tomlPath = join(tmp, "codex", "agents", "sample-architect.toml");
+    const tomlPath = join(tmp,"agents", "sample-architect.toml");
     expect(existsSync(tomlPath)).toBe(true);
     const content = readFileSync(tomlPath, "utf-8");
     expect(content).toContain("[agents.sample-architect]");
@@ -627,7 +628,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const promptPath = join(tmp, "codex", "prompts", "sample-architect.md");
+    const promptPath = join(tmp,"prompts", "sample-architect.md");
     expect(existsSync(promptPath)).toBe(true);
   });
 
@@ -636,7 +637,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const pluginPath = join(tmp, "codex", "plugin", ".codex-plugin", "plugin.json");
+    const pluginPath = join(tmp,"plugin", ".codex-plugin", "plugin.json");
     expect(existsSync(pluginPath)).toBe(true);
     const parsed = JSON.parse(readFileSync(pluginPath, "utf-8")) as { name: string };
     expect(parsed.name).toBe("codex-nexus");
@@ -647,7 +648,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeAgentEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const fragmentPath = join(tmp, "codex", "install", "config.fragment.toml");
+    const fragmentPath = join(tmp,"install", "config.fragment.toml");
     expect(existsSync(fragmentPath)).toBe(true);
     const content = readFileSync(fragmentPath, "utf-8");
     expect(content).toContain("[mcp_servers.nx]");
@@ -658,7 +659,7 @@ describe("Scenario 3 — Manifest file content", () => {
     const assets = [makeSkillEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const skillPath = join(tmp, "codex", "plugin", "skills", "sample-skill", "SKILL.md");
+    const skillPath = join(tmp,"plugin", "skills", "sample-skill", "SKILL.md");
     expect(existsSync(skillPath)).toBe(true);
   });
 });
@@ -726,12 +727,13 @@ describe("Scenario 4 — Overwrite policy", () => {
     buildForClaude(assets, capMatrix, invocations, opts);
 
     // No files should be written
-    expect(existsSync(join(tmp, "claude"))).toBe(false);
+    expect(existsSync(join(tmp, ".claude-plugin"))).toBe(false);
+    expect(existsSync(join(tmp, "agents"))).toBe(false);
   });
 
   test("Plugin.json: buildForClaude skips existing plugin.json without --force", () => {
     const tmp = makeTmp();
-    const pluginDir = join(tmp, "claude", ".claude-plugin");
+    const pluginDir = join(tmp, ".claude-plugin");
     mkdirSync(pluginDir, { recursive: true });
     writeFileSync(join(pluginDir, "plugin.json"), '{"custom": "content"}');
 
@@ -744,7 +746,7 @@ describe("Scenario 4 — Overwrite policy", () => {
 
   test("Plugin.json: buildForClaude overwrites with --force", () => {
     const tmp = makeTmp();
-    const pluginDir = join(tmp, "claude", ".claude-plugin");
+    const pluginDir = join(tmp,".claude-plugin");
     mkdirSync(pluginDir, { recursive: true });
     writeFileSync(join(pluginDir, "plugin.json"), '{"custom": "content"}');
 
@@ -772,7 +774,7 @@ describe("Scenario 5 — Harness builders with invocation expansion", () => {
     });
     buildForClaude([entry], capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const content = readFileSync(join(tmp, "claude", "agents", "sample-architect.md"), "utf-8");
+    const content = readFileSync(join(tmp,"agents", "sample-architect.md"), "utf-8");
     expect(content).toContain("Agent(");
     expect(content).toContain('"researcher"');
     expect(content).not.toContain("{{");
@@ -786,7 +788,7 @@ describe("Scenario 5 — Harness builders with invocation expansion", () => {
     buildForOpencode([entry], capMatrix, invocations, defaultBuildOpts(tmp));
 
     const content = readFileSync(
-      join(tmp, "opencode", "src", "agents", "sample-architect.ts"),
+      join(tmp,"src", "agents", "sample-architect.ts"),
       "utf-8",
     );
     expect(content).toContain("task(");
@@ -801,7 +803,7 @@ describe("Scenario 5 — Harness builders with invocation expansion", () => {
     });
     buildForCodex([entry], capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const content = readFileSync(join(tmp, "codex", "agents", "sample-architect.toml"), "utf-8");
+    const content = readFileSync(join(tmp,"agents", "sample-architect.toml"), "utf-8");
     expect(content).toContain("update_plan");
     expect(content).toContain("Do thing");
     expect(content).not.toContain("{{");
@@ -817,19 +819,19 @@ describe("Scenario 5 — Harness builders with invocation expansion", () => {
     buildForCodex(assets, capMatrix, invocations, opts);
 
     // Claude
-    expect(existsSync(join(tmp, "claude", "agents", "sample-architect.md"))).toBe(true);
-    expect(existsSync(join(tmp, "claude", "agents", "sample-engineer.md"))).toBe(true);
-    expect(existsSync(join(tmp, "claude", "skills", "sample-skill", "SKILL.md"))).toBe(true);
+    expect(existsSync(join(tmp,"agents", "sample-architect.md"))).toBe(true);
+    expect(existsSync(join(tmp,"agents", "sample-engineer.md"))).toBe(true);
+    expect(existsSync(join(tmp,"skills", "sample-skill", "SKILL.md"))).toBe(true);
 
     // OpenCode
-    expect(existsSync(join(tmp, "opencode", "src", "agents", "sample-architect.ts"))).toBe(true);
-    expect(existsSync(join(tmp, "opencode", "src", "agents", "sample-engineer.ts"))).toBe(true);
-    expect(existsSync(join(tmp, "opencode", ".opencode", "skills", "sample-skill", "SKILL.md"))).toBe(true);
+    expect(existsSync(join(tmp,"src", "agents", "sample-architect.ts"))).toBe(true);
+    expect(existsSync(join(tmp,"src", "agents", "sample-engineer.ts"))).toBe(true);
+    expect(existsSync(join(tmp,".opencode", "skills", "sample-skill", "SKILL.md"))).toBe(true);
 
     // Codex
-    expect(existsSync(join(tmp, "codex", "agents", "sample-architect.toml"))).toBe(true);
-    expect(existsSync(join(tmp, "codex", "agents", "sample-engineer.toml"))).toBe(true);
-    expect(existsSync(join(tmp, "codex", "plugin", "skills", "sample-skill", "SKILL.md"))).toBe(true);
+    expect(existsSync(join(tmp,"agents", "sample-architect.toml"))).toBe(true);
+    expect(existsSync(join(tmp,"agents", "sample-engineer.toml"))).toBe(true);
+    expect(existsSync(join(tmp,"plugin", "skills", "sample-skill", "SKILL.md"))).toBe(true);
   });
 });
 
@@ -983,7 +985,7 @@ describe("Scenario 8 — Integration with real assets", () => {
     ).resolves.toBeUndefined();
 
     // Should have created at least one agent file
-    const agentsDir = join(tmp, "claude", "agents");
+    const agentsDir = join(tmp,"agents");
     const { readdirSync: readdir } = await import("node:fs");
     const files = readdir(agentsDir);
     expect(files.length).toBeGreaterThan(0);
@@ -1002,7 +1004,7 @@ describe("Scenario 8 — Integration with real assets", () => {
       }),
     ).resolves.toBeUndefined();
 
-    const agentsDir = join(tmp, "opencode", "src", "agents");
+    const agentsDir = join(tmp,"src", "agents");
     const { readdirSync: readdir } = await import("node:fs");
     const files = readdir(agentsDir);
     expect(files.some((f) => f.endsWith(".ts"))).toBe(true);
@@ -1020,7 +1022,7 @@ describe("Scenario 8 — Integration with real assets", () => {
       }),
     ).resolves.toBeUndefined();
 
-    const agentsDir = join(tmp, "codex", "agents");
+    const agentsDir = join(tmp,"agents");
     const { readdirSync: readdir } = await import("node:fs");
     const files = readdir(agentsDir);
     expect(files.some((f) => f.endsWith(".toml"))).toBe(true);
@@ -1036,7 +1038,8 @@ describe("Scenario 8 — Integration with real assets", () => {
       strict: false,
     });
 
-    expect(existsSync(join(tmp, "claude"))).toBe(false);
+    expect(existsSync(join(tmp, ".claude-plugin"))).toBe(false);
+    expect(existsSync(join(tmp, "agents"))).toBe(false);
   });
 
   test("buildAgents: --only=architect restricts to architect agent", async () => {
@@ -1050,7 +1053,7 @@ describe("Scenario 8 — Integration with real assets", () => {
       only: "architect",
     });
 
-    const agentsDir = join(tmp, "claude", "agents");
+    const agentsDir = join(tmp,"agents");
     const { readdirSync: readdir } = await import("node:fs");
     const files = readdir(agentsDir);
     expect(files).toHaveLength(1);
@@ -1130,7 +1133,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     const assets = [makePrimaryAgentEntry(), makeAgentEntry()];
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const settingsPath = join(tmp, "claude", "settings.json");
+    const settingsPath = join(tmp,"settings.json");
     expect(existsSync(settingsPath)).toBe(true);
     const parsed = JSON.parse(readFileSync(settingsPath, "utf-8")) as { agent: string };
     expect(parsed.agent).toBe("sample-lead");
@@ -1141,7 +1144,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     const assets = [makeAgentEntry(), makeEngineerEntry()]; // both mode=undefined (subagent default)
     buildForClaude(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const settingsPath = join(tmp, "claude", "settings.json");
+    const settingsPath = join(tmp,"settings.json");
     expect(existsSync(settingsPath)).toBe(false);
   });
 
@@ -1154,7 +1157,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     });
     buildForClaude([primary1, primary2, makeAgentEntry()], capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const settingsPath = join(tmp, "claude", "settings.json");
+    const settingsPath = join(tmp,"settings.json");
     expect(existsSync(settingsPath)).toBe(true);
     const parsed = JSON.parse(readFileSync(settingsPath, "utf-8")) as { agent: string };
     expect(parsed.agent).toBe("sample-lead"); // first primary
@@ -1167,7 +1170,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     const assets = [makePrimaryAgentEntry()];
     buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const tsPath = join(tmp, "opencode", "src", "agents", "sample-lead.ts");
+    const tsPath = join(tmp,"src", "agents", "sample-lead.ts");
     expect(existsSync(tsPath)).toBe(true);
     const content = readFileSync(tsPath, "utf-8");
     expect(content).toContain('mode: "primary"');
@@ -1179,7 +1182,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     buildForOpencode(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
     const content = readFileSync(
-      join(tmp, "opencode", "src", "agents", "sample-architect.ts"),
+      join(tmp,"src", "agents", "sample-architect.ts"),
       "utf-8",
     );
     expect(content).not.toContain("mode:");
@@ -1192,7 +1195,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     const assets = [makePrimaryAgentEntry(), makeAgentEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const fragmentPath = join(tmp, "codex", "install", "AGENTS.fragment.md");
+    const fragmentPath = join(tmp,"install", "AGENTS.fragment.md");
     expect(existsSync(fragmentPath)).toBe(true);
   });
 
@@ -1201,7 +1204,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     const assets = [makePrimaryAgentEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const content = readFileSync(join(tmp, "codex", "install", "AGENTS.fragment.md"), "utf-8");
+    const content = readFileSync(join(tmp,"install", "AGENTS.fragment.md"), "utf-8");
     expect(content).toContain("<!-- nexus-core:sample-lead:start -->");
     expect(content).toContain("<!-- nexus-core:sample-lead:end -->");
   });
@@ -1211,7 +1214,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     const assets = [makePrimaryAgentEntry()];
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const content = readFileSync(join(tmp, "codex", "install", "AGENTS.fragment.md"), "utf-8");
+    const content = readFileSync(join(tmp,"install", "AGENTS.fragment.md"), "utf-8");
     expect(content).toContain("# sample-lead");
     expect(content).toContain("## Identity");
     expect(content).toContain("You are Lead.");
@@ -1222,7 +1225,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     const assets = [makeAgentEntry(), makeEngineerEntry()]; // both subagent default
     buildForCodex(assets, capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const fragmentPath = join(tmp, "codex", "install", "AGENTS.fragment.md");
+    const fragmentPath = join(tmp,"install", "AGENTS.fragment.md");
     expect(existsSync(fragmentPath)).toBe(false);
   });
 
@@ -1235,7 +1238,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
     });
     buildForCodex([primary1, primary2], capMatrix, invocations, defaultBuildOpts(tmp));
 
-    const content = readFileSync(join(tmp, "codex", "install", "AGENTS.fragment.md"), "utf-8");
+    const content = readFileSync(join(tmp,"install", "AGENTS.fragment.md"), "utf-8");
     expect(content).toContain("<!-- nexus-core:sample-lead:start -->");
     expect(content).toContain("<!-- nexus-core:sample-lead:end -->");
     expect(content).toContain("<!-- nexus-core:sample-lead-2:start -->");
@@ -1254,7 +1257,7 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
       strict: false,
     });
 
-    const settingsPath = join(tmp, "claude", "settings.json");
+    const settingsPath = join(tmp,"settings.json");
     expect(existsSync(settingsPath)).toBe(true);
     const parsed = JSON.parse(readFileSync(settingsPath, "utf-8")) as { agent: string };
     expect(parsed.agent).toBe("lead");
@@ -1270,10 +1273,272 @@ describe("Scenario 9 — mode field and primary agent injection", () => {
       strict: false,
     });
 
-    const fragmentPath = join(tmp, "codex", "install", "AGENTS.fragment.md");
+    const fragmentPath = join(tmp,"install", "AGENTS.fragment.md");
     expect(existsSync(fragmentPath)).toBe(true);
     const content = readFileSync(fragmentPath, "utf-8");
     expect(content).toContain("<!-- nexus-core:lead:start -->");
     expect(content).toContain("<!-- nexus-core:lead:end -->");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Scenario 10: dry-run 출력 포맷 회귀 방지
+// ---------------------------------------------------------------------------
+
+describe("Scenario 10 — dry-run record format and summary output", () => {
+  const capMatrix = minimalCapMatrix();
+  const invocations = minimalInvocations();
+
+  test("applyOverwritePolicy dry-run managed: returns kind=managed, willWrite=true, reason=managed", () => {
+    const tmp = makeTmp();
+    const outPath = join(tmp, "managed.txt");
+    const opts = defaultBuildOpts(tmp, { dryRun: true });
+    const record = applyOverwritePolicy(outPath, "content", true, opts);
+
+    expect(record.path).toBe(outPath);
+    expect(record.kind).toBe("managed");
+    expect(record.willWrite).toBe(true);
+    expect(record.reason).toBe("managed");
+    expect(existsSync(outPath)).toBe(false);
+  });
+
+  test("applyOverwritePolicy dry-run template new file: returns kind=template, reason=template-create", () => {
+    const tmp = makeTmp();
+    const outPath = join(tmp, "new-template.txt");
+    const opts = defaultBuildOpts(tmp, { dryRun: true });
+    const record = applyOverwritePolicy(outPath, "content", false, opts);
+
+    expect(record.kind).toBe("template");
+    expect(record.willWrite).toBe(true);
+    expect(record.reason).toBe("template-create");
+    expect(existsSync(outPath)).toBe(false);
+  });
+
+  test("applyOverwritePolicy dry-run template existing no-force: reason=template-skipped, willWrite=false", () => {
+    const tmp = makeTmp();
+    const outPath = join(tmp, "existing-template.txt");
+    mkdirSync(tmp, { recursive: true });
+    writeFileSync(outPath, "original");
+
+    const opts = defaultBuildOpts(tmp, { dryRun: true, force: false });
+    const record = applyOverwritePolicy(outPath, "new content", false, opts);
+
+    expect(record.kind).toBe("template");
+    expect(record.willWrite).toBe(false);
+    expect(record.reason).toBe("template-skipped");
+    expect(readFileSync(outPath, "utf-8")).toBe("original");
+  });
+
+  test("applyOverwritePolicy dry-run template existing with --force: reason=template-force-overwrite", () => {
+    const tmp = makeTmp();
+    const outPath = join(tmp, "existing-template.txt");
+    mkdirSync(tmp, { recursive: true });
+    writeFileSync(outPath, "original");
+
+    const opts = defaultBuildOpts(tmp, { dryRun: true, force: true });
+    const record = applyOverwritePolicy(outPath, "new content", false, opts);
+
+    expect(record.kind).toBe("template");
+    expect(record.willWrite).toBe(true);
+    expect(record.reason).toBe("template-force-overwrite");
+    expect(readFileSync(outPath, "utf-8")).toBe("original");
+  });
+
+  test("buildAgents dry-run summary line contains managed and template-create counts", async () => {
+    const tmp = makeTmp();
+    const lines: string[] = [];
+    const origLog = console.log;
+    console.log = (...args: unknown[]) => lines.push(args.join(" "));
+
+    try {
+      await buildAgents({
+        harnesses: ["claude"],
+        targetDir: tmp,
+        dryRun: true,
+        force: false,
+        strict: false,
+      });
+    } finally {
+      console.log = origLog;
+    }
+
+    const summaryLine = lines.find((l) => l.includes("managed,") && l.includes("template-create"));
+    expect(summaryLine).toBeDefined();
+    // summary 포맷: "[build-agents] N managed, M template-create, K template-skipped, L template-force-overwrite"
+    expect(summaryLine).toMatch(/\[build-agents\] \d+ managed, \d+ template-create, \d+ template-skipped, \d+ template-force-overwrite/);
+  });
+
+  test("buildAgents dry-run [M] prefix appears for managed files, [T] for template files", async () => {
+    const tmp = makeTmp();
+    const lines: string[] = [];
+    const origLog = console.log;
+    console.log = (...args: unknown[]) => lines.push(args.join(" "));
+
+    try {
+      await buildAgents({
+        harnesses: ["claude"],
+        targetDir: tmp,
+        dryRun: true,
+        force: false,
+        strict: false,
+      });
+    } finally {
+      console.log = origLog;
+    }
+
+    const managedLines = lines.filter((l) => l.trim().startsWith("[M]"));
+    const templateLines = lines.filter((l) => l.trim().startsWith("[T]"));
+    expect(managedLines.length).toBeGreaterThan(0);
+    expect(templateLines.length).toBeGreaterThan(0);
+  });
+
+  test("buildAgents dry-run template-skipped: [T]{skip} appears when template file already exists", async () => {
+    const tmp = makeTmp();
+    // plugin.json 미리 생성하여 skip 유도
+    const pluginDir = join(tmp,".claude-plugin");
+    mkdirSync(pluginDir, { recursive: true });
+    writeFileSync(join(pluginDir, "plugin.json"), '{"pre-existing": true}');
+
+    const lines: string[] = [];
+    const origLog = console.log;
+    console.log = (...args: unknown[]) => lines.push(args.join(" "));
+
+    try {
+      await buildAgents({
+        harnesses: ["claude"],
+        targetDir: tmp,
+        dryRun: true,
+        force: false,
+        strict: false,
+      });
+    } finally {
+      console.log = origLog;
+    }
+
+    const skipLines = lines.filter((l) => l.trim().startsWith("[T]{skip}"));
+    expect(skipLines.length).toBeGreaterThan(0);
+
+    const summaryLine = lines.find((l) => l.includes("template-skipped"));
+    expect(summaryLine).toMatch(/\d+ template-skipped/);
+    // template-skipped이 1 이상인 경우 숫자가 0이 아닌지 확인
+    const match = summaryLine?.match(/(\d+) template-skipped/);
+    expect(Number(match?.[1])).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Scenario 11: --strict semantics and template file-system behavior
+// ---------------------------------------------------------------------------
+// Plan #17 결정 #6 구현 검증:
+//   (a) template 파일 존재 + no --force → 기존 content 보존 (file-system 검증)
+//   (b) template 파일 존재 + --force=true → 기존 content 덮어씀 (file-system 검증)
+//   (c) --strict=true + managed 파일 (tmpdir, git-미추적) → throw 없이 정상 작성
+//       NOTE: 실제 drift(수정된 tracked 파일) 시뮬레이션은 ROOT 내 git 추적 파일 수정이
+//       필요하므로 프로젝트 오염 위험 때문에 생략. applyOverwritePolicy 소스 기준
+//       result && !result.startsWith("?") 조건에서만 throw — tmpdir 절대 경로는
+//       git status 에서 빈 문자열 반환 → 허용. Scenario 4의 Managed-path 단위 테스트로
+//       보완한다.
+//   (d) --strict=true + template 파일 이미 존재(skip 상황) → throw 없이 정상 완료,
+//       DryRunRecord reason=template-skipped 확인
+// ---------------------------------------------------------------------------
+
+describe("Scenario 11 — --strict semantics and template file-system behavior", () => {
+  // (a) Template 파일 존재 + no --force: 기존 content 보존
+  test("(a) template exists + no --force: existing content is preserved", () => {
+    const tmp = makeTmp();
+    const outPath = join(tmp, "template.txt");
+    mkdirSync(tmp, { recursive: true });
+    writeFileSync(outPath, "original-content");
+
+    const opts = defaultBuildOpts(tmp, { force: false, strict: false });
+    applyOverwritePolicy(outPath, "new-content", false, opts);
+
+    expect(readFileSync(outPath, "utf-8")).toBe("original-content");
+  });
+
+  // (b) Template 파일 존재 + --force=true: 새 content 로 덮어씀
+  test("(b) template exists + --force: existing content is overwritten", () => {
+    const tmp = makeTmp();
+    const outPath = join(tmp, "template.txt");
+    mkdirSync(tmp, { recursive: true });
+    writeFileSync(outPath, "original-content");
+
+    const opts = defaultBuildOpts(tmp, { force: true, strict: false });
+    applyOverwritePolicy(outPath, "new-content", false, opts);
+
+    expect(readFileSync(outPath, "utf-8")).toBe("new-content");
+  });
+
+  // (c) --strict=true + managed 파일이 tmpdir에 있을 때 (git-미추적 절대경로)
+  //     → strict 검사는 git status 결과가 비어 있으므로 throw 하지 않고 정상 작성
+  //
+  // NOTE: 실제 drift(M, A 등 tracked+modified) 케이스는 ROOT 내 파일 수정이 필요하여
+  // 프로젝트 오염 위험이 있으므로 생략함. 해당 케이스는 소스코드
+  // (applyOverwritePolicy의 `if (result && !result.startsWith("?")) throw`) 기준
+  // Scenario 4 — Managed path 단위 테스트로 간접 검증한다.
+  test("(c) --strict=true + managed file in tmpdir (untracked by git): writes without throwing", () => {
+    const tmp = makeTmp();
+    const outPath = join(tmp, "managed.txt");
+    // 이미 존재하는 managed 파일 — tmpdir는 git-미추적이므로 strict가 throw하지 않아야 함
+    mkdirSync(tmp, { recursive: true });
+    writeFileSync(outPath, "pre-existing-managed");
+
+    const opts = defaultBuildOpts(tmp, { force: false, strict: true });
+
+    // tmpdir 절대경로에서는 strict 검사가 git status 빈 결과 → 허용 → throw 없음
+    expect(() => {
+      applyOverwritePolicy(outPath, "new-managed-content", true, opts);
+    }).not.toThrow();
+
+    // managed 파일은 항상 덮어씀
+    expect(readFileSync(outPath, "utf-8")).toBe("new-managed-content");
+  });
+
+  // (d) --strict=true + template skip 상황 → throw 없이 정상 완료
+  //     DryRunRecord: kind=template, reason=template-skipped, willWrite=false
+  test("(d) --strict=true + template already exists (skip): no throw, returns template-skipped record", () => {
+    const tmp = makeTmp();
+    const outPath = join(tmp, "template-skip.txt");
+    mkdirSync(tmp, { recursive: true });
+    writeFileSync(outPath, "skip-me");
+
+    const opts = defaultBuildOpts(tmp, { force: false, strict: true });
+
+    let record: ReturnType<typeof applyOverwritePolicy> | undefined;
+    expect(() => {
+      record = applyOverwritePolicy(outPath, "should-not-be-written", false, opts);
+    }).not.toThrow();
+
+    // template-skipped 레코드 확인
+    expect(record).toBeDefined();
+    expect(record!.kind).toBe("template");
+    expect(record!.willWrite).toBe(false);
+    expect(record!.reason).toBe("template-skipped");
+
+    // 실제 파일 내용은 변경되지 않아야 함
+    expect(readFileSync(outPath, "utf-8")).toBe("skip-me");
+  });
+
+  // (d-2) --strict=true + buildAgents + template 파일 이미 존재 → 전체 빌드가 throw 없이 완료
+  test("(d-2) --strict=true + buildAgents + pre-existing template file: build completes without error", async () => {
+    const tmp = makeTmp();
+    // claude harness의 plugin.json (template 파일) 을 미리 생성
+    const pluginDir = join(tmp,".claude-plugin");
+    mkdirSync(pluginDir, { recursive: true });
+    writeFileSync(join(pluginDir, "plugin.json"), '{"pre-existing": true}');
+
+    await expect(
+      buildAgents({
+        harnesses: ["claude"],
+        targetDir: tmp,
+        dryRun: false,
+        force: false,
+        strict: true,
+      }),
+    ).resolves.toBeUndefined();
+
+    // 기존 plugin.json 내용 보존 확인 (template-skipped 동작)
+    const content = readFileSync(join(pluginDir, "plugin.json"), "utf-8");
+    expect(content).toContain('"pre-existing"');
   });
 });
