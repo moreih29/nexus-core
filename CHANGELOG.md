@@ -13,12 +13,14 @@
   `scripts/cli.ts`, `scripts/build-agents.ts`, `scripts/build-hooks.ts` 세 파일이 이 헬퍼 호출로 전환되었습니다.
 - `nexus-core sync --harness=<claude|codex|opencode>` 실행 시 `[build-agents] capability-matrix.yml not found at: <pkg>/dist/assets/capability-matrix.yml` 오류로 실패하던 문제 복구.
 - `nexus-core list` 가 silent 0 결과를 반환하던 문제 복구.
+- `scripts/cli.ts` 의 엔트리포인트 가드를 symlink-aware 하게 보강. 기존 `process.argv[1]?.endsWith("cli.js")` 조건은 `node_modules/.bin/nexus-core` symlink 경유 호출 시 `argv[1]` 이 symlink 경로("nexus-core" 서픽스)가 되어 `main()` 이 실행되지 않는 문제가 있었습니다. `realpathSync` 로 symlink 해소 후 `import.meta.url` 과 비교하여 bin symlink·직접 node 호출·test import 세 경로 모두에서 올바르게 동작하도록 수정.
 
 ### Added
 
 - CI smoke 확장 — `publish-npm.yml` · `validate.yml` 의 "Install from pack + smoke test" 스텝에 두 검증 추가:
-  - `nexus-core sync --harness=claude --target=./ --dry-run` exit 0 — 실제 asset 로드 경로 exercise.
-  - `nexus-core list` stdout의 `^Agents \([1-9]` 패턴 매치 — silent 빈 결과 탐지.
+  - `./node_modules/.bin/nexus-core sync --harness=claude --target=./ --dry-run` exit 0 — 실제 asset 로드 경로 exercise.
+  - `./node_modules/.bin/nexus-core list` stdout의 `^Agents \([1-9]` 패턴 매치 — silent 빈 결과 탐지.
+  - `npx nexus-core` 대신 직접 bin 경로 사용 — `npx` 는 scoped 패키지(`@moreih29/nexus-core`)의 `nexus-core` bin 이름을 npm 레지스트리의 동명 public 패키지로 잘못 해석하는 문제가 있었습니다 (v0.14.0 CI가 이 false positive 로 통과).
 
 ### Migration Notes
 

@@ -19,9 +19,9 @@
  *   --help, -h    Show help for the current command
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { findPackageRoot } from "../src/shared/package-root.js";
 
@@ -536,11 +536,20 @@ export async function main(argv: string[]): Promise<void> {
 // Direct execution
 // ---------------------------------------------------------------------------
 
-if (
-  import.meta.url === `file://${process.argv[1]}` ||
-  process.argv[1]?.endsWith("cli.ts") ||
-  process.argv[1]?.endsWith("cli.js")
-) {
+function isEntryPoint(): boolean {
+  const argv1 = process.argv[1];
+  if (!argv1) return false;
+  if (import.meta.url === `file://${argv1}`) return true;
+  if (argv1.endsWith("cli.ts") || argv1.endsWith("cli.js")) return true;
+  // bin symlink (예: node_modules/.bin/nexus-core) — realpath로 해소 후 비교
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(argv1)).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isEntryPoint()) {
   main(process.argv.slice(2)).catch((err: unknown) => {
     process.stderr.write(`[nexus-core] FATAL: ${String(err)}\n`);
     process.exit(1);
