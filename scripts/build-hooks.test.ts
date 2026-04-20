@@ -205,8 +205,10 @@ import {
   existsSync,
   mkdirSync,
   writeFileSync,
+  rmSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
 import { parse as parseYaml } from "yaml";
 
@@ -402,15 +404,49 @@ function compileHandlers(hooks: HookEntry[]): void {
   mkdirSync(DIST_HOOKS_DIR, { recursive: true });
   for (const hook of hooks) {
     const outFile = join(DIST_HOOKS_DIR, \`\${hook.name}.js\`);
+    const entryDir = join(tmpdir(), \`nexus-hook-entry-\${hook.name}-\${Date.now()}\`);
+    mkdirSync(entryDir, { recursive: true });
+    const entryFile = join(entryDir, \`\${hook.name}-entry.ts\`);
     try {
-      execSync(
-        \`bun build \${hook.handlerPath} --outfile \${outFile} --target node --format esm\`,
-        { cwd: ROOT, stdio: "inherit" },
+      const entryContent = [
+        \`import handler from \${JSON.stringify(hook.handlerPath)};\`,
+        \`import { readFileSync } from "node:fs";\`,
+        \`async function main() {\`,
+        \`  let raw = "";\`,
+        \`  try { raw = readFileSync(0, "utf-8"); } catch {}\`,
+        \`  const input = raw ? JSON.parse(raw) : {};\`,
+        \`  const result = await handler(input);\`,
+        \`  if (result != null && result !== undefined) {\`,
+        \`    process.stdout.write(JSON.stringify(result));\`,
+        \`  }\`,
+        \`}\`,
+        \`main().then(\`,
+        \`  () => process.exit(0),\`,
+        \`  (err) => { process.stderr.write(String(err?.stack ?? err) + "\\\\n"); process.exit(1); }\`,
+        \`);\`,
+      ].join("\\n") + "\\n";
+      writeFileSync(entryFile, entryContent);
+      try {
+        execSync(
+          \`bun build \${entryFile} --outfile \${outFile} --target node --format esm\`,
+          { cwd: ROOT, stdio: "inherit" },
+        );
+      } catch {
+        throw new Error(
+          \`[build-hooks] Handler compilation failed for "\${hook.name}" (bun build exit non-zero)\`,
+        );
+      }
+    } catch (err) {
+      process.stderr.write(
+        \`[build-hooks] wrapper-emit failed for "\${hook.name}": \${String(err)}\\n\`,
       );
-    } catch {
-      throw new Error(
-        \`[build-hooks] Handler compilation failed for "\${hook.name}" (bun build exit non-zero)\`,
-      );
+      throw err;
+    } finally {
+      try {
+        rmSync(entryDir, { recursive: true, force: true });
+      } catch {
+        // best effort
+      }
     }
   }
 }
@@ -831,6 +867,58 @@ describe("Scenario 1 — 정상 5 hook 빌드, 3 manifest 유효 JSON", () => {
     for (const hook of fiveHookFixture()) {
       expect(existsSync(join(hooksDistDir, `${hook.name}.js`))).toBe(true);
     }
+  });
+
+  test("compiled bundle contains bootstrap marker (readFileSync(0 or process.exit)", () => {
+    const { fixtureRoot, wrapperPath } = makeTmpAndWrapper(
+      fiveHookFixture(),
+      minimalCapabilityMatrix(),
+    );
+
+    runBuild(fixtureRoot, wrapperPath);
+
+    const hooksDistDir = join(fixtureRoot, "dist", "hooks");
+    // Check at least one hook that is registered (session-init is core/registered in all harnesses)
+    const bundlePath = join(hooksDistDir, "session-init.js");
+    expect(existsSync(bundlePath)).toBe(true);
+    const content = readFileSync(bundlePath, "utf-8");
+    const hasBootstrap =
+      content.includes("readFileSync(0") ||
+      content.includes("process.stdin") ||
+      content.includes("process.exit");
+    expect(hasBootstrap).toBe(true);
+  });
+
+  test("smoke: real dist/hooks/session-init.js exits 0 and creates state files for SessionStart payload", () => {
+    const realBundle = join(REPO_ROOT, "dist", "hooks", "session-init.js");
+    if (!existsSync(realBundle)) {
+      // Skip if the bundle hasn't been built yet (CI gate runs build first)
+      console.warn("[smoke] dist/hooks/session-init.js not found — skipping smoke test");
+      return;
+    }
+
+    const smokeDir = mkdtempSync(join(tmpdir(), "nexus-smoke-"));
+    tmpDirs.push(smokeDir);
+
+    const payload = JSON.stringify({
+      hook_event_name: "SessionStart",
+      session_id: "smoke-t1",
+      cwd: smokeDir,
+      source: "startup",
+    });
+
+    const result = spawnSync("node", [realBundle], {
+      input: payload,
+      encoding: "utf-8",
+      timeout: 15_000,
+    });
+
+    if (result.status !== 0) {
+      console.error("smoke stderr:", result.stderr);
+    }
+    expect(result.status).toBe(0);
+    expect(existsSync(join(smokeDir, ".nexus", "state", "smoke-t1", "agent-tracker.json"))).toBe(true);
+    expect(existsSync(join(smokeDir, ".nexus", "state", "smoke-t1", "tool-log.jsonl"))).toBe(true);
   });
 });
 
