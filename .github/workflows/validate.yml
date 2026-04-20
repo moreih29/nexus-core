@@ -47,6 +47,9 @@ jobs:
       - name: Run tests
         run: bun run test
 
+      - name: Run smoke gates
+        run: bun run smoke
+
       - name: Pack
         run: npm pack
 

@@ -4,6 +4,32 @@
 
 ---
 
+## [0.16.0] - 2026-04-20
+
+### BREAKING CHANGES
+
+- **Codex `agents/*.toml` 스키마 전환** ([#42](https://github.com/moreih29/nexus-core/issues/42)): `agents/*.toml`이 기존 `[agents.<id>]` nested 구조에서 root-level `name`·`developer_instructions` standalone role file 스키마로 전환됩니다. `~/.codex/config.toml`의 `[agents.<id>]` 정의와 혼용할 수 없습니다.
+  Consumer 대응: `bun run sync` 재실행 후 `bash install/install.sh`를 재실행하여 `~/.codex/agents/`를 새 스키마로 재갱신하세요.
+
+- **OpenCode `opencode.json.fragment` 생성 중단** ([#43](https://github.com/moreih29/nexus-core/issues/43)): core가 `opencode.json.fragment`를 더 이상 생성하지 않습니다. fragment-merge 경로는 폐기되며, plugin auto-register(`src/index.ts`의 `export const agents`)가 canonical 경로입니다.
+  Consumer 대응: fragment-merge postinstall 로직을 제거하고, consumer 워크스페이스의 `.opencode/opencode.json`을 `plugin: ["<name>"]`·`default_agent: "..."`·`mcp` 구성으로 전환하세요. canonical 예제는 `docs/contract/harness-io.md` §4-2 참조.
+
+### Fixed
+
+- 이슈 [#40](https://github.com/moreih29/nexus-core/issues/40)·[#41](https://github.com/moreih29/nexus-core/issues/41) 중복 추적을 [#42](https://github.com/moreih29/nexus-core/issues/42)로 통합.
+
+### Added
+
+- Distribution-invariant smoke gate 3개(Claude·Codex·OpenCode, `scripts/smoke/`) 추가. CI의 release 전 단계에서 3 하네스 harness 계약 정합성을 자동 검증합니다.
+
+### Migration Notes
+
+- **Codex consumer**: `bun run sync` 실행 후 `bash install/install.sh` 순서로 재배포. 이 순서로 `~/.codex/agents/`가 새 standalone role file 스키마로 갱신됩니다.
+- **OpenCode consumer**: `.opencode/opencode.json`에서 `agents: [...]` 키를 제거하세요. `plugin: ["<name>"]`만 두면 agents가 자동 등록됩니다. 정확한 예제는 `docs/contract/harness-io.md` §4-2를 참조하세요.
+- **버전 bump**: `bun add @moreih29/nexus-core@^0.16.0`.
+
+---
+
 ## [0.15.2] - 2026-04-20
 
 ### Fixed

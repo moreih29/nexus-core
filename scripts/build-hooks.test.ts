@@ -566,7 +566,7 @@ function buildOpenCodeManifest(plans: PortabilityPlan[]): OpenCodeHookManifest {
       name: plan.name,
       events: [...plan.meta.events],
       matcher: plan.meta.matcher ?? "*",
-      handlerPath: \`../assets/hooks/\${plan.name}/handler.js\`,
+      handlerPath: \`../hooks/\${plan.name}.js\`,
       priority: plan.meta.priority ?? 0,
       timeout: plan.meta.timeout,
     };
@@ -846,7 +846,7 @@ describe("Scenario 1 — 정상 5 hook 빌드, 3 manifest 유효 JSON", () => {
       expect(Array.isArray(hook["events"])).toBe(true);
       expect(typeof hook["matcher"]).toBe("string");
       expect(typeof hook["handlerPath"]).toBe("string");
-      expect((hook["handlerPath"] as string).startsWith("../assets/hooks/")).toBe(true);
+      expect((hook["handlerPath"] as string).startsWith("../hooks/")).toBe(true);
       expect(typeof hook["priority"]).toBe("number");
       // No old fields
       expect(hook["event"]).toBeUndefined();

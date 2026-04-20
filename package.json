@@ -1,6 +1,6 @@
 {
   "name": "@moreih29/nexus-core",
-  "version": "0.15.2",
+  "version": "0.16.0",
   "description": "Nexus ecosystem authoring layer — canonical agents/skills/hooks and 3-harness build pipeline (Claude Code, OpenCode, Codex)",
   "license": "MIT",
   "type": "module",
@@ -57,7 +57,11 @@
     "clean": "rm -rf dist",
     "test": "bun test src/ scripts/",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "bun run test"
+    "prepublishOnly": "bun run test",
+    "smoke:claude": "bun run scripts/smoke/smoke-claude.ts",
+    "smoke:codex": "bun run scripts/smoke/smoke-codex.ts",
+    "smoke:opencode": "bun run scripts/smoke/smoke-opencode.ts",
+    "smoke": "bun run smoke:claude && bun run smoke:codex && bun run smoke:opencode"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

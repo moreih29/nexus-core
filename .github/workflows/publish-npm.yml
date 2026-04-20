@@ -69,6 +69,9 @@ jobs:
       - name: Run tests
         run: bun run test
 
+      - name: Run smoke gates
+        run: bun run smoke
+
       - name: Version match check (git tag vs package.json)
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
