@@ -193,13 +193,38 @@ export async function runSync(argv: string[]): Promise<void> {
   const agentOpts = parseAgentArgs(fakeArgv);
   await buildAgents(agentOpts);
 
-  if (flags.dryRun) {
-    console.log(`[nexus-core sync] --dry-run: skipping buildHooks (no writes)`);
-    return;
-  }
+  // Hook sync uses prebuilt artifacts from dist/ — it MUST NOT recompile
+  // handler.ts in a consumer install, since the published tarball does not
+  // ship `src/` (see #34, #35, #36 Bug 2, #37). The authoring-time build is
+  // `bun run build` in the nexus-core dev workspace, which produces the
+  // dist/hooks/*.js and dist/manifests/*.json artifacts this step copies.
+  const { syncHooksToTarget } = await import("./build-hooks.js");
 
-  const { buildHooks } = await import("./build-hooks.js");
-  await buildHooks();
+  const harnesses: Array<"claude" | "codex" | "opencode"> = flags.harness
+    ? [flags.harness as "claude" | "codex" | "opencode"]
+    : ["claude", "codex", "opencode"];
+
+  for (const harness of harnesses) {
+    const target = flags.target ?? join(ROOT, "dist", harness);
+    const result = await syncHooksToTarget({
+      targetDir: target,
+      harness,
+      dryRun: flags.dryRun,
+    });
+
+    if (flags.dryRun) {
+      for (const path of result.written) {
+        console.log(`[M] ${path} (hooks, ${harness})`);
+      }
+      for (const path of result.skipped) {
+        console.log(`[-] ${path} (${harness})`);
+      }
+    } else if (result.written.length > 0) {
+      console.log(
+        `[nexus-core sync] hooks/${harness}: ${result.written.length} file(s) copied to ${target}`,
+      );
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

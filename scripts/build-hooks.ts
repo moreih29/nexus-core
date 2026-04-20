@@ -21,6 +21,7 @@ import {
   existsSync,
   mkdirSync,
   writeFileSync,
+  copyFileSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -302,13 +303,23 @@ function deriveTier(
 // required by the manifests.
 // ---------------------------------------------------------------------------
 
-function compileHandlers(hooks: HookEntry[]): void {
+/**
+ * Compile handlers that are registered in at least one harness.
+ *
+ * Filters by portability plan so excluded hooks (e.g., post-tool-telemetry
+ * missing required capabilities in all 3 harnesses) are skipped — the
+ * previous unfiltered behavior produced unnecessary `bun build` invocations
+ * and surfaced WARN noise in consumer output (#35 defect #1).
+ */
+function compileHandlers(plans: PortabilityPlan[], hookIndex: Map<string, HookEntry>): void {
   mkdirSync(DIST_HOOKS_DIR, { recursive: true });
 
-  // Compile each handler as a standalone bundle using bun build.
-  // This resolves cross-directory imports (src/hooks/types.js etc.) cleanly
-  // and produces a single-file output per hook at dist/hooks/<name>.js.
-  for (const hook of hooks) {
+  for (const plan of plans) {
+    if (plan.registeredIn.length === 0) continue;
+
+    const hook = hookIndex.get(plan.name);
+    if (!hook) continue;
+
     const outFile = join(DIST_HOOKS_DIR, `${hook.name}.js`);
     try {
       execSync(
@@ -547,10 +558,25 @@ function writePortabilityReport(plans: PortabilityPlan[]): void {
 // Main entry point
 // ---------------------------------------------------------------------------
 
+/**
+ * Authoring-time build.
+ *
+ * Run via `bun run build` in the nexus-core dev workspace. Compiles handlers,
+ * writes manifests, and produces a portability report. The published tarball
+ * ships these prebuilt artifacts (`dist/hooks/*.js`, `dist/manifests/*.json`),
+ * and `syncHooksToTarget()` is the consumer-side path that copies them.
+ *
+ * This function MUST NOT run in a consumer install context — the source tree
+ * it compiles against (`src/`) is excluded from the published tarball per
+ * `files: ["assets", "docs", "dist"]`.
+ */
 export async function buildHooks(): Promise<void> {
   // Stage 1
   const hooks = loadAllHooks();
   console.log(`[build-hooks] Loaded ${hooks.length} hooks`);
+
+  const hookIndex = new Map<string, HookEntry>();
+  for (const h of hooks) hookIndex.set(h.name, h);
 
   // Stage 2
   const matrix = loadCapabilityMatrix();
@@ -562,8 +588,8 @@ export async function buildHooks(): Promise<void> {
   // Stage 4
   const plans = computePortability(hooks, matrix);
 
-  // Stage 5
-  compileHandlers(hooks);
+  // Stage 5 — compile only registered handlers, write manifests + report
+  compileHandlers(plans, hookIndex);
   writeManifests(plans);
   writePortabilityReport(plans);
 
@@ -573,6 +599,125 @@ export async function buildHooks(): Promise<void> {
       `  ${plan.name}: tier=${plan.tier} registered=[${plan.registeredIn.join(",")}]`,
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Consumer-side: copy pre-built artifacts to a target directory
+// ---------------------------------------------------------------------------
+
+/**
+ * Copy the prebuilt Claude/Codex hook manifest and registered handler bundles
+ * from the published package's `dist/` into the consumer target.
+ *
+ * Consumer sync path MUST NOT recompile handlers — the tarball's
+ * `assets/hooks/*\/handler.ts` imports `../../../src/...` which is excluded
+ * from the distribution (#34, #35, #36 Bug 2, #37). This function instead
+ * relies on the prebuilt artifacts shipped in `dist/hooks` + `dist/manifests`.
+ *
+ * Layout written to the consumer target:
+ *   - `hooks/hooks.json`         ← dist/manifests/<harness>-hooks.json
+ *   - `dist/hooks/<name>.js`     ← dist/hooks/<name>.js (only handlers registered in <harness>)
+ *
+ * The Claude hooks.json command field resolves to
+ * `${CLAUDE_PLUGIN_ROOT}/dist/hooks/<name>.js`, which matches the copied
+ * layout at runtime.
+ *
+ * For OpenCode the runtime exports `@moreih29/nexus-core/hooks/opencode-manifest`
+ * and `mountHooks` resolves handler paths relative to the published package
+ * itself — no copy is required, so this function is a no-op for opencode.
+ */
+export async function syncHooksToTarget(opts: {
+  targetDir: string;
+  harness: "claude" | "codex" | "opencode";
+  dryRun?: boolean;
+}): Promise<{ written: string[]; skipped: string[] }> {
+  const written: string[] = [];
+  const skipped: string[] = [];
+
+  if (opts.harness === "opencode") {
+    // OpenCode consumes `@moreih29/nexus-core/hooks/opencode-manifest` at
+    // runtime via mountHooks — no filesystem materialization in the target.
+    skipped.push("hooks/(opencode-manifest resolved at runtime)");
+    return { written, skipped };
+  }
+
+  const manifestName =
+    opts.harness === "claude" ? "claude-hooks.json" : "codex-hooks.json";
+  const manifestSrc = join(DIST_MANIFESTS_DIR, manifestName);
+
+  if (!existsSync(manifestSrc)) {
+    throw new Error(
+      `[build-hooks] Missing prebuilt manifest ${manifestSrc}. Did you run \`bun run build\` before publish? ` +
+        `(Consumer sync must only copy, never compile — see docs/contract/harness-io.md)`,
+    );
+  }
+
+  // 1. Parse manifest to learn which handlers are actually registered
+  const manifestRaw = readFileSync(manifestSrc, "utf-8");
+  const manifest = JSON.parse(manifestRaw) as {
+    hooks?: Record<
+      string,
+      Array<{ matcher?: string; command?: string; hooks?: Array<{ command?: string }> }>
+    >;
+  };
+
+  const handlerNames = new Set<string>();
+  for (const eventArr of Object.values(manifest.hooks ?? {})) {
+    for (const entry of eventArr) {
+      // Claude: entry.hooks[*].command
+      if (Array.isArray(entry.hooks)) {
+        for (const h of entry.hooks) {
+          if (typeof h.command === "string") {
+            const name = extractHandlerName(h.command);
+            if (name) handlerNames.add(name);
+          }
+        }
+      }
+      // Codex: entry.command directly
+      if (typeof entry.command === "string") {
+        const name = extractHandlerName(entry.command);
+        if (name) handlerNames.add(name);
+      }
+    }
+  }
+
+  // 2. Copy manifest → <target>/hooks/hooks.json
+  const hooksJsonDest = join(opts.targetDir, "hooks", "hooks.json");
+  if (!opts.dryRun) {
+    mkdirSync(dirname(hooksJsonDest), { recursive: true });
+    copyFileSync(manifestSrc, hooksJsonDest);
+  }
+  written.push("hooks/hooks.json");
+
+  // 3. Copy each registered handler → <target>/dist/hooks/<name>.js
+  for (const name of handlerNames) {
+    const src = join(DIST_HOOKS_DIR, `${name}.js`);
+    const dest = join(opts.targetDir, "dist", "hooks", `${name}.js`);
+    if (!existsSync(src)) {
+      throw new Error(
+        `[build-hooks] Missing prebuilt handler ${src}. Manifest references "${name}" but the bundle is absent. ` +
+          `Re-run \`bun run build\` in the nexus-core dev workspace before publishing.`,
+      );
+    }
+    if (!opts.dryRun) {
+      mkdirSync(dirname(dest), { recursive: true });
+      copyFileSync(src, dest);
+    }
+    written.push(`dist/hooks/${name}.js`);
+  }
+
+  return { written, skipped };
+}
+
+/**
+ * Extract the handler basename from a Claude/Codex hook command.
+ *
+ * Commands look like: `node ${CLAUDE_PLUGIN_ROOT}/dist/hooks/<name>.js`.
+ * Returns the <name> portion, or null if the command doesn't match.
+ */
+function extractHandlerName(command: string): string | null {
+  const match = command.match(/dist\/hooks\/([^/]+)\.js\s*$/);
+  return match ? match[1]! : null;
 }
 
 // Run when executed directly (bun run scripts/build-hooks.ts)

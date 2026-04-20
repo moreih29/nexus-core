@@ -120,6 +120,45 @@ jobs:
           fi
           echo "[OK] list reports agents"
 
+      # Distribution-invariant consumer smoke (#34, #35, #36, #37)
+      # See validate.yml for rationale.
+      - name: Distribution-invariant consumer sync smoke
+        run: |
+          set -e
+          TARBALL=$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)
+          CONSUMER=$(mktemp -d)
+          cd "$CONSUMER"
+          echo '{"name":"nc-dist-smoke","type":"module","private":true}' > package.json
+          bun add -d "$TARBALL" @opencode-ai/plugin typescript
+          for harness in claude opencode codex; do
+            echo "=== full sync $harness (non-dry-run) ==="
+            ./node_modules/.bin/nexus-core sync --harness="$harness" --target="./out-$harness"
+          done
+          echo "=== Claude target layout assertions ==="
+          test -f ./out-claude/hooks/hooks.json || { echo "[FAIL] missing out-claude/hooks/hooks.json"; exit 1; }
+          ls ./out-claude/dist/hooks/*.js > /dev/null || { echo "[FAIL] missing out-claude/dist/hooks/*.js"; exit 1; }
+          echo "=== Codex target layout assertions ==="
+          test -f ./out-codex/hooks/hooks.json || { echo "[FAIL] missing out-codex/hooks/hooks.json"; exit 1; }
+          ls ./out-codex/dist/hooks/*.js > /dev/null || { echo "[FAIL] missing out-codex/dist/hooks/*.js"; exit 1; }
+          echo "=== OpenCode typecheck (catches #36 Bug 1 — AgentConfig import) ==="
+          cp -r ./out-opencode/* ./
+          cat > tsconfig.json <<'EOF'
+          {
+            "compilerOptions": {
+              "target": "es2022",
+              "module": "nodenext",
+              "moduleResolution": "nodenext",
+              "strict": false,
+              "noEmit": true,
+              "skipLibCheck": true,
+              "esModuleInterop": true
+            },
+            "include": ["src/**/*.ts"]
+          }
+          EOF
+          ./node_modules/.bin/tsc --noEmit
+          echo "[OK] distribution-invariant consumer smoke passed for all 3 harnesses"
+
       - name: Publish to npm (OIDC Trusted Publishing)
         if: ${{ !inputs.dry_run }}
         run: npm publish "$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)" --provenance --access public

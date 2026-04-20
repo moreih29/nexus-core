@@ -177,8 +177,26 @@ Codex 내부 `plugin/`·`agents/`·`install/` 도메인 서브디렉터리는 Co
 - `publish-npm.yml`과 `validate.yml` 이 `npm pack` + fresh install smoke 테스트로 소비자 설치 시나리오를 재현
 - 이슈 #25·#26 같은 경로 누락·의존성 오분류·스키마 회귀는 publish 전 차단
 - build 스텝을 validate와 publish 양쪽에 포함해 `dist/` 부재 상태 테스트 실패를 사전 방지
+- **distribution-invariant consumer smoke**: `npm pack` 후 repo 외부 임시 디렉터리에서 tarball을 설치해 3 하네스 `sync` + `tsc --noEmit`을 실행. authoring 트리에서는 relative path로 우연히 resolve되지만 published tarball에서는 실패하는 회귀를 publish 전에 차단 (#34·#35·#36·#37)
 
-*(결정: plan #15 이슈 #4, 2026-04-20)*
+*(결정: plan #15 이슈 #4, 2026-04-20; 보강: 2026-04-20 v0.15 포스트모템)*
+
+### Authoring vs Distribution universe 경계
+
+nexus-core의 경로·import 해석은 두 universe 중 어느 쪽에서 실행되는지에 따라 달라진다.
+
+| Universe | 레이아웃 | 실행 주체 |
+|---|---|---|
+| **Authoring** | `src/`·`scripts/`·`assets/` sibling. 상대 경로로 상호 참조 가능 | `bun run build`, `bun test`, 직접 `bun run scripts/*.ts` |
+| **Distribution** | `dist/src/`·`dist/scripts/`·`assets/` 만 존재. `src/`·`scripts/`는 tarball 제외(files whitelist) | consumer `npx nexus-core sync ...`, runtime import |
+
+**원칙**: authoring에서 resolve되는 상대 경로가 distribution에서도 동일하게 resolve되는지 식별 가능한 메커니즘으로 보장할 것.
+
+- `assets/hooks/*/handler.ts`에서 `../../../src/...`로 import하는 패턴은 distribution에서 깨진다. 해결책: handler를 publish 시점에 `bun build --target node --format esm`으로 self-contained 번들로 변환해 `dist/hooks/<name>.js`로 탑재. consumer sync는 재컴파일 없이 이 산출물만 복사 (#34·#35·#36·#37)
+- generator가 emit하는 consumer 측 import (`src/agents/<n>.ts`가 쓰는 `AgentConfig` 등)는 npm registry에 실제로 존재하는 모듈 이름이어야 한다. 내부 타입이라면 `@moreih29/nexus-core/types` 같은 서브패스로 re-export하고 generator가 그 경로를 사용 (#36 Bug 1)
+- universe 경계를 넘는 테스트는 authoring 트리 바깥의 fresh 디렉터리에서 published tarball을 install해 실행해야 의미가 있다. repo 내부에서 실행되는 smoke는 distribution 회귀를 감지할 수 없다 (#37)
+
+*(결정: 2026-04-20 v0.15 포스트모템 — #37 proposal #2 채택)*
 
 ## 5. Lead agent vs Hook 책임 경계
 
