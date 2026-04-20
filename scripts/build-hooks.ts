@@ -452,34 +452,37 @@ function buildCodexManifest(plans: PortabilityPlan[], toolMap: ToolNameMap): Cod
   return { hooks };
 }
 
-type OpenCodeHooksJson = {
-  mountHooks: Array<{
-    event: string;
-    matcher?: string;
-    module: string;
-    timeout: number;
-  }>;
-};
+interface OpenCodeHookManifestEntry {
+  name: string;
+  events: string[];
+  matcher: string;
+  handlerPath: string;
+  priority: number;
+  timeout?: number;
+}
 
-function buildOpenCodeManifest(plans: PortabilityPlan[], toolMap: ToolNameMap): OpenCodeHooksJson {
-  const mountHooks: OpenCodeHooksJson["mountHooks"] = [];
+interface OpenCodeHookManifest {
+  hooks: OpenCodeHookManifestEntry[];
+}
+
+function buildOpenCodeManifest(plans: PortabilityPlan[]): OpenCodeHookManifest {
+  const hooks: OpenCodeHookManifestEntry[] = [];
 
   for (const plan of plans) {
     if (!plan.registeredIn.includes("opencode")) continue;
 
-    for (const event of plan.meta.events) {
-      const matcher = translateMatcher(plan.meta.matcher, "opencode", toolMap);
-      const entry: OpenCodeHooksJson["mountHooks"][number] = {
-        event,
-        module: `./dist/hooks/${plan.name}.js`,
-        timeout: plan.meta.timeout,
-      };
-      if (matcher !== "*") entry.matcher = matcher;
-      mountHooks.push(entry);
-    }
+    const entry: OpenCodeHookManifestEntry = {
+      name: plan.name,
+      events: [...plan.meta.events],
+      matcher: plan.meta.matcher ?? "*",
+      handlerPath: `../assets/hooks/${plan.name}/handler.js`,
+      priority: plan.meta.priority ?? 0,
+      timeout: plan.meta.timeout,
+    };
+    hooks.push(entry);
   }
 
-  return { mountHooks };
+  return { hooks };
 }
 
 function writeManifests(plans: PortabilityPlan[]): void {
@@ -489,7 +492,7 @@ function writeManifests(plans: PortabilityPlan[]): void {
 
   const claude = buildClaudeManifest(plans, toolMap);
   const codex = buildCodexManifest(plans, toolMap);
-  const opencode = buildOpenCodeManifest(plans, toolMap);
+  const opencode = buildOpenCodeManifest(plans);
 
   writeFileSync(
     join(DIST_MANIFESTS_DIR, "claude-hooks.json"),
@@ -500,7 +503,7 @@ function writeManifests(plans: PortabilityPlan[]): void {
     JSON.stringify(codex, null, 2) + "\n",
   );
   writeFileSync(
-    join(DIST_MANIFESTS_DIR, "opencode-hooks.json"),
+    join(DIST_MANIFESTS_DIR, "opencode-manifest.json"),
     JSON.stringify(opencode, null, 2) + "\n",
   );
 }

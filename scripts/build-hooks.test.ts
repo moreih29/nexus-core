@@ -509,31 +509,34 @@ function buildCodexManifest(plans: PortabilityPlan[], toolMap: ToolNameMap): Cod
   return { hooks };
 }
 
-type OpenCodeHooksJson = {
-  mountHooks: Array<{
-    event: string;
-    matcher?: string;
-    module: string;
-    timeout: number;
-  }>;
-};
+interface OpenCodeHookManifestEntry {
+  name: string;
+  events: string[];
+  matcher: string;
+  handlerPath: string;
+  priority: number;
+  timeout?: number;
+}
 
-function buildOpenCodeManifest(plans: PortabilityPlan[], toolMap: ToolNameMap): OpenCodeHooksJson {
-  const mountHooks: OpenCodeHooksJson["mountHooks"] = [];
+interface OpenCodeHookManifest {
+  hooks: OpenCodeHookManifestEntry[];
+}
+
+function buildOpenCodeManifest(plans: PortabilityPlan[]): OpenCodeHookManifest {
+  const hooks: OpenCodeHookManifestEntry[] = [];
   for (const plan of plans) {
     if (!plan.registeredIn.includes("opencode")) continue;
-    for (const event of plan.meta.events) {
-      const matcher = translateMatcher(plan.meta.matcher, "opencode", toolMap);
-      const entry: OpenCodeHooksJson["mountHooks"][number] = {
-        event,
-        module: \`./dist/hooks/\${plan.name}.js\`,
-        timeout: plan.meta.timeout,
-      };
-      if (matcher !== "*") entry.matcher = matcher;
-      mountHooks.push(entry);
-    }
+    const entry: OpenCodeHookManifestEntry = {
+      name: plan.name,
+      events: [...plan.meta.events],
+      matcher: plan.meta.matcher ?? "*",
+      handlerPath: \`../assets/hooks/\${plan.name}/handler.js\`,
+      priority: plan.meta.priority ?? 0,
+      timeout: plan.meta.timeout,
+    };
+    hooks.push(entry);
   }
-  return { mountHooks };
+  return { hooks };
 }
 
 function writeManifests(plans: PortabilityPlan[]): void {
@@ -541,7 +544,7 @@ function writeManifests(plans: PortabilityPlan[]): void {
   const toolMap = loadToolNameMap();
   const claude = buildClaudeManifest(plans, toolMap);
   const codex = buildCodexManifest(plans, toolMap);
-  const opencode = buildOpenCodeManifest(plans, toolMap);
+  const opencode = buildOpenCodeManifest(plans);
   writeFileSync(
     join(DIST_MANIFESTS_DIR, "claude-hooks.json"),
     JSON.stringify(claude, null, 2) + "\\n",
@@ -551,7 +554,7 @@ function writeManifests(plans: PortabilityPlan[]): void {
     JSON.stringify(codex, null, 2) + "\\n",
   );
   writeFileSync(
-    join(DIST_MANIFESTS_DIR, "opencode-hooks.json"),
+    join(DIST_MANIFESTS_DIR, "opencode-manifest.json"),
     JSON.stringify(opencode, null, 2) + "\\n",
   );
 }
@@ -766,7 +769,7 @@ describe("Scenario 1 — 정상 5 hook 빌드, 3 manifest 유효 JSON", () => {
     const manifestDir = join(fixtureRoot, "dist", "manifests");
     expect(existsSync(join(manifestDir, "claude-hooks.json"))).toBe(true);
     expect(existsSync(join(manifestDir, "codex-hooks.json"))).toBe(true);
-    expect(existsSync(join(manifestDir, "opencode-hooks.json"))).toBe(true);
+    expect(existsSync(join(manifestDir, "opencode-manifest.json"))).toBe(true);
   });
 
   test("all 3 manifest files are valid JSON", () => {
@@ -779,9 +782,40 @@ describe("Scenario 1 — 정상 5 hook 빌드, 3 manifest 유효 JSON", () => {
 
     const manifestDir = join(fixtureRoot, "dist", "manifests");
 
-    for (const filename of ["claude-hooks.json", "codex-hooks.json", "opencode-hooks.json"]) {
+    for (const filename of ["claude-hooks.json", "codex-hooks.json", "opencode-manifest.json"]) {
       const raw = readFileSync(join(manifestDir, filename), "utf-8");
       expect(() => JSON.parse(raw)).not.toThrow();
+    }
+  });
+
+  test("opencode-manifest.json has new schema: { hooks: [{name, events[], matcher, handlerPath, priority}] }", () => {
+    const { fixtureRoot, wrapperPath } = makeTmpAndWrapper(
+      fiveHookFixture(),
+      minimalCapabilityMatrix(),
+    );
+
+    runBuild(fixtureRoot, wrapperPath);
+
+    const manifestDir = join(fixtureRoot, "dist", "manifests");
+    const opencode = JSON.parse(
+      readFileSync(join(manifestDir, "opencode-manifest.json"), "utf-8"),
+    ) as { hooks: Array<Record<string, unknown>> };
+
+    expect(Array.isArray(opencode.hooks)).toBe(true);
+    // At least one hook should be registered in opencode
+    expect(opencode.hooks.length).toBeGreaterThan(0);
+
+    for (const hook of opencode.hooks) {
+      expect(typeof hook["name"]).toBe("string");
+      expect(Array.isArray(hook["events"])).toBe(true);
+      expect(typeof hook["matcher"]).toBe("string");
+      expect(typeof hook["handlerPath"]).toBe("string");
+      expect((hook["handlerPath"] as string).startsWith("../assets/hooks/")).toBe(true);
+      expect(typeof hook["priority"]).toBe("number");
+      // No old fields
+      expect(hook["event"]).toBeUndefined();
+      expect(hook["module"]).toBeUndefined();
+      expect(hook["mountHooks"]).toBeUndefined();
     }
   });
 
@@ -1099,8 +1133,8 @@ requires_capabilities:
       hooks: Record<string, Array<{ matcher?: string }>>;
     };
     const opencode = JSON.parse(
-      readFileSync(join(manifestDir, "opencode-hooks.json"), "utf-8"),
-    ) as { mountHooks: Array<{ event: string; matcher?: string }> };
+      readFileSync(join(manifestDir, "opencode-manifest.json"), "utf-8"),
+    ) as { hooks: Array<{ name: string; events: string[]; matcher: string; handlerPath: string; priority: number }> };
 
     // Claude: Bash → "Bash"
     expect(claude.hooks["PostToolUse"]?.[0]?.matcher).toBe("Bash");
@@ -1108,10 +1142,10 @@ requires_capabilities:
     // Codex: Bash → "shell" (primary of codex entry)
     expect(codex.hooks["PostToolUse"]?.[0]?.matcher).toBe("shell");
 
-    // OpenCode: Bash → "bash"
+    // OpenCode: new schema stores original nexus matcher ("Bash"), not translated
     expect(
-      opencode.mountHooks.find((h) => h.event === "PostToolUse")?.matcher,
-    ).toBe("bash");
+      opencode.hooks.find((h) => h.events.includes("PostToolUse"))?.matcher,
+    ).toBe("Bash");
   });
 
   test("wildcard matcher '*' is passed through unchanged for all harnesses", () => {
@@ -1152,13 +1186,13 @@ requires_capabilities:
     expect(codexEntry).toBeDefined();
     expect(codexEntry?.matcher).toBeUndefined();
 
-    // OpenCode: wildcard → no matcher field
+    // OpenCode: wildcard → matcher is "*"
     const opencode = JSON.parse(
-      readFileSync(join(manifestDir, "opencode-hooks.json"), "utf-8"),
-    ) as { mountHooks: Array<{ event: string; matcher?: string }> };
-    const ocEntry = opencode.mountHooks.find((h) => h.event === "SessionStart");
+      readFileSync(join(manifestDir, "opencode-manifest.json"), "utf-8"),
+    ) as { hooks: Array<{ name: string; events: string[]; matcher: string; handlerPath: string; priority: number }> };
+    const ocEntry = opencode.hooks.find((h) => h.events.includes("SessionStart"));
     expect(ocEntry).toBeDefined();
-    expect(ocEntry?.matcher).toBeUndefined();
+    expect(ocEntry?.matcher).toBe("*");
   });
 
   test("pipe-separated matcher translates each token independently", () => {
@@ -1202,12 +1236,12 @@ requires_capabilities:
     };
     expect(codex.hooks["PostToolUse"]?.[0]?.matcher).toBe("apply_patch");
 
-    // OpenCode: Edit → "edit", Write → "write" → "edit|write"
+    // OpenCode: new schema stores original nexus matcher ("Edit|Write"), not translated
     const opencode = JSON.parse(
-      readFileSync(join(manifestDir, "opencode-hooks.json"), "utf-8"),
-    ) as { mountHooks: Array<{ event: string; matcher?: string }> };
-    const ocMatcher = opencode.mountHooks.find((h) => h.event === "PostToolUse")?.matcher;
-    expect(ocMatcher).toBe("edit|write");
+      readFileSync(join(manifestDir, "opencode-manifest.json"), "utf-8"),
+    ) as { hooks: Array<{ name: string; events: string[]; matcher: string; handlerPath: string; priority: number }> };
+    const ocMatcher = opencode.hooks.find((h) => h.events.includes("PostToolUse"))?.matcher;
+    expect(ocMatcher).toBe("Edit|Write");
   });
 });
 

@@ -132,9 +132,54 @@ nexus-core (@moreih29/nexus-core)
 - 세션 로컬 파일은 네임스페이스 분리로 시스템적 쓰기 충돌 0.
 - 프로젝트 공유 `memory-access.jsonl`은 git union merge로 처리 (멀티세션 병렬 append 안전). `tool-log.jsonl`은 세션 격리라 충돌 가능성 없으나 워크트리 병합 시 union merge 적용 안전. `history.json`은 read-modify-write라 union merge 부적합 — 락 + atomic write로 처리.
 
-## 4. Lead agent vs Hook 책임 경계
+## 4. 패키징·배포
 
-### 4-1. 책임 경계 표
+### Build 파이프라인
+
+- 단일 `tsconfig.build.json` 이 `src/`, `scripts/`, `assets/hooks/*/handler.ts` 를 모두 포함 (`rootDir=./`)
+- 산출물 레이아웃: `dist/{src,scripts,assets/hooks,manifests}/`
+- 번들러(bun build, tsup) 미사용 — 스크립트 3개 규모 대비 과잉이며, 외부화 목록 drift 리스크를 회피한다
+- `bun run build` = `tsc -p tsconfig.build.json && bun run scripts/build-hooks.ts` — 후자가 `dist/manifests/opencode-manifest.json` 및 portability-report를 생성
+
+*(결정: plan #15 이슈 #1, 2026-04-20)*
+
+### package.json exports 원칙 (하이브리드)
+
+- `.` = null 고수: barrel 파일이 없으며 소비자는 서브패스를 통해서만 접근 가능
+- 공개 API는 명시적 서브패스(types + import 조건부): `./mcp`, `./hooks/opencode-mount`, `./hooks/runtime`
+- JSON 자원은 단일 문자열 경로: `./hooks/opencode-manifest`
+- 자산(수백 개)은 와일드카드 패턴: `./agents/*`, `./skills/*`, `./assets/*`, `./docs/*`
+- 근거: `types.ts` 등 내부 파일 외부 공개 방지 + 자산 수백 개를 일일이 나열하는 비현실적 관리 부담 회피
+
+*(결정: plan #15 이슈 #2, 2026-04-20)*
+
+### dependencies 분류
+
+- 실측 import 기반 승격만 허용: 소스 전체 grep으로 실제 사용 확인 후 dep 승격
+- 미사용 발견 시 즉시 제거
+- peerDependencies는 현 규모에 과잉 — version drift 발생 시 별도 안건으로 처리
+
+*(결정: plan #15 이슈 #2, 2026-04-20)*
+
+### OpenCode hook-manifest
+
+- build-time: `dist/manifests/opencode-manifest.json` 에 **manifest 파일 기준 상대 경로**(`../assets/hooks/<name>/handler.js`)로 기록
+- runtime: `mountHooks()` 진입부가 `new URL(rel, manifestUrl)` + `fileURLToPath` 로 절대 경로를 산출 → `spawn("node", [absolute])`
+- 근거: 소비자 CWD가 아닌 패키지 내부 경로 기준으로 자기 완결. 소비자 저장소에 빌드 산출물을 커밋하는 sync-materialized 반패턴을 회피한다
+
+*(결정: plan #15 이슈 #3, 2026-04-20)*
+
+### CI 가드
+
+- `publish-npm.yml`과 `validate.yml` 이 `npm pack` + fresh install smoke 테스트로 소비자 설치 시나리오를 재현
+- 이슈 #25·#26 같은 경로 누락·의존성 오분류·스키마 회귀는 publish 전 차단
+- build 스텝을 validate와 publish 양쪽에 포함해 `dist/` 부재 상태 테스트 실패를 사전 방지
+
+*(결정: plan #15 이슈 #4, 2026-04-20)*
+
+## 5. Lead agent vs Hook 책임 경계
+
+### 5-1. 책임 경계 표
 
 | 레이어 | 담당 | 트리거 |
 |---|---|---|
@@ -146,6 +191,6 @@ nexus-core (@moreih29/nexus-core)
 
 `post-tool-telemetry` hook은 `PostToolUse` 이벤트에서 memory access·file-edit 작업을 추적하며, 위 orchestration 경계와는 별개로 감사·강화/망각 신호 수집을 담당한다.
 
-### 4-2. 설계 원칙
+### 5-2. 설계 원칙
 
 Lead `body.md`는 정적 orchestration SSOT다. 에이전트 정체성·협업 구조·스킬 위임 방침이 여기에 집약된다. Hook은 동적 상태(tasks·plan·tracker)·태그 감지·subagent 주입을 담당한다. 두 레이어는 역할이 분리되어 중복·충돌이 없다. Lead는 `.nexus/memory/`·`.nexus/context/`를 자가 로드하지 않는다 — 사용자 `CLAUDE.md` 지침이 이 역할을 보완한다.
