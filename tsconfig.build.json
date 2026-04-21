@@ -2,13 +2,12 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "allowImportingTsExtensions": false,
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts", "assets/hooks/**/handler.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", ".legacy", "**/*.test.ts"]
 }

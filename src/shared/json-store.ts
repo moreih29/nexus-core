@@ -1,7 +1,7 @@
-import fs from "node:fs/promises";
-import { constants as fsConstants, appendFileSync, mkdirSync } from "node:fs";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { appendFileSync, constants as fsConstants, mkdirSync } from "node:fs";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 // ---------------------------------------------------------------------------
 // In-process mutex (serialises concurrent calls within the same process)
@@ -9,7 +9,10 @@ import { randomUUID } from "node:crypto";
 
 const inProcessQueues = new Map<string, Promise<void>>();
 
-async function runWithInProcessLock<T>(filePath: string, action: () => Promise<T>): Promise<T> {
+async function runWithInProcessLock<T>(
+  filePath: string,
+  action: () => Promise<T>,
+): Promise<T> {
   const previous = inProcessQueues.get(filePath) ?? Promise.resolve();
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
@@ -46,11 +49,15 @@ function lockPath(filePath: string): string {
 
 async function acquireFsLock(filePath: string): Promise<void> {
   const lp = lockPath(filePath);
+  await fs.mkdir(path.dirname(lp), { recursive: true });
 
   for (let attempt = 0; attempt <= LOCK_MAX_RETRIES; attempt++) {
     try {
       // O_EXCL ensures atomic creation — only one process wins
-      const fd = await fs.open(lp, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL);
+      const fd = await fs.open(
+        lp,
+        fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL,
+      );
       await fd.close();
       return;
     } catch (err: unknown) {
@@ -72,10 +79,14 @@ async function acquireFsLock(filePath: string): Promise<void> {
       }
 
       if (attempt === LOCK_MAX_RETRIES) {
-        throw new Error(`Failed to acquire lock for "${filePath}" after ${LOCK_MAX_RETRIES} retries`);
+        throw new Error(
+          `Failed to acquire lock for "${filePath}" after ${LOCK_MAX_RETRIES} retries`,
+        );
       }
 
-      await new Promise<void>((resolve) => setTimeout(resolve, LOCK_RETRY_INTERVAL_MS));
+      await new Promise<void>((resolve) =>
+        setTimeout(resolve, LOCK_RETRY_INTERVAL_MS),
+      );
     }
   }
 }
@@ -92,7 +103,10 @@ async function releaseFsLock(filePath: string): Promise<void> {
  * Read a JSON file, returning `defaultValue` when the file does not exist or
  * its content cannot be parsed.
  */
-export async function readJsonFile<T>(filePath: string, defaultValue: T): Promise<T> {
+export async function readJsonFile<T>(
+  filePath: string,
+  defaultValue: T,
+): Promise<T> {
   let raw: string;
   try {
     raw = await fs.readFile(filePath, "utf8");
@@ -114,10 +128,13 @@ export async function readJsonFile<T>(filePath: string, defaultValue: T): Promis
  * Writes to a unique temp file then renames to the target path.
  * Parent directories are created automatically.
  */
-export async function writeJsonFile<T>(filePath: string, data: T): Promise<void> {
+export async function writeJsonFile<T>(
+  filePath: string,
+  data: T,
+): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   const tmpPath = `${filePath}.tmp.${process.pid}.${Date.now()}.${randomUUID()}`;
-  await fs.writeFile(tmpPath, JSON.stringify(data, null, 2) + "\n", "utf8");
+  await fs.writeFile(tmpPath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
   await fs.rename(tmpPath, filePath);
 }
 
@@ -169,7 +186,7 @@ const APPEND_SIZE_WARN_THRESHOLD = 4 * 1024; // 4KB — OS write atomicity limit
  * Parent directories are created automatically.
  */
 export function appendJsonLine(filePath: string, record: unknown): void {
-  const line = JSON.stringify(record) + "\n";
+  const line = `${JSON.stringify(record)}\n`;
 
   if (line.length > APPEND_SIZE_WARN_THRESHOLD) {
     console.error(

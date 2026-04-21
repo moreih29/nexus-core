@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/v3";
 
 // resume_tier
 export const ResumeTierSchema = z.enum(["persistent", "bounded", "ephemeral"]);
