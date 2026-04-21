@@ -1,0 +1,9 @@
+invocation_map:
+  skill_activation:
+    template: 'Skill({ command: "{skill}" })'
+  subagent_spawn:
+    template: 'Agent({ subagent_type: "{target_role}", prompt: "{prompt}", description: "{name}" })'
+  task_register:
+    template: 'TaskCreate({ subject: "{label}" }) then nx_task_update({ taskId, status: "{state}" })'
+  user_question:
+    template: 'AskUserQuestion({ questions: [{ question: "{question}", options: {options} }] })'

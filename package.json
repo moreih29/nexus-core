@@ -18,6 +18,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./generate": {
+      "types": "./dist/generate/index.d.ts",
+      "import": "./dist/generate/index.js"
+    },
     "./mcp": {
       "types": "./dist/mcp/server.d.ts",
       "import": "./dist/mcp/server.js"
@@ -25,10 +29,13 @@
   },
   "files": [
     "dist",
-    "spec"
+    "harness",
+    "spec",
+    "vocabulary"
   ],
   "bin": {
-    "nexus-mcp": "./dist/mcp/server.js"
+    "nexus-mcp": "./dist/mcp/server.js",
+    "nexus-sync": "./dist/cli/sync.js"
   },
   "packageManager": "bun@1.3.12",
   "scripts": {
@@ -41,7 +48,9 @@
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "mcp": "bun dist/mcp/server.js",
+    "sync": "bun dist/cli/sync.js",
     "test": "bun test",
+    "test:generate": "bun test tests/generate",
     "test:mcp": "bun test tests/mcp",
     "test:mcp:stdio": "bun test tests/mcp/stdio-smoke.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -49,6 +58,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "yaml": "^2.8.1",
     "zod": "^4.1.8"
   },
   "devDependencies": {

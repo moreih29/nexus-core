@@ -1,0 +1,21 @@
+model_tier:
+  high: opus
+  standard: sonnet
+  low: haiku
+
+capability_disallowed_tools:
+  no_file_edit:
+    - Edit
+    - Write
+    - MultiEdit
+    - NotebookEdit
+  no_task_create:
+    - mcp__plugin_claude-nexus_nx__nx_task_add
+  no_task_update:
+    - mcp__plugin_claude-nexus_nx__nx_task_update
+  no_task_close:
+    - mcp__plugin_claude-nexus_nx__nx_task_close
+  no_subagent_spawn:
+    - Agent
+  no_user_question:
+    - AskUserQuestion

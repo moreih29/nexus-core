@@ -56,9 +56,9 @@ Understand code, core knowledge, and prior decisions before forming the planning
 
 | Situation | Approach |
 |---|---|
-| Codebase orientation needed | Spawn an explore subagent |
-| External research needed | Spawn a researcher subagent |
-| Both needed | Spawn explore and researcher in parallel |
+| Codebase orientation needed | `{{subagent_spawn target_role=explore prompt="<file/code search task>"}}` for codebase exploration |
+| External research needed | `{{subagent_spawn target_role=researcher prompt="<research question>"}}` for web search |
+| Both needed | Spawn `{{subagent_spawn target_role=explore prompt="<file/code search task>"}}` and `{{subagent_spawn target_role=researcher prompt="<research question>"}}` in parallel |
 
 - Researcher subagents return findings to Lead and do not participate in the plan session itself.
 

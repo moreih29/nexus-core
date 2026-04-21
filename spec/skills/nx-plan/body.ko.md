@@ -56,9 +56,9 @@ triggers:
 
 | 상황 | 접근법 |
 |---|---|
-| 코드베이스 파악이 필요 | explore 서브에이전트 스폰 |
-| 외부 조사가 필요 | researcher 서브에이전트 스폰 |
-| 둘 다 필요 | explore와 researcher를 병렬로 스폰 |
+| 코드베이스 파악이 필요 | `{{subagent_spawn target_role=explore prompt="<file/code search task>"}}` 코드베이스 탐색 |
+| 외부 조사가 필요 | `{{subagent_spawn target_role=researcher prompt="<research question>"}}` 웹 검색 |
+| 둘 다 필요 | `{{subagent_spawn target_role=explore prompt="<file/code search task>"}}` 와 `{{subagent_spawn target_role=researcher prompt="<research question>"}}` 를 병렬로 스폰 |
 
 - researcher 서브에이전트는 결과를 Lead에게 반환하며, plan 세션 자체에 참여하지 않는다.
 
