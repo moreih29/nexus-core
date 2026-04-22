@@ -1,0 +1,64 @@
+{
+  "cycles": [
+    {
+      "schema_version": "1.0",
+      "completed_at": "2026-04-22T12:56:29.205Z",
+      "branch": "fix/opencode-skill-frontmatter-57",
+      "plan": {
+        "id": 1,
+        "topic": "Issue #57 opencode SKILL.md frontmatter evaluation and fix",
+        "issues": [
+          {
+            "id": 1,
+            "title": "Assess whether issue #57 is technically valid and define the correct opencode-specific behavior",
+            "status": "decided",
+            "decision": "Selected: treat issue #57 as technically valid for nexus-core and fix the opencode skill renderer so emitted SKILL.md frontmatter includes a required name field equal to the skill id / directory name, and does not emit the OpenCode-unsupported triggers field. Rationale: OpenCode docs (last updated Apr 22, 2026) require name and description, allow only name/description/license/compatibility/metadata, and require name to match the skill directory regex; current src/generate/renderers/opencode.ts omits name and generated opencode skill files in dist/render-preview confirm the omission. Rejected alternative 1: close the issue as invalid — rejected because both the official docs and this repo’s generated output support the bug report. Rejected alternative 2: add name but keep triggers — rejected because it would restore loading but still leave opencode output with harness-specific unsupported frontmatter drift and unnecessary noise."
+          },
+          {
+            "id": 2,
+            "title": "Define and execute the minimal safe fix scope in this repo, including regression coverage and generated artifacts",
+            "status": "decided",
+            "decision": "Selected: apply the minimal safe upstream fix in this repo only where the bug originates: update the opencode renderer, add regression assertions in generation tests, then refresh generated dist artifacts and opencode render-preview output with targeted verification. Rationale: the spec source already contains name, so the defect is introduced during opencode rendering; a focused upstream fix resolves the root cause with low cross-harness risk and gives downstream packages a clean source of truth. Rejected alternative 1: edit spec/skills bodies only — rejected because renderer currently discards name for opencode, so spec-only edits would not change emitted output. Rejected alternative 2: patch downstream wrappers instead of nexus-core — rejected because the bug is upstream in nexus-core generation and should be fixed at the shared source. Rejected alternative 3: refactor claude/codex skill rendering too — rejected because the issue is opencode-specific and widening scope adds regression risk without user value."
+          }
+        ],
+        "research_summary": "Verified issue #57 on GitHub (opened 2026-04-22, https://github.com/moreih29/nexus-core/issues/57). Cross-checked OpenCode Agent Skills docs updated Apr 22, 2026: SKILL.md frontmatter recognizes only name, description, license, compatibility, metadata; name and description are required; name must match directory regex ^[a-z0-9]+(-[a-z0-9]+)*$. Cross-checked local code: src/generate/renderers/opencode.ts currently emits only description and preserves triggers for skills, omitting name. Cross-checked generated output: dist/render-preview/opencode/skills/{nx-plan,nx-auto-plan,nx-run}/SKILL.md lacks name and includes triggers. Cross-checked spec source: spec/skills/*/body.md includes id/name/triggers, so the drift occurs in the opencode renderer, not the spec source. No prior similar cycle found in nx_history_search.",
+        "created_at": "2026-04-22T12:54:38.844Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Patch opencode skill renderer and generation regression tests",
+          "status": "completed",
+          "context": "Issue #57 is valid: OpenCode requires name+description in SKILL.md frontmatter, but src/generate/renderers/opencode.ts emits only description and also carries unsupported triggers. The bug originates in opencode rendering, not in spec/skills source files.",
+          "acceptance": "- src/generate/renderers/opencode.ts emits frontmatter with name and description for skills\n- opencode generated SKILL.md output no longer contains triggers\n- tests/generate/sync.test.ts covers the regression for opencode skills",
+          "approach": "Update the opencode skill renderer to emit name based on the skill id/directory and omit triggers for opencode skills. Extend tests/generate/sync.test.ts to assert opencode skill files contain name and do not contain triggers.",
+          "risk": "If any downstream consumer was informally reading triggers from opencode SKILL.md, that metadata will disappear; current OpenCode docs show no runtime meaning for it.",
+          "plan_issue": 2,
+          "owner": {
+            "role": "lead",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-04-22T12:55:17.449Z"
+        },
+        {
+          "id": 2,
+          "title": "Regenerate affected dist artifacts and verify the fix",
+          "status": "completed",
+          "context": "After the source/test change, generated JS and tracked preview output must reflect the upstream fix so the repo remains internally consistent.",
+          "acceptance": "- bun test tests/generate/sync.test.ts passes\n- bun run build succeeds\n- dist/generate/renderers/opencode.js reflects the source change\n- dist/render-preview/opencode/skills/{nx-plan,nx-auto-plan,nx-run}/SKILL.md include name and omit triggers",
+          "approach": "Run targeted tests plus build, then refresh dist/render-preview/opencode via the sync CLI and inspect the generated SKILL.md files.",
+          "risk": "Preview output is generated content; forgetting to refresh it would leave repo evidence inconsistent with the implemented fix.",
+          "plan_issue": 2,
+          "deps": [
+            1
+          ],
+          "owner": {
+            "role": "lead",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-04-22T12:55:17.480Z"
+        }
+      ]
+    }
+  ]
+}
