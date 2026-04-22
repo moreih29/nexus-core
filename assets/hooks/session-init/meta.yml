@@ -1,9 +1,0 @@
-name: session-init
-description: Initialize per-session state files at session start
-events: [SessionStart]
-matcher: "*"
-timeout: 10
-fallback: warn
-priority: 0
-requires_capabilities:
-  - event.session_start

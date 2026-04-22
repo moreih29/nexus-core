@@ -1,0 +1,25 @@
+changelog:
+  categories:
+    - title: Features
+      labels:
+        - feat
+        - feature
+    - title: Fixes
+      labels:
+        - fix
+        - bug
+    - title: Documentation
+      labels:
+        - docs
+    - title: Tooling
+      labels:
+        - build
+        - ci
+        - chore
+        - tooling
+    - title: Tests
+      labels:
+        - test
+    - title: Other Changes
+      labels:
+        - "*"

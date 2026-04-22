@@ -1,0 +1,3 @@
+paths:
+  agent: .codex/agents/{id}.toml
+  skill: .codex/skills/{id}/SKILL.md

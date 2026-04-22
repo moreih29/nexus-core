@@ -1,0 +1,3 @@
+paths:
+  agent: agents/{id}.md
+  skill: skills/{id}/SKILL.md

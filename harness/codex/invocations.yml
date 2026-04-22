@@ -1,0 +1,13 @@
+invocation_map:
+  skill_activation:
+    template: '${skill}'
+  subagent_spawn:
+    template: 'spawn_agent("{target_role}", "{prompt}")'
+    role_aliases:
+      explore: explorer
+  task_register:
+    template: 'update_plan([{ name: "{label}", state: "{state}" }])'
+  user_question:
+    template: 'request_user_input({ prompt: "{question}", options: {options} })'
+  subagent_resume:
+    template: 'resume_agent({ id: "{agent_id}" }) then send_input({ target: "{agent_id}", message: "{prompt}" })'

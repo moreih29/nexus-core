@@ -1,106 +1,140 @@
-# nexus-core
+# @moreih29/nexus-core
 
-3 하네스(Claude Code, OpenCode, Codex)의 Nexus 플러그인을 위한 공통 라이브러리.  
-에이전트 조율 계층, 공통 빌드 도구, MCP 서버, 스킬·훅 자산을 단일 패키지로 제공합니다.
+Claude Code · Codex · OpenCode 하네스 위에서 멀티 에이전트 오케스트레이션을 돌리기 위한 canonical 스펙과 도구.
 
-## 제공하는 것
+## 무엇인가
 
-1. **에이전트 조율 계층** — HOW / DO / CHECK 분류 + Lead 주재 (10 에이전트)
-2. **공통 빌드 도구** — `nexus-core sync` / `init` / `validate` CLI
-3. **MCP 서버** — 14개 도구를 stdio 서버로 제공 (`nexus-mcp`)
-4. **하네스별 자산** — 스킬·훅·에이전트 정의, capability-matrix SSOT
+`nexus-core`는 "Lead가 역할별 서브에이전트를 조합해 plan → run 사이클을 돌리는" 에이전트 오케스트레이션 모델을 세 하네스(Claude Code, Codex, OpenCode)에서 동일하게 구현하도록 뒷받침한다. 핵심은 세 축이다.
 
-## 제공하지 않는 것
+1. **Canonical 스펙** — 10개 에이전트와 3개 스킬의 하네스 중립 정의
+2. **Sync 파이프라인** (`nexus-sync`) — 스펙을 각 하네스 네이티브 포맷으로 렌더링
+3. **MCP 서버** (`nexus-mcp`) — 플래닝·태스크·이력·아티팩트 상태 관리 도구 노출
 
-실제 플러그인 빌드 및 배포는 개별 하네스 플러그인 repo의 책임입니다.
+제공하지 않는 것 — 훅 런타임, 메인 세션 와이어링, 플러그인 설치 스크립트, 하네스 부트스트랩. 이들은 컨슈머(각 하네스용 플러그인·저장소)가 `nexus-core` 산출물을 받아 자체 구현한다.
 
----
-
-## Installation
-
-**요구사항: Node.js 22 이상** (`import ... with { type: "json" }` 구문이 Node 22에서 stable입니다.)
+## 설치
 
 ```bash
-node --version   # v22.0.0 이상 확인
-bun add -D @moreih29/nexus-core
+npm install @moreih29/nexus-core
+# 또는
+bun add @moreih29/nexus-core
 ```
 
-전역 설치 시 `nexus-core` CLI와 `nexus-mcp` MCP 서버가 PATH에 추가됩니다.
+패키지는 다음을 번들한다.
+
+```
+node_modules/@moreih29/nexus-core/
+├── spec/            # canonical 에이전트·스킬 정의
+├── vocabulary/      # 도구 호출식 스키마
+├── harness/         # 하네스별 invocations + layout
+└── dist/            # 빌드 산출물 (MCP 서버, sync CLI)
+```
+
+바이너리: `nexus-sync`, `nexus-mcp`. 프로그램적 API: `@moreih29/nexus-core/generate`, `@moreih29/nexus-core/mcp`.
+
+## 하네스 컨슈머가 해야 할 세 가지
+
+### 1. 에이전트·스킬 아티팩트 생성
 
 ```bash
-bun add -g @moreih29/nexus-core
-nexus-core --help
+nexus-sync --harness=claude --target=./out/claude
+nexus-sync --harness=codex --target=./out/codex
+nexus-sync --harness=opencode --target=./out/opencode
 ```
 
----
+`--target` 아래 하네스 레이아웃대로 파일이 생성된다.
 
-## Quick Start
+| 하네스 | 에이전트 출력 | 스킬 출력 |
+|---|---|---|
+| `claude` | `agents/{id}.md` | `skills/{id}/SKILL.md` |
+| `codex` | `.codex/agents/{id}.toml` | `.codex/skills/{id}/SKILL.md` |
+| `opencode` | `src/agents/{id}.ts` | `skills/{id}/SKILL.md` |
 
-새 플러그인 repo를 시작하는 기본 흐름입니다.
+생성된 lead를 메인 세션에 어떻게 연결할지는 하네스마다 다르며 컨슈머의 몫이다. 상세는 [docs/agent-skill-sync.md](docs/agent-skill-sync.md).
 
-```bash
-# 1. 플러그인 스캐폴드 생성
-bunx @moreih29/nexus-core init --harness=claude --target=./my-claude-plugin
+### 2. MCP 서버 등록
 
-# 2. 의존성 설치 후 자산 동기화
-cd my-claude-plugin && bun install
-bunx @moreih29/nexus-core sync --harness=claude --target=./
+하네스의 MCP 설정에 `nexus-mcp` 명령을 등록한다. 전송 방식은 stdio, 서버 이름은 `nexus-core`.
 
-# 3. 변경 사항 확인 후 커밋
-bunx @moreih29/nexus-core sync --harness=claude --target=./ --dry-run
-git add . && git commit -m "Initial plugin scaffold"
+| 도구 그룹 | 용도 |
+|---|---|
+| `nx_plan_*` | 플래닝 세션 수명주기 |
+| `nx_task_*` | 태스크 수명주기 |
+| `nx_history_search` | 과거 사이클 조회 |
+| `nx_artifact_write` | 아티팩트 쓰기 |
+
+MCP 서버는 컨슈머 프로젝트 루트 기준 `.nexus/state/`와 `.nexus/history.json`만 읽고 쓴다. 상세는 [docs/mcp-server-tools.md](docs/mcp-server-tools.md).
+
+### 3. 훅 와이어링
+
+Nexus 런타임이 기대하는 세 가지 역할을 각 하네스에서 와이어링한다.
+
+1. 세션 진입 시 `.nexus/` 폴더 구조와 `.gitignore` 화이트리스트 보장
+2. 사용자 프롬프트에서 Nexus 태그(`[plan]`·`[auto-plan]`·`[run]`·`[m]`·`[m:gc]`) 감지해 스킬/지시 활성화
+3. (선택) Nexus 규칙 위반 Bash 명령 차단
+
+하네스별 권장 훅과 이벤트 매핑은 [docs/harness-hooks.md](docs/harness-hooks.md).
+
+## 에이전트 모델
+
+세 카테고리로 역할이 분리된다.
+
+| 카테고리 | 역할 | 에이전트 |
+|---|---|---|
+| HOW | 기술 설계·분석·전략 자문 | architect, designer, postdoc, strategist |
+| DO | 실행 | engineer, writer, researcher |
+| CHECK | 검증 | reviewer, tester |
+
+`lead`는 메인 세션에서 사용자와 대화하고, 서브에이전트를 조합하며, plan/task 수명주기를 주도한다. 재개가 필요한 시점에 스폰 때 받은 `agent_id`를 `nx_plan_analysis_add` / `nx_task_update`에 기록해두고, 나중에 `nx_plan_resume` / `nx_task_resume`로 되찾아 `{{subagent_resume}}`로 재개한다.
+
+## 스킬과 태그
+
+| 태그 | 스킬/동작 | 목적 |
+|---|---|---|
+| `[plan]` | nx-plan | 사용자 결정 중심의 구조적 분석 |
+| `[auto-plan]` | nx-auto-plan | Lead 자율 결정 |
+| `[run]` | nx-run | 태스크 실행 오케스트레이션 |
+| `[d]` | 결정 기록 | 활성 plan 세션의 현재 안건에 `nx_plan_decide` |
+| `[m]` | memory 저장 | `.nexus/memory/`에 누적 |
+| `[m:gc]` | memory 정리 | `.nexus/memory/` 병합·제거 |
+
+## 도구 호출식
+
+스펙 본문에서 이중 중괄호 표기로 호출하는 도구. sync 시점에 각 하네스 네이티브 문법으로 확장된다.
+
+| 호출식 | 용도 |
+|---|---|
+| `{{subagent_spawn}}` | 서브에이전트 스폰 |
+| `{{subagent_resume}}` | 기존 서브에이전트 재개 |
+| `{{skill_activation}}` | 스킬 활성화 |
+| `{{task_register}}` | 태스크 진행 추적 등록 |
+| `{{user_question}}` | 사용자에게 선택지 질문 |
+
+스키마는 `vocabulary/invocations.yml`, 하네스별 확장 템플릿은 `harness/<name>/invocations.yml`에 있다.
+
+## 파일 레이아웃 (컨슈머 프로젝트 기준)
+
+```
+.nexus/
+├── .gitignore       # 화이트리스트 — context, memory, history만 추적
+├── context/         # 설계 원칙·아키텍처
+├── memory/          # empirical-·external-·pattern- prefix 교훈
+├── state/
+│   ├── plan.json    # 현재 plan 세션
+│   ├── tasks.json   # 현재 태스크 목록
+│   └── artifacts/   # 사이클 산출물
+└── history.json     # 종료된 사이클 아카이브
 ```
 
-전체 흐름과 하네스별 install 구현 가이드는 [`docs/plugin-guide.md`](./docs/plugin-guide.md)를 참조하세요.
+- `state/*`·`history.json` — MCP 도구만 편집
+- `context/`·`memory/` — Lead가 사용자 태그로 관리
 
----
+## 관련 문서
 
-## Documentation
+- [에이전트·스킬 명세 동기화](docs/agent-skill-sync.md)
+- [MCP 서버 도구](docs/mcp-server-tools.md)
+- [하네스 훅 권장](docs/harness-hooks.md)
 
-| 문서 | 내용 |
-|---|---|
-| [`docs/plugin-guide.md`](./docs/plugin-guide.md) | 플러그인 저자용 end-to-end 통합 가이드 (sync · init · 하네스별 install · Lead 주입) |
-| [`docs/consuming/`](./docs/consuming/) | 컨슈머 구현 가이드 (Claude · OpenCode · Codex 설치 절차) |
-| [`docs/consuming/codex-lead-merge.md`](./docs/consuming/codex-lead-merge.md) | Codex AGENTS.md 수동 머지 절차 |
-| [`.nexus/context/architecture.md`](./.nexus/context/architecture.md) | 패키지 구조 · 빌드 파이프라인 · Lead vs Hook 책임 경계 |
+## 라이선스
 
----
-
-## Consumer 통합 가이드
-
-### 서브패스 경유 정책
-
-`@moreih29/nexus-core`의 bare import(`import "@moreih29/nexus-core"`)는 의도적으로 비활성화되어 있습니다 (`"."` export = `null`). 모든 기능은 서브패스를 통해 접근해야 합니다.
-
-| 서브패스 | 노출 내용 |
-|---|---|
-| `@moreih29/nexus-core/hooks/opencode-mount` | `mountHooks` 함수 |
-| `@moreih29/nexus-core/hooks/runtime` | 런타임 유틸리티 |
-| `@moreih29/nexus-core/hooks/opencode-manifest` | OpenCode hook JSON manifest |
-
-### OpenCode 플러그인 thin-wrapper 예제
-
-OpenCode 플러그인을 구축하는 가장 간단한 패턴은 다음과 같습니다.
-
-```typescript
-import type { Plugin } from "@opencode-ai/plugin";
-import { mountHooks } from "@moreih29/nexus-core/hooks/opencode-mount";
-import manifest from "@moreih29/nexus-core/hooks/opencode-manifest" with { type: "json" };
-
-export const OpencodeNexus: Plugin = async (ctx) => mountHooks(ctx, manifest);
-```
-
-- `manifest`는 `./hooks/opencode-manifest` 서브패스를 통해 JSON으로 임포트합니다. Node 22의 `import ... with { type: "json" }` 구문이 필요합니다.
-- `mountHooks(ctx, manifest)`는 manifest에 정의된 훅을 OpenCode context에 등록합니다.
-
-전체 하네스별 통합 절차는 [`docs/plugin-guide.md`](./docs/plugin-guide.md)를 참조하세요.
-
----
-
-## Consumer 하네스
-
-| 하네스 | 플러그인 repo |
-|---|---|
-| Claude Code | claude-nexus |
-| OpenCode | opencode-nexus |
-| Codex | codex-nexus |
+MIT

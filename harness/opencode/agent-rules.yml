@@ -1,0 +1,18 @@
+model_tier:
+  high: null
+  standard: null
+  low: null
+
+capability_permissions:
+  no_file_edit:
+    edit: deny
+  no_task_create:
+    nx_task_add: deny
+  no_task_update:
+    nx_task_update: deny
+  no_task_close:
+    nx_task_close: deny
+  no_subagent_spawn:
+    task: deny
+  no_user_question:
+    question: deny

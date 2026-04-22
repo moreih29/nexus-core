@@ -1,29 +1,21 @@
-# nexus-core validate workflow
-# Triggers test suite (src/ + scripts/) on PR/push.
-# publish workflow는 publish-npm.yml에서 정의 — Issue #7 참조.
-
 name: Validate
 
 on:
+  pull_request:
   push:
     branches:
       - main
-      - 'feat/**'
-      - 'fix/**'
-      - 'chore/**'
-  pull_request:
+    tags-ignore:
+      - "v*"
 
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 jobs:
   validate:
-    name: Run test suite
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,103 +23,10 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.12"
+          bun-version: 1.3.12
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Setup Node 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Build (dist required by e2e/spawn tests)
-        run: bun run build
-
-      - name: Run tests
-        run: bun run test
-
-      - name: Run smoke gates
-        run: bun run smoke
-
-      - name: Pack
-        run: npm pack
-
-      - name: Assert tarball contents
-        run: |
-          TARBALL=$(ls *.tgz)
-          echo "Inspecting $TARBALL..."
-          tar -tzf "$TARBALL" | grep -q "^package/dist/scripts/cli.js$" || { echo "[FAIL] missing dist/scripts/cli.js in tarball"; exit 1; }
-          tar -tzf "$TARBALL" | grep -q "^package/dist/src/mcp/server.js$" || { echo "[FAIL] missing dist/src/mcp/server.js in tarball"; exit 1; }
-          tar -tzf "$TARBALL" | grep -q "^package/dist/src/hooks/opencode-mount.js$" || { echo "[FAIL] missing dist/src/hooks/opencode-mount.js"; exit 1; }
-          tar -tzf "$TARBALL" | grep -q "^package/dist/manifests/opencode-manifest.json$" || { echo "[FAIL] missing dist/manifests/opencode-manifest.json"; exit 1; }
-          if tar -tzf "$TARBALL" | grep -qE "^package/scripts/.*\.ts$"; then
-            echo "[FAIL] tarball still ships raw scripts/*.ts sources"; exit 1
-          fi
-          echo "[OK] tarball structure assertions passed"
-
-      - name: Install from pack + smoke test
-        run: |
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)
-          SMOKE_DIR=$(mktemp -d)
-          cd "$SMOKE_DIR"
-          npm init -y > /dev/null
-          npm install "$TARBALL"
-          echo "--- nexus-core --help ---"
-          npx nexus-core --help
-          echo "--- import mountHooks ---"
-          node --input-type=module -e "import('@moreih29/nexus-core/hooks/opencode-mount').then(m => { if (typeof m.mountHooks !== 'function') { console.error('mountHooks not a function'); process.exit(1); } console.log('[OK] mountHooks import'); });"
-          echo "--- import manifest JSON ---"
-          node --input-type=module -e "import('@moreih29/nexus-core/hooks/opencode-manifest', { with: { type: 'json' }}).then(m => { const mf = m.default; if (!Array.isArray(mf.hooks)) { console.error('manifest.hooks not array'); process.exit(1); } console.log('[OK] manifest.hooks=', mf.hooks.length); });"
-          echo "--- sync --dry-run (asset resolution exercise) ---"
-          npx nexus-core sync --harness=claude --target=./ --dry-run
-          echo "--- list (asset count verification) ---"
-          AGENTS_LINE=$(npx nexus-core list | grep -E "^Agents \(" || true)
-          echo "$AGENTS_LINE"
-          if ! echo "$AGENTS_LINE" | grep -qE "^Agents \([1-9]"; then
-            echo "[FAIL] nexus-core list reported 0 agents — asset resolution likely broken"
-            exit 1
-          fi
-          echo "[OK] list reports agents"
-
-      # Distribution-invariant consumer smoke (#34, #35, #36, #37)
-      # Runs the **real** sync (non-dry-run) in a repo-external temp directory
-      # using only the published tarball. Catches regressions where paths or
-      # imports resolve in the authoring tree (via sibling src/scripts) but
-      # break after publish.
-      - name: Distribution-invariant consumer sync smoke
-        run: |
-          set -e
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)
-          CONSUMER=$(mktemp -d)
-          cd "$CONSUMER"
-          echo '{"name":"nc-dist-smoke","type":"module","private":true}' > package.json
-          bun add -d "$TARBALL" @opencode-ai/plugin typescript
-          for harness in claude opencode codex; do
-            echo "=== full sync $harness (non-dry-run) ==="
-            ./node_modules/.bin/nexus-core sync --harness="$harness" --target="./out-$harness"
-          done
-          echo "=== Claude target layout assertions ==="
-          test -f ./out-claude/hooks/hooks.json || { echo "[FAIL] missing out-claude/hooks/hooks.json"; exit 1; }
-          ls ./out-claude/dist/hooks/*.js > /dev/null || { echo "[FAIL] missing out-claude/dist/hooks/*.js"; exit 1; }
-          echo "=== Codex target layout assertions ==="
-          test -f ./out-codex/hooks/hooks.json || { echo "[FAIL] missing out-codex/hooks/hooks.json"; exit 1; }
-          ls ./out-codex/dist/hooks/*.js > /dev/null || { echo "[FAIL] missing out-codex/dist/hooks/*.js"; exit 1; }
-          echo "=== OpenCode typecheck (catches #36 Bug 1 — AgentConfig import) ==="
-          cp -r ./out-opencode/* ./
-          cat > tsconfig.json <<'EOF'
-          {
-            "compilerOptions": {
-              "target": "es2022",
-              "module": "nodenext",
-              "moduleResolution": "nodenext",
-              "strict": false,
-              "noEmit": true,
-              "skipLibCheck": true,
-              "esModuleInterop": true
-            },
-            "include": ["src/**/*.ts"]
-          }
-          EOF
-          ./node_modules/.bin/tsc --noEmit
-          echo "[OK] distribution-invariant consumer smoke passed for all 3 harnesses"
+      - name: Validate
+        run: bun run validate

@@ -1,0 +1,43 @@
+invocations:
+  - id: subagent_spawn
+    params:
+      target_role:
+        type: string
+        required: true
+      prompt:
+        type: string
+        required: true
+      name:
+        type: string
+        required: false
+        semantic: display_label
+  - id: skill_activation
+    params:
+      skill:
+        type: string
+        required: true
+  - id: task_register
+    params:
+      label:
+        type: string
+        required: true
+      state:
+        type: enum
+        required: true
+        values_ref: enums/task-register-state.yml
+  - id: user_question
+    params:
+      question:
+        type: string
+        required: true
+      options:
+        type: choice_array
+        required: false
+  - id: subagent_resume
+    params:
+      agent_id:
+        type: string
+        required: true
+      prompt:
+        type: string
+        required: true

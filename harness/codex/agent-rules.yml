@@ -1,0 +1,28 @@
+model_tier:
+  high: gpt-5.4
+  standard: gpt-5.3-codex
+  low: gpt-5.4-mini
+
+capability_sandbox_mode:
+  no_file_edit: read-only
+  no_task_create: null
+  no_task_update: null
+  no_task_close: null
+  no_subagent_spawn: null
+  no_user_question: null
+
+capability_disabled_tools:
+  no_file_edit: []
+  no_task_create:
+    - nx_task_add
+  no_task_update:
+    - nx_task_update
+  no_task_close:
+    - nx_task_close
+  no_subagent_spawn:
+    - spawn_agent
+  no_user_question:
+    - request_user_input
+
+nx_mcp_server:
+  command: nexus-mcp

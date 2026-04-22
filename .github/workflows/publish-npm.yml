@@ -1,48 +1,19 @@
-# nexus-core publish workflow
-#
-# **Fallback applied** (v0.1.0 → v0.1.1):
-# The original plan was `bun publish` as primary (for sibling opencode-nexus
-# consistency + Bun transition). v0.1.0 attempt failed with:
-#
-#     error: missing authentication (run `bunx npm login`)
-#
-# Root cause: bun publish does not read setup-node's NPM_CONFIG_USERCONFIG env
-# var (/home/runner/work/_temp/.npmrc). Falling back to `npm publish` which
-# reads the same .npmrc that setup-node creates — this is the sibling
-# opencode-nexus pattern.
-#
-# Re-evaluation: plan session #2 Issue #7 reserved 6-month re-eval of Bun
-# publish stability. Pinned .nexus/context/evolution.md reservation unchanged.
-#
-# Trigger: git tag push (pure semver) 또는 workflow_dispatch manual.
-# Auth Day 1: Granular Access Token via NODE_AUTH_TOKEN env.
-# Auth 전환 후: id-token:write로 OIDC 자동 (NODE_AUTH_TOKEN 라인 제거).
-
-name: Publish npm package
+name: Publish npm
 
 on:
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        type: boolean
-        default: false
-        description: "Pack only, skip publish"
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - "v*"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
-
-concurrency:
-  group: publish-${{ github.ref }}
-  cancel-in-progress: false
 
 jobs:
   publish:
-    name: Build + validate + publish
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,120 +21,27 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.12"
+          bun-version: 1.3.12
 
-      - name: Setup Node 24 (bundled npm 11+ for OIDC Trusted Publishing)
-        # Node 24 LTS ships with npm 11+, required for Trusted Publishing.
-        # NO registry-url — would inject NODE_AUTH_TOKEN env, which takes
-        # precedence over OIDC and routes publish through token auth.
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build (dist required by e2e/spawn tests and publish)
-        run: bun run build
+      - name: Validate
+        run: bun run validate
 
-      - name: Run tests
-        run: bun run test
+      - name: Check publish contents
+        run: npm pack --dry-run
 
-      - name: Run smoke gates
-        run: bun run smoke
+      - name: Publish to npm
+        run: npm publish
 
-      - name: Version match check (git tag vs package.json)
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          PKG_VERSION=$(bun -e "console.log(require('./package.json').version)")
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "Version mismatch: package.json=$PKG_VERSION, git tag=$TAG_VERSION"
-            exit 1
-          fi
-          echo "Version match: $PKG_VERSION"
-
-      - name: Pack
-        run: npm pack
-
-      - name: Assert tarball contents
-        run: |
-          TARBALL=$(ls *.tgz)
-          echo "Inspecting $TARBALL..."
-          tar -tzf "$TARBALL" | grep -q "^package/dist/scripts/cli.js$" || { echo "[FAIL] missing dist/scripts/cli.js in tarball"; exit 1; }
-          tar -tzf "$TARBALL" | grep -q "^package/dist/src/mcp/server.js$" || { echo "[FAIL] missing dist/src/mcp/server.js in tarball"; exit 1; }
-          tar -tzf "$TARBALL" | grep -q "^package/dist/src/hooks/opencode-mount.js$" || { echo "[FAIL] missing dist/src/hooks/opencode-mount.js"; exit 1; }
-          tar -tzf "$TARBALL" | grep -q "^package/dist/manifests/opencode-manifest.json$" || { echo "[FAIL] missing dist/manifests/opencode-manifest.json"; exit 1; }
-          if tar -tzf "$TARBALL" | grep -qE "^package/scripts/.*\.ts$"; then
-            echo "[FAIL] tarball still ships raw scripts/*.ts sources"; exit 1
-          fi
-          echo "[OK] tarball structure assertions passed"
-
-      - name: Install from pack + smoke test
-        run: |
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)
-          SMOKE_DIR=$(mktemp -d)
-          cd "$SMOKE_DIR"
-          npm init -y > /dev/null
-          npm install "$TARBALL"
-          echo "--- nexus-core --help ---"
-          npx nexus-core --help
-          echo "--- import mountHooks ---"
-          node --input-type=module -e "import('@moreih29/nexus-core/hooks/opencode-mount').then(m => { if (typeof m.mountHooks !== 'function') { console.error('mountHooks not a function'); process.exit(1); } console.log('[OK] mountHooks import'); });"
-          echo "--- import manifest JSON ---"
-          node --input-type=module -e "import('@moreih29/nexus-core/hooks/opencode-manifest', { with: { type: 'json' }}).then(m => { const mf = m.default; if (!Array.isArray(mf.hooks)) { console.error('manifest.hooks not array'); process.exit(1); } console.log('[OK] manifest.hooks=', mf.hooks.length); });"
-          echo "--- sync --dry-run (asset resolution exercise) ---"
-          npx nexus-core sync --harness=claude --target=./ --dry-run
-          echo "--- list (asset count verification) ---"
-          AGENTS_LINE=$(npx nexus-core list | grep -E "^Agents \(" || true)
-          echo "$AGENTS_LINE"
-          if ! echo "$AGENTS_LINE" | grep -qE "^Agents \([1-9]"; then
-            echo "[FAIL] nexus-core list reported 0 agents — asset resolution likely broken"
-            exit 1
-          fi
-          echo "[OK] list reports agents"
-
-      # Distribution-invariant consumer smoke (#34, #35, #36, #37)
-      # See validate.yml for rationale.
-      - name: Distribution-invariant consumer sync smoke
-        run: |
-          set -e
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)
-          CONSUMER=$(mktemp -d)
-          cd "$CONSUMER"
-          echo '{"name":"nc-dist-smoke","type":"module","private":true}' > package.json
-          bun add -d "$TARBALL" @opencode-ai/plugin typescript
-          for harness in claude opencode codex; do
-            echo "=== full sync $harness (non-dry-run) ==="
-            ./node_modules/.bin/nexus-core sync --harness="$harness" --target="./out-$harness"
-          done
-          echo "=== Claude target layout assertions ==="
-          test -f ./out-claude/hooks/hooks.json || { echo "[FAIL] missing out-claude/hooks/hooks.json"; exit 1; }
-          ls ./out-claude/dist/hooks/*.js > /dev/null || { echo "[FAIL] missing out-claude/dist/hooks/*.js"; exit 1; }
-          echo "=== Codex target layout assertions ==="
-          test -f ./out-codex/hooks/hooks.json || { echo "[FAIL] missing out-codex/hooks/hooks.json"; exit 1; }
-          ls ./out-codex/dist/hooks/*.js > /dev/null || { echo "[FAIL] missing out-codex/dist/hooks/*.js"; exit 1; }
-          echo "=== OpenCode typecheck (catches #36 Bug 1 — AgentConfig import) ==="
-          cp -r ./out-opencode/* ./
-          cat > tsconfig.json <<'EOF'
-          {
-            "compilerOptions": {
-              "target": "es2022",
-              "module": "nodenext",
-              "moduleResolution": "nodenext",
-              "strict": false,
-              "noEmit": true,
-              "skipLibCheck": true,
-              "esModuleInterop": true
-            },
-            "include": ["src/**/*.ts"]
-          }
-          EOF
-          ./node_modules/.bin/tsc --noEmit
-          echo "[OK] distribution-invariant consumer smoke passed for all 3 harnesses"
-
-      - name: Publish to npm (OIDC Trusted Publishing)
-        if: ${{ !inputs.dry_run }}
-        run: npm publish "$(ls "$GITHUB_WORKSPACE"/*.tgz | head -1)" --provenance --access public
-        # No NODE_AUTH_TOKEN — OIDC via id-token:write permission above.
-        # Trusted Publisher registered in npmjs.com for this repo+workflow.
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
