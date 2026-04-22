@@ -1,5 +1,5 @@
-import type { SpecDocument } from "../types.js";
 import { loadClaudeAgentRules } from "../load-data.js";
+import type { SpecDocument } from "../types.js";
 import { renderMarkdownWithFrontmatter } from "./markdown.js";
 
 const CLAUDE_AGENT_RULES = loadClaudeAgentRules();
@@ -20,7 +20,9 @@ function collectClaudeDisallowedTools(document: SpecDocument): string[] {
   const tools = new Set<string>();
   for (const capability of capabilities) {
     if (typeof capability !== "string") continue;
-    for (const tool of CLAUDE_AGENT_RULES.capability_disallowed_tools[capability] ?? []) {
+    for (const tool of CLAUDE_AGENT_RULES.capability_disallowed_tools[
+      capability
+    ] ?? []) {
       tools.add(tool);
     }
   }

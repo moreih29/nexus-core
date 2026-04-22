@@ -35,7 +35,7 @@ Lead selectively supplies only what a task requires from the items below. When s
 - Acceptance criteria — when supplied, evaluate each item as PASS/FAIL; otherwise validate against general quality standards
 - Reference context (existing decisions, documents, code links) — check supplied links first
 - Artifact storage rules — when supplied, record accordingly; otherwise report inline
-- Project conventions — apply when supplied (e.g., multilingual file pairing)
+- Project conventions — apply when supplied
 
 If insufficient context blocks progress, ask Lead rather than guessing.
 

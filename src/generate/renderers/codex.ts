@@ -1,5 +1,5 @@
-import type { SpecDocument } from "../types.js";
 import { loadCodexAgentRules } from "../load-data.js";
+import type { SpecDocument } from "../types.js";
 import { renderMarkdownWithFrontmatter } from "./markdown.js";
 
 const CODEX_AGENT_RULES = loadCodexAgentRules();
@@ -41,7 +41,9 @@ function collectCodexDisabledTools(document: SpecDocument): string[] {
   const disabledTools = new Set<string>();
   for (const capability of capabilities) {
     if (typeof capability !== "string") continue;
-    for (const tool of CODEX_AGENT_RULES.capability_disabled_tools[capability] ?? []) {
+    for (const tool of CODEX_AGENT_RULES.capability_disabled_tools[
+      capability
+    ] ?? []) {
       if (tool) disabledTools.add(tool);
     }
   }
@@ -87,7 +89,9 @@ export function renderCodexDocument(
   if (disabledTools.length > 0) {
     lines.push("");
     lines.push("[mcp_servers.nx]");
-    lines.push(`command = ${JSON.stringify(CODEX_AGENT_RULES.nx_mcp_server.command)}`);
+    lines.push(
+      `command = ${JSON.stringify(CODEX_AGENT_RULES.nx_mcp_server.command)}`,
+    );
     lines.push(
       `disabled_tools = [${disabledTools.map((tool) => JSON.stringify(tool)).join(", ")}]`,
     );

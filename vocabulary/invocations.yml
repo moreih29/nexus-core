@@ -33,3 +33,11 @@ invocations:
       options:
         type: choice_array
         required: false
+  - id: subagent_resume
+    params:
+      agent_id:
+        type: string
+        required: true
+      prompt:
+        type: string
+        required: true

@@ -29,7 +29,6 @@ function parseArgs(argv: string[]): ParsedArgs {
     }
     if (arg.startsWith("--target=")) {
       target = arg.slice("--target=".length);
-      continue;
     }
   }
 
@@ -52,7 +51,9 @@ export function main(argv: string[] = process.argv.slice(2)): void {
   const result = syncSpecsToTarget(parsed);
 
   if (parsed.dryRun) {
-    console.log(`[nexus-sync] dry-run: ${result.files.length} files would be generated`);
+    console.log(
+      `[nexus-sync] dry-run: ${result.files.length} files would be generated`,
+    );
     for (const file of result.files) {
       console.log(file.targetPath);
     }

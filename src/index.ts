@@ -1,4 +1,14 @@
 export type {
+  AssetKind,
+  GeneratedFile,
+  Harness,
+  SpecDocument,
+  SyncOptions,
+  SyncResult,
+} from "./generate/index.js";
+
+export { buildGeneratedFiles, syncSpecsToTarget } from "./generate/index.js";
+export type {
   HistoryCycle,
   HistoryFile,
   PlanAnalysisEntry,
@@ -9,13 +19,3 @@ export type {
   TaskOwner,
   TasksFile,
 } from "./types/state.js";
-
-export { buildGeneratedFiles, syncSpecsToTarget } from "./generate/index.js";
-export type {
-  AssetKind,
-  GeneratedFile,
-  Harness,
-  SpecDocument,
-  SyncOptions,
-  SyncResult,
-} from "./generate/index.js";

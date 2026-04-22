@@ -28,14 +28,21 @@ function normalizeMacroParams(
     params.target_role = aliases[params.target_role] ?? params.target_role;
   }
 
-  if (!params.name && config.name_fallback === "target_role" && params.target_role) {
+  if (
+    !params.name &&
+    config.name_fallback === "target_role" &&
+    params.target_role
+  ) {
     params.name = params.target_role;
   }
 
   return params;
 }
 
-function applyTemplate(template: string, params: Record<string, string>): string {
+function applyTemplate(
+  template: string,
+  params: Record<string, string>,
+): string {
   let result = template;
 
   for (const [key, value] of Object.entries(params)) {

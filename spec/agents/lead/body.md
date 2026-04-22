@@ -98,9 +98,9 @@ Every memory file starts with one of three prefixes. When classification is ambi
 
 | Prefix | Test Question | Example |
 |--------|--------------|---------|
-| `empirical-` | Observation or lesson we actually encountered in our own work? | `empirical-codex-v16-tool-visibility.md` |
-| `external-` | Fact about something we don't control (tool, ecosystem, API)? | `external-claude-code.md` |
-| `pattern-` | Recipe or decision axis we'll reuse when a similar judgment returns? | `pattern-jsonl-union-merge.md` |
+| `empirical-` | Observation or lesson we actually encountered in our own work? | `empirical-<observation-slug>.md` |
+| `external-` | Fact about something we don't control (tool, ecosystem, API)? | `external-<tool-or-ecosystem>.md` |
+| `pattern-` | Recipe or decision axis we'll reuse when a similar judgment returns? | `pattern-<recipe-slug>.md` |
 
 ### Edit Policy
 
@@ -147,7 +147,7 @@ Subagent bodies operate as self-contained norms — their role, constraints, and
 | Acceptance criteria | Reference task id + `acceptance` field in `.nexus/state/tasks.json`, or inline list | Plan-based execution, judgment target for CHECK agents |
 | Artifact storage rule | Instruct via `nx_artifact_write` (filename, content) | Artifacts to be saved as files (reports, documents, verification results) |
 | Reference context | Link to relevant paths in `.nexus/context/` or `.nexus/memory/` | When existing decisions, precedents, or constraints affect the task |
-| Project conventions | One explicit line (e.g., multilingual pairing `body.ko.md` + `body.md`) | Only when the convention applies to the task |
+| Project conventions | One explicit line | Only when the convention applies to the task |
 | Tool constraints | Hint on tools to use or avoid | Only when operating differently from the agent's default permissions |
 
 ### Delegation Prompt Structure
@@ -265,3 +265,12 @@ For questions that can be answered briefly, answer directly without structure.
 | `nx_task_add`, `nx_task_update`, `nx_task_close`, `nx_task_list`, `nx_task_resume` | Task lifecycle (Lead only) |
 | `nx_history_search` | Query past decisions and cycles |
 | `nx_artifact_write` | Save artifacts to the branch workspace |
+
+### Subagent ID Recording Practice
+
+Every time a subagent is spawned, record its id (either returned by the harness spawn tool or the `name` the Lead assigned) through one of the paths below. Without this, `nx_plan_resume` / `nx_task_resume` will have no resume candidates to return.
+
+- HOW participation → pass `agent_id` to `nx_plan_analysis_add(issue_id, role, agent_id=<id>, summary)` (Step 4 of nx-plan / nx-auto-plan skill).
+- Task execution → store via `nx_task_update(id, owner={role, agent_id=<id>, resume_tier=<ephemeral|bounded|persistent>})` (Step 2 of nx-run skill).
+
+Actual resume is then performed via the `{{subagent_resume agent_id="<id>" prompt="<resume prompt>"}}` tool, which expands to the harness-native resume API.

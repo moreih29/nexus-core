@@ -7,3 +7,5 @@ invocation_map:
     template: 'TaskCreate({ subject: "{label}" }) then nx_task_update({ taskId, status: "{state}" })'
   user_question:
     template: 'AskUserQuestion({ questions: [{ question: "{question}", options: {options} }] })'
+  subagent_resume:
+    template: 'SendMessage({ to: "{agent_id}", message: "{prompt}" })'

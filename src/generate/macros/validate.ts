@@ -11,7 +11,9 @@ export function validateMacro(
 
   for (const [name, config] of Object.entries(schema.params)) {
     if (config.required && !(name in macro.params)) {
-      throw new Error(`Macro "${macro.id}" is missing required param "${name}"`);
+      throw new Error(
+        `Macro "${macro.id}" is missing required param "${name}"`,
+      );
     }
   }
 

@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -9,6 +10,10 @@ const TEST_CLIENT_INFO: Implementation = {
   name: "nexus-core-stdio-smoke-client",
   version: "0.0.0-test",
 };
+
+const PACKAGE_VERSION = JSON.parse(
+  readFileSync(join(process.cwd(), "package.json"), "utf8"),
+).version as string;
 
 function stringEnv(): Record<string, string> {
   return Object.fromEntries(
@@ -37,7 +42,7 @@ test("stdio entrypoint serves the MCP tool list", async () => {
 
       expect(client.getServerVersion()).toEqual({
         name: "nexus-core",
-        version: "0.16.2",
+        version: PACKAGE_VERSION,
       });
 
       const tools = await client.listTools();

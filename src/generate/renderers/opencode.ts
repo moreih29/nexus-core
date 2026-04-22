@@ -1,11 +1,14 @@
-import type { SpecDocument } from "../types.js";
 import { loadOpencodeAgentRules } from "../load-data.js";
+import type { SpecDocument } from "../types.js";
 import { renderMarkdownWithFrontmatter } from "./markdown.js";
 
 const OPENCODE_AGENT_RULES = loadOpencodeAgentRules();
 
 function escapeTemplateString(input: string): string {
-  return input.replaceAll("\\", "\\\\").replaceAll("`", "\\`").replaceAll("${", "\\${");
+  return input
+    .replaceAll("\\", "\\\\")
+    .replaceAll("`", "\\`")
+    .replaceAll("${", "\\${");
 }
 
 function toIdentifier(id: string): string {
@@ -20,7 +23,9 @@ function resolveOpencodeModel(document: SpecDocument): string | null {
   return OPENCODE_AGENT_RULES.model_tier[modelTier] ?? null;
 }
 
-function collectOpencodePermissions(document: SpecDocument): Record<string, string> {
+function collectOpencodePermissions(
+  document: SpecDocument,
+): Record<string, string> {
   const capabilities = Array.isArray(document.frontmatter.capabilities)
     ? document.frontmatter.capabilities
     : [];

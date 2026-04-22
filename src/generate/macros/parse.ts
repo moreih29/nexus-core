@@ -8,11 +8,11 @@ function parseMacroParams(
   let index = 0;
 
   while (index < source.length) {
-    while (index < source.length && /\s/.test(source[index]!)) index += 1;
+    while (index < source.length && /\s/.test(source.charAt(index))) index += 1;
     if (index >= source.length) break;
 
     const keyStart = index;
-    while (index < source.length && /\w/.test(source[index]!)) index += 1;
+    while (index < source.length && /\w/.test(source.charAt(index))) index += 1;
     const key = source.slice(keyStart, index);
 
     if (!key) {
@@ -44,7 +44,7 @@ function parseMacroParams(
     }
 
     if (source[index] === "[" || source[index] === "{") {
-      const open = source[index]!;
+      const open = source.charAt(index);
       const close = open === "[" ? "]" : "}";
       let depth = 1;
       const start = index;
@@ -77,13 +77,17 @@ function parseMacroParams(
     if (source[index] === ">" && source[index + 1] === ">") {
       index += 2;
       const start = index;
-      while (index < source.length && /\w/.test(source[index]!)) index += 1;
+      while (index < source.length && /\w/.test(source.charAt(index))) {
+        index += 1;
+      }
       params[key] = { heredoc: source.slice(start, index) };
       continue;
     }
 
     const start = index;
-    while (index < source.length && !/\s/.test(source[index]!)) index += 1;
+    while (index < source.length && !/\s/.test(source.charAt(index))) {
+      index += 1;
+    }
     params[key] = source.slice(start, index);
   }
 

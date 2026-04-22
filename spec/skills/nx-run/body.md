@@ -3,7 +3,7 @@ id: nx-run
 name: nx-run
 description: Execution — user-directed agent composition.
 triggers:
-  - run
+  - "[run]"
 ---
 
 ## Role
@@ -44,17 +44,20 @@ For each task, call `{{task_register label="<label>" state=pending}}` to registe
 #### State Transitions
 
 - On task start, update to `in_progress` via `nx_task_update`; on completion, update to `completed`.
+- When a subagent is freshly spawned, include `owner={role, agent_id: <id from spawn>, resume_tier: <ephemeral|bounded|persistent>}` in the same `nx_task_update` call so that a future `nx_task_resume` can return this id.
 - At the same moment, update progress tracking with `{{task_register label="<label>" state=in_progress}}` / `{{task_register label="<label>" state=completed}}`. Reuse the exact label set at initial registration.
 
 ### Resume Dispatch Rule
 
-Lead acts based on the `resume_tier` value returned by `nx_task_resume`.
+Lead acts based on the `resume_tier` and `agent_id` values returned by `nx_task_resume`.
 
 - `ephemeral` → spawn fresh.
 - `bounded` → resume if the same owner has prior work on overlapping target files and no other agent has edited in between. The resume prompt MUST include an instruction to "re-read target files before making any modifications."
 - `persistent` → resume if the same agent participated in a prior task in this run. Cross-task reuse allowed.
 
-If the resume mechanism is unavailable, fall back to fresh spawn silently — do NOT throw an error.
+When resume is chosen, invoke the `{{subagent_resume agent_id="<id>" prompt="<resume prompt>"}}` tool with the `agent_id` returned by `nx_task_resume`. Always provide a fresh resume prompt — some harnesses (OpenCode) do not expose a path to push additional input into a running session and support resume only by injecting a new prompt into an idle session.
+
+If `nx_task_resume` returns `agent_id: null`, or the harness can no longer locate that id, fall back to fresh spawn silently — do NOT throw an error.
 
 ### Escalation Chain
 

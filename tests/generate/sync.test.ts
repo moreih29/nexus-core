@@ -2,7 +2,10 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildGeneratedFiles, syncSpecsToTarget } from "../../src/generate/index.js";
+import {
+  buildGeneratedFiles,
+  syncSpecsToTarget,
+} from "../../src/generate/index.js";
 
 function withTempDir<T>(fn: (dir: string) => T): T {
   const dir = mkdtempSync(join(tmpdir(), "nexus-generate-"));
@@ -16,10 +19,14 @@ function withTempDir<T>(fn: (dir: string) => T): T {
 test("buildGeneratedFiles expands codex macros and resolves target paths", () => {
   withTempDir((dir) => {
     const files = buildGeneratedFiles("codex", dir);
-    const nxRun = files.find((file) => file.targetPath.endsWith(".codex/skills/nx-run/SKILL.md"));
+    const nxRun = files.find((file) =>
+      file.targetPath.endsWith(".codex/skills/nx-run/SKILL.md"),
+    );
     expect(nxRun).toBeDefined();
     expect(nxRun?.content).toContain("$nx-auto-plan");
-    expect(nxRun?.content).toContain('update_plan([{ name: "<label>", state: "pending" }])');
+    expect(nxRun?.content).toContain(
+      'update_plan([{ name: "<label>", state: "pending" }])',
+    );
     expect(nxRun?.content).not.toContain("{{");
   });
 });
@@ -59,7 +66,9 @@ test("syncSpecsToTarget writes codex agent TOML and skill markdown", () => {
     expect(tester).not.toContain('sandbox_mode = "read-only"');
     const nxRun = readFileSync(nxRunPath, "utf8");
     expect(nxRun).toContain("$nx-auto-plan");
-    expect(nxRun).toContain('update_plan([{ name: "<label>", state: "pending" }])');
+    expect(nxRun).toContain(
+      'update_plan([{ name: "<label>", state: "pending" }])',
+    );
   });
 });
 
@@ -88,10 +97,16 @@ test("syncSpecsToTarget writes claude markdown assets", () => {
     expect(architect).toContain("- AskUserQuestion");
     expect(reviewer).not.toContain("NotebookEdit");
     expect(nxRun).toContain('Skill({ command: "nx-auto-plan" })');
-    expect(nxRun).toContain('TaskCreate({ subject: "<label>" }) then nx_task_update({ taskId, status: "pending" })');
+    expect(nxRun).toContain(
+      'TaskCreate({ subject: "<label>" }) then nx_task_update({ taskId, status: "pending" })',
+    );
     expect(nxRun).not.toContain("{{task_register");
-    expect(nxPlan).toContain('Agent({ subagent_type: "explore", prompt: "<file/code search task>" })');
-    expect(nxPlan).toContain('Agent({ subagent_type: "researcher", prompt: "<research question>" })');
+    expect(nxPlan).toContain(
+      'Agent({ subagent_type: "explore", prompt: "<file/code search task>" })',
+    );
+    expect(nxPlan).toContain(
+      'Agent({ subagent_type: "researcher", prompt: "<research question>" })',
+    );
   });
 });
 
@@ -123,6 +138,8 @@ test("syncSpecsToTarget writes opencode agent modules", () => {
     expect(lead).toContain('mode: "primary"');
     expect(lead).toContain("export const lead");
     expect(nxRun).toContain('skill({ name: "nx-auto-plan" })');
-    expect(nxPlan).toContain('task({ subagent_type: "explore", prompt: "<file/code search task>", description: "explore" })');
+    expect(nxPlan).toContain(
+      'task({ subagent_type: "explore", prompt: "<file/code search task>", description: "explore" })',
+    );
   });
 });

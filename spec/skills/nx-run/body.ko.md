@@ -3,7 +3,7 @@ id: nx-run
 name: nx-run
 description: Execution — user-directed agent composition.
 triggers:
-  - run
+  - "[run]"
 ---
 
 ## 역할
@@ -44,17 +44,20 @@ triggers:
 #### 상태 전환
 
 - 태스크 시작 시 `nx_task_update`로 `in_progress`, 완료 시 `completed`로 전환한다.
+- 서브에이전트를 새로 스폰한 경우 같은 `nx_task_update` 호출에 `owner={role, agent_id: <스폰에서 얻은 id>, resume_tier: <ephemeral|bounded|persistent>}`를 함께 넘겨 이후 `nx_task_resume`가 이 id를 돌려줄 수 있게 한다.
 - 같은 타이밍에 `{{task_register label="<label>" state=in_progress}}` / `{{task_register label="<label>" state=completed}}`로 진행 추적도 갱신한다. 초기 등록 때 정한 label을 그대로 재사용한다.
 
 ### 재개 라우팅 규칙
 
-`nx_task_resume`가 반환하는 `resume_tier` 값에 따라 Lead가 행동한다.
+`nx_task_resume`가 반환하는 `resume_tier`와 `agent_id` 값에 따라 Lead가 행동한다.
 
 - `ephemeral` → 새로 스폰한다.
 - `bounded` → 동일 owner가 겹치는 대상 파일에 이전 작업이 있고 중간에 다른 에이전트 편집이 없으면 재개한다. 재개 프롬프트에 "수정 전 대상 파일을 다시 읽을 것" 지시를 반드시 포함한다.
 - `persistent` → 이번 실행에서 동일 에이전트가 이전 태스크에 참여했으면 재개한다. 크로스 태스크 재사용 허용.
 
-재개 메커니즘이 사용 불가이면 오류 없이 새로 스폰으로 폴백한다.
+재개가 결정되면 `nx_task_resume`가 반환한 `agent_id`로 `{{subagent_resume agent_id="<id>" prompt="<재개 프롬프트>"}}` 도구를 호출한다. 재개 프롬프트는 매번 새로 제공한다 — 일부 하네스(OpenCode)는 실행 중 session에 추가 입력을 push하는 경로가 없고, idle session에 새 prompt를 주입하는 방식으로만 재개를 지원한다.
+
+`nx_task_resume`가 `agent_id: null`을 반환하거나 하네스가 해당 id를 더 이상 찾지 못하면 오류 없이 새로 스폰으로 폴백한다.
 
 ### 에스컬레이션 체인
 

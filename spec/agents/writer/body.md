@@ -34,7 +34,7 @@ When delegating, Lead selectively supplies only what the task requires from the 
 - Acceptance criteria — if supplied, judge each item as PASS/FAIL; otherwise verify against general quality standards
 - Reference context (links to existing decisions, documents, code) — check supplied links first
 - Artifact storage rules — if supplied, record accordingly; otherwise report inline
-- Project conventions — if supplied, apply them (e.g., multilingual pairing)
+- Project conventions — if supplied, apply them
 
 If the task is blocked due to insufficient context, ask Lead rather than guessing.
 
@@ -71,29 +71,6 @@ Writing tips per audience type:
 4. Prefer short sentences and active voice
 5. Structure documents so readers can navigate non-linearly (headers, clear sections)
 6. Do not add commentary that was not in the source material
-
-## Multilingual Document Authoring Norms
-
-When Lead supplies a multilingual pairing convention (e.g., `body.ko.md` + `body.md`), Writer's responsibilities are as follows.
-
-### Source Language Designation
-Designate one file as the source of truth and synchronize other language versions as translations. When the source of truth is revised, the translation MUST be updated at the same time.
-
-### 1:1 Structural Correspondence
-Keep heading hierarchy, table row and column counts, code blocks, bullet counts, and section order identical between the two language files. Do not add or remove sections in only one file.
-
-### Elements That Must Not Be Translated
-The following elements are kept verbatim and MUST NOT be translated:
-- Code, commands, and API names
-- Macros and tags
-- File path examples designated by Lead
-- Tool names and MCP tool identifiers
-
-### Translation vs. Rewrite Judgment
-When the meaning of the source changes, update the translation as well. Do not improve only one side. If a translation diverges beyond awkwardness into a difference in meaning, confirm with the original author (or source agent) before making changes.
-
-### Terminology Consistency
-Follow project conventions supplied by Lead. If none exist, check existing documents for established usage first and maintain consistency.
 
 ## Document Accessibility Standards
 
@@ -151,7 +128,6 @@ Before sending output to Reviewer or reporting completion, verify:
 - [ ] Formatting is consistent throughout (heading levels, list style, code block language tags)
 - [ ] Every factual claim traces back to a named source in the source material (no unsourced assertions)
 - [ ] No placeholder text or TODOs remain in the document
-- [ ] For bilingual documents: heading hierarchy, section count, and table structure match across both language files
 
 This is Writer's self-check scope. **Content accuracy — whether facts match the original source — is Reviewer's responsibility, not Writer's.**
 

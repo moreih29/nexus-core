@@ -1,12 +1,22 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { loadHarnessInvocationMap, loadHarnessLayout, loadInvocationCatalog } from "./load-data.js";
+import {
+  loadHarnessInvocationMap,
+  loadHarnessLayout,
+  loadInvocationCatalog,
+} from "./load-data.js";
 import { loadSpecDocuments } from "./load-spec.js";
 import { expandMacrosForHarness } from "./macros/expand.js";
 import { renderClaudeDocument } from "./renderers/claude.js";
 import { renderCodexDocument } from "./renderers/codex.js";
 import { renderOpencodeDocument } from "./renderers/opencode.js";
-import type { GeneratedFile, Harness, SpecDocument, SyncOptions, SyncResult } from "./types.js";
+import type {
+  GeneratedFile,
+  Harness,
+  SpecDocument,
+  SyncOptions,
+  SyncResult,
+} from "./types.js";
 
 function formatPath(template: string, document: SpecDocument): string {
   return template.replaceAll("{id}", document.id);
@@ -26,7 +36,10 @@ function renderDocument(
   return renderOpencodeDocument(document, expandedBody);
 }
 
-export function buildGeneratedFiles(harness: Harness, target: string): GeneratedFile[] {
+export function buildGeneratedFiles(
+  harness: Harness,
+  target: string,
+): GeneratedFile[] {
   const layout = loadHarnessLayout(harness);
   const invocationCatalog = loadInvocationCatalog();
   const invocationMap = loadHarnessInvocationMap(harness);
@@ -42,7 +55,10 @@ export function buildGeneratedFiles(harness: Harness, target: string): Generated
     return {
       kind: document.kind,
       sourcePath: document.sourcePath,
-      targetPath: join(target, formatPath(layout.paths[document.kind], document)),
+      targetPath: join(
+        target,
+        formatPath(layout.paths[document.kind], document),
+      ),
       content,
     };
   });

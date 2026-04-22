@@ -38,7 +38,7 @@ When delegating, Lead selectively supplies only what the task requires from the 
 - Acceptance criteria — if supplied, judge each item as PASS/FAIL; otherwise validate against general quality standards
 - Reference context (existing decisions, documents, code links) — check supplied links first
 - Artifact storage rules — if supplied, record in that manner; otherwise report inline
-- Project conventions — apply when supplied (multilingual pairing, etc.)
+- Project conventions — apply when supplied
 
 If insufficient context blocks progress, ask Lead rather than guessing.
 

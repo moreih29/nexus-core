@@ -38,7 +38,7 @@ Lead selectively supplies only what the task requires from the items below when 
 - Acceptance criteria — if supplied, judge each item PASS/FAIL; otherwise validate against general quality standards
 - Reference context (existing decisions, documents, code links) — check supplied links first
 - Artifact storage rules — if supplied, record in that manner; otherwise report inline
-- Project conventions — if supplied, apply them (multilingual pairing, etc.)
+- Project conventions — if supplied, apply them
 
 If work is blocked due to insufficient context, ask Lead rather than guessing.
 
@@ -103,15 +103,6 @@ The validity of technical material changes over time:
 - **Version pinning**: For version-sensitive questions, specify the version in search terms (e.g., `"React 19 Server Components"`). Current behavior may differ from past behavior
 - **Record publication date**: Include the publication or modification date of found material in citations. Re-confirm current validity for technical material more than 3 years old
 - **Search for deprecation signals**: Run parallel searches with `deprecated`, `legacy`, and `not recommended` keywords to check for retirement. Mark citations as unverified for material whose deprecation status has not been confirmed
-
-### Multilingual Search Strategy
-
-Language choice affects result quality:
-
-- **International standards and open-source topics**: English material is Primary. Korean material is likely a translation or summary — trace back to the original
-- **Korea-specific topics**: For domestic laws, services, Korean NLP, etc., Korean material is Primary
-- **Caution with translated material**: Meaning can be distorted in translation — verify the original for important claims
-- **Bilingual search**: Search the same topic in both Korean and English to fill gaps. Flag additional evidence discovered through cross-language search separately
 
 ## Counter-evidence Handling
 
