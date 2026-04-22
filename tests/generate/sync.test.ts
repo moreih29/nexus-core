@@ -111,9 +111,15 @@ test("syncSpecsToTarget writes claude markdown assets", () => {
       'Agent({ subagent_type: "researcher", prompt: "<research question>" })',
     );
     expect(nxPlan).toContain(
+      'SendMessage({ to: "<id>", message: "<resume prompt>" })',
+    );
+    expect(nxPlan).toContain(
       "always pass the agent id obtained from the spawn tool response",
     );
     expect(nxPlan).not.toContain("or the name the Lead assigned");
+    expect(nxAutoPlan).toContain(
+      'SendMessage({ to: "<id>", message: "<resume prompt>" })',
+    );
     expect(nxAutoPlan).toContain(
       "Do not substitute a human-readable assigned name",
     );
@@ -151,6 +157,12 @@ test("syncSpecsToTarget writes opencode agent modules", () => {
     expect(lead).toContain('mode: "primary"');
     expect(lead).toContain("export const lead");
     expect(nxRun).toContain('skill({ name: "nx-auto-plan" })');
+    expect(nxPlan).toContain(
+      'task({ task_id: "<id>", prompt: "<resume prompt>" })',
+    );
+    expect(nxAutoPlan).toContain(
+      'task({ task_id: "<id>", prompt: "<resume prompt>" })',
+    );
     expect(nxRun).toContain("name: nx-run");
     expect(nxRun).not.toContain("triggers:");
     expect(nxPlan).toContain("name: nx-plan");
