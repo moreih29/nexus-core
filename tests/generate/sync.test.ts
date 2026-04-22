@@ -127,6 +127,8 @@ test("syncSpecsToTarget writes opencode agent modules", () => {
     const reviewer = readFileSync(reviewerAgentPath, "utf8");
     const nxRun = readFileSync(nxRunPath, "utf8");
     const nxPlan = readFileSync(nxPlanPath, "utf8");
+    const nxAutoPlanPath = join(dir, "skills/nx-auto-plan/SKILL.md");
+    const nxAutoPlan = readFileSync(nxAutoPlanPath, "utf8");
     expect(architect).toContain("permission: {");
     expect(architect).toContain('edit: "deny"');
     expect(architect).toContain('nx_task_add: "deny"');
@@ -138,6 +140,12 @@ test("syncSpecsToTarget writes opencode agent modules", () => {
     expect(lead).toContain('mode: "primary"');
     expect(lead).toContain("export const lead");
     expect(nxRun).toContain('skill({ name: "nx-auto-plan" })');
+    expect(nxRun).toContain("name: nx-run");
+    expect(nxRun).not.toContain("triggers:");
+    expect(nxPlan).toContain("name: nx-plan");
+    expect(nxPlan).not.toContain("triggers:");
+    expect(nxAutoPlan).toContain("name: nx-auto-plan");
+    expect(nxAutoPlan).not.toContain("triggers:");
     expect(nxPlan).toContain(
       'task({ subagent_type: "explore", prompt: "<file/code search task>", description: "explore" })',
     );

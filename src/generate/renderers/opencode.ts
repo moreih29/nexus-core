@@ -48,12 +48,9 @@ export function renderOpencodeDocument(
 ): string {
   if (document.kind === "skill") {
     const frontmatter: Record<string, unknown> = {
+      name: document.id,
       description: document.description,
     };
-
-    if (Array.isArray(document.frontmatter.triggers)) {
-      frontmatter.triggers = document.frontmatter.triggers;
-    }
 
     return renderMarkdownWithFrontmatter(frontmatter, expandedBody);
   }
