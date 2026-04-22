@@ -14,6 +14,8 @@
 
 - 릴리즈는 `package.json` 버전과 git tag가 정확히 일치해야 한다.
   - 예: `package.json = 0.16.3` 이면 tag는 `v0.16.3`
+- 릴리즈는 `main`에서만 수행한다.
+- 릴리즈 대상 변경은 long-lived 작업 브랜치에서 직접 배포하지 않고, PR로 `main`에 병합한 뒤 진행한다.
 - 배포 전 로컬 검증이 통과하지 않으면 tag를 만들지 않는다.
 - 이 저장소는 현재 별도 `CHANGELOG.md`를 canonical source로 쓰지 않는다.
   - canonical changelog는 GitHub Release notes다.
@@ -45,6 +47,33 @@ LLM이 릴리즈를 수행할 때 아래 항목이 불명확하면 추측하지 
 - `major`
   - 컨슈머가 쓰는 경로, 포맷, 계약, 동작을 깨는 변경
   - 기존 harness 통합 가이드를 다시 따라야 하는 변경
+
+## 브랜치 정책
+
+- 모든 릴리즈 대상 작업은 작업 브랜치에서 진행한다.
+  - 예: `feat/...`, `fix/...`, `chore/...`
+- 작업 브랜치는 GitHub PR로 `main`에 병합한다.
+- tag는 병합 후 `main` HEAD에서만 만든다.
+- 릴리즈 커밋을 만들기 위해 별도 release branch를 유지하지 않는다.
+- 병합된 작업 브랜치는 정리한다.
+  - 원격 브랜치:
+    - GitHub의 자동 삭제가 켜져 있으면 merge 후 자동 삭제에 맡긴다.
+    - 자동 삭제가 없으면 merge 직후 수동으로 삭제한다.
+  - 로컬 브랜치:
+    - merge 완료 후 수동으로 삭제한다.
+
+정리 명령 예시:
+
+```bash
+git branch -d <branch>
+git push origin --delete <branch>
+```
+
+LLM 운영 규칙:
+
+- 현재 브랜치가 `main`이 아니면, 먼저 PR 병합 여부를 확인한다.
+- 아직 `main`에 병합되지 않은 브랜치에서는 tag를 만들지 않는다.
+- 이미 `main`에 병합된 브랜치라면, 릴리즈 후 브랜치 정리까지 수행한다.
 
 ## 릴리즈 체크리스트
 
@@ -146,6 +175,8 @@ bun dist/cli/sync.js --harness=opencode --target=dist/render-preview/opencode
 
 ### 7. 커밋과 태그 준비
 
+- [ ] 작업 브랜치가 `main`에 병합됐다.
+- [ ] 현재 릴리즈 기준점이 `main` HEAD다.
 - [ ] 릴리즈용 변경만 커밋 대상에 포함되어 있다.
 - [ ] 불필요한 작업 중 파일이 없는지 확인했다.
 - [ ] 릴리즈 커밋 메시지를 정했다.
@@ -190,6 +221,7 @@ git push origin v0.16.3
 - [ ] GitHub Release가 생성됐다.
 - [ ] GitHub Release notes가 기대한 카테고리로 분류됐다.
 - [ ] npm registry에 새 버전이 올라갔다.
+- [ ] 병합된 작업 브랜치를 정리했다.
 
 확인 명령:
 
