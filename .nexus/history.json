@@ -2,6 +2,66 @@
   "cycles": [
     {
       "schema_version": "1.0",
+      "completed_at": "2026-04-22T13:15:05.334Z",
+      "branch": "fix/plan-resume-agent-id-58",
+      "plan": {
+        "id": 1,
+        "topic": "Issue #58 resume agent_id guidance ambiguity fix",
+        "issues": [
+          {
+            "id": 1,
+            "title": "Decide the correct canonical guidance for recording and resuming subagent identifiers across planning-related specs",
+            "status": "decided",
+            "decision": "Selected: make the canonical guidance unambiguous that planning-related specs must record the concrete agent identifier returned by the spawn tool response as agent_id for later resume paths, and must not treat a human-readable assigned name as an interchangeable substitute. Rationale: official Claude Code subagent docs currently state that resumed subagents use SendMessage with the agent’s ID in the to field; the current wording in spec/skills/nx-plan/body.md and spec/agents/lead/body.md invites storing a name instead, which breaks completed-session resume semantics. Rejected alternative 1: leave nx-auto-plan wording unchanged and only patch nx-plan — rejected because the ambiguity spans more than one planning surface and would remain inconsistent. Rejected alternative 2: preserve name as an allowed fallback — rejected because the documented resume path depends on agent ID, not a presentation label."
+          },
+          {
+            "id": 2,
+            "title": "Apply the minimal documentation/spec fix for issue #58 with regression coverage, keeping the change independent from other issue fixes",
+            "status": "decided",
+            "decision": "Selected: apply a minimal text-only fix in the shared spec source for both English and Korean planning/lead documents, then add targeted generation tests that assert the wrong phrase is gone and the stronger agent-ID guidance is present in generated outputs. Rationale: the bug is in shared instruction text, so fixing the source specs plus regression tests gives cross-harness coverage without coupling to unrelated runtime code. Rejected alternative 1: patch only generated artifacts — rejected because generated output is derived and the ambiguity would reappear on the next sync. Rejected alternative 2: broaden the change into runtime resume implementation work — rejected because issue #58 is about incorrect guidance, not a local runtime bug in this repo."
+          }
+        ],
+        "research_summary": "Verified GitHub issue #58 (opened Apr 22, 2026). Cross-checked local spec source: spec/skills/nx-plan/body.md currently says to pass the spawn id 'or the name the Lead assigned' to nx_plan_analysis_add; spec/skills/nx-auto-plan/body.md is less explicit but still underspecified; spec/agents/lead/body.md also says to record either the spawn id or the assigned name. Cross-checked generated outputs: opencode render-preview reproduces the same ambiguity. Cross-checked official Claude Code subagents docs: when resuming a completed subagent, Claude uses SendMessage with the agent’s ID as the to field (https://code.claude.com/docs/en/sub-agents, lines 654-662 as observed today). Therefore the ambiguity is real and name-based storage is incompatible with documented resume semantics for completed sessions.",
+        "created_at": "2026-04-22T13:13:30.131Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Patch planning and lead spec guidance for resume agent IDs",
+          "status": "completed",
+          "context": "Issue #58 is a shared text/spec bug. Current guidance in planning-related specs treats spawn IDs and assigned names as interchangeable agent_id values, but official Claude resume guidance uses the agent ID for completed-session resume.",
+          "acceptance": "- English and Korean spec files no longer present the assigned name as an interchangeable agent_id\n- The updated wording explicitly requires the spawn tool response agent ID for resume paths\n- The change remains text-only and scoped to issue #58",
+          "approach": "Edit English and Korean spec files for nx-plan, nx-auto-plan, and lead so they explicitly require the spawn tool’s returned agent ID and clarify that human-readable names are for running-session messaging only.",
+          "risk": "Because this is guidance text, over-specifying harness details could become stale; keep the wording focused on the required identifier semantics.",
+          "plan_issue": 2,
+          "owner": {
+            "role": "lead",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-04-22T13:13:48.693Z"
+        },
+        {
+          "id": 2,
+          "title": "Add regression coverage and verify generated outputs for issue #58",
+          "status": "completed",
+          "context": "The source-spec fix should propagate into generated harness assets, and tests should catch future reintroduction of the ambiguous wording.",
+          "acceptance": "- tests/generate/sync.test.ts covers the removed ambiguous wording and the corrected guidance\n- bun test tests/generate/sync.test.ts passes\n- Generated outputs exercised by the tests reflect the corrected text",
+          "approach": "Extend generation tests to assert the problematic phrase is absent and the stronger agent-ID guidance appears in generated outputs, then run targeted tests.",
+          "risk": "String-based tests can be brittle if wording changes casually, so assertions should target the semantic phrases that matter.",
+          "plan_issue": 2,
+          "deps": [
+            1
+          ],
+          "owner": {
+            "role": "lead",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-04-22T13:13:48.770Z"
+        }
+      ]
+    },
+    {
+      "schema_version": "1.0",
       "completed_at": "2026-04-22T12:56:29.205Z",
       "branch": "fix/opencode-skill-frontmatter-57",
       "plan": {
