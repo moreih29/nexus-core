@@ -46,22 +46,10 @@ export const planUpdateTool = {
 export const planDecideTool = {
   group: "plan",
   name: "nx_plan_decide",
-  description: "Record a decision for a plan issue",
+  description: "Record the final decision for a plan issue",
   inputSchema: {
     issue_id: z.number().describe("Issue ID to decide"),
     decision: z.string().describe("Decision text"),
-    how_agents: z
-      .array(z.string())
-      .optional()
-      .describe("Names of HOW agents that contributed analysis"),
-    how_summary: z
-      .record(z.string(), z.string())
-      .optional()
-      .describe("Summary of each agent's key input"),
-    how_agent_ids: z
-      .record(z.string(), z.string())
-      .optional()
-      .describe("Mapping from agent name to agent ID"),
   },
 } satisfies NxToolDefinition;
 

@@ -33,7 +33,7 @@ bun add @moreih29/nexus-core
 | `nx_plan_start` | 새 플래닝 세션 시작. 기존 `plan.json`이 있다면 아카이브 |
 | `nx_plan_status` | 현재 플래닝 세션 상태 반환 |
 | `nx_plan_update` | 이슈 추가·삭제·수정·재개 |
-| `nx_plan_decide` | 이슈에 대한 결정 기록 |
+| `nx_plan_decide` | 이슈에 대한 최종 결정 기록 (`analysis`는 변경하지 않음) |
 | `nx_plan_resume` | HOW 참여자 기준 재개 라우팅 정보 반환 |
 | `nx_plan_analysis_add` | 이슈에 분석 항목 추가 |
 
