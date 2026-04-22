@@ -23,6 +23,3 @@ capability_disabled_tools:
     - spawn_agent
   no_user_question:
     - request_user_input
-
-nx_mcp_server:
-  command: nexus-mcp

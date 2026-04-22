@@ -2,6 +2,66 @@
   "cycles": [
     {
       "schema_version": "1.0",
+      "completed_at": "2026-04-22T13:17:16.438Z",
+      "branch": "fix/codex-nx-mcp-inheritance-59",
+      "plan": {
+        "id": 1,
+        "topic": "Issue #59 codex nx MCP launcher portability fix",
+        "issues": [
+          {
+            "id": 1,
+            "title": "Decide the correct upstream codex harness behavior for nx MCP configuration in generated subagent specs",
+            "status": "decided",
+            "decision": "Selected: generated Codex subagent specs should preserve per-role nx disabled_tools without hardcoding a bare nx MCP launcher, allowing the parent session’s already-valid MCP launcher configuration to remain authoritative. Rationale: official Codex docs describe custom agent files as configuration layers and say optional fields such as mcp_servers inherit from the parent session when omitted; current nexus-core output is stronger than necessary because it injects command = \"nexus-mcp\" whenever disabled_tools are present. Rejected alternative 1: keep the hardcoded bare command and treat this as downstream-only — rejected because the portability assumption originates in nexus-core generation. Rejected alternative 2: redesign the whole Codex restriction model away from mcp_servers.nx — rejected because issue #59 can be solved safely without broad architectural churn."
+          },
+          {
+            "id": 2,
+            "title": "Apply the minimal safe fix for issue #59 with regression coverage, keeping it independent from #57 and #58 changes",
+            "status": "decided",
+            "decision": "Selected: make the Codex nx MCP launcher config optional in source types and renderer output, remove the hardcoded launcher from harness/codex/agent-rules.yml, and extend generation tests so Codex agents still emit [mcp_servers.nx] with disabled_tools but no longer force command = \"nexus-mcp\". Rationale: this is the smallest upstream change that fixes the portability bug while preserving current per-role tool restrictions. Rejected alternative 1: add full command+args support in the same change — rejected for now because issue #59 does not require explicit child-launcher emission once inheritance is preserved. Rejected alternative 2: patch generated artifacts only — rejected because the source renderer and harness rules would simply reintroduce the problem."
+          }
+        ],
+        "research_summary": "Verified GitHub issue #59 (opened Apr 22, 2026). Cross-checked local source: harness/codex/agent-rules.yml hardcodes nx_mcp_server.command: nexus-mcp, and src/generate/renderers/codex.ts always emits command = CODEX_AGENT_RULES.nx_mcp_server.command inside [mcp_servers.nx] whenever disabled_tools are needed. Existing codex generation tests assert the stanza exists but do not guard against the PATH-dependent launcher assumption. Cross-checked official Codex docs today: custom agent files are configuration layers for spawned sessions; optional fields such as mcp_servers inherit from the parent session when omitted (https://developers.openai.com/codex/subagents, lines 617-625 observed today). Codex config also supports mcp_servers.<id>.command, args, and disabled_tools as independent keys (https://developers.openai.com/codex/config-reference, lines 817-834 and 825-834 observed today). Therefore the current generated child-agent stanza is unnecessarily stronger than required and can override a valid parent MCP launcher with a brittle PATH-only command.",
+        "created_at": "2026-04-22T13:15:45.298Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Patch Codex harness rules and renderer to stop hardcoding nx MCP command",
+          "status": "completed",
+          "context": "Issue #59 is an upstream Codex generation portability bug. Codex custom agents are config layers, but nexus-core currently emits command = \"nexus-mcp\" inside [mcp_servers.nx] whenever disabled_tools are needed, overriding a working parent launcher with a PATH-only assumption.",
+          "acceptance": "- Codex source generation no longer requires nx_mcp_server.command to exist\n- Generated Codex agent TOML still includes [mcp_servers.nx] and disabled_tools when needed\n- Generated Codex agent TOML no longer forces command = \"nexus-mcp\" by default",
+          "approach": "Make the Codex nx MCP launcher config optional, remove the hardcoded launcher from harness/codex/agent-rules.yml, and update the renderer to emit command only when explicitly configured while still emitting disabled_tools.",
+          "risk": "This change relies on Codex configuration-layer inheritance for the parent MCP launcher, so the fix should stay minimal and not alter disabled_tools behavior.",
+          "plan_issue": 2,
+          "owner": {
+            "role": "lead",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-04-22T13:16:10.515Z"
+        },
+        {
+          "id": 2,
+          "title": "Add regression coverage and verify Codex generation for issue #59",
+          "status": "completed",
+          "context": "The source fix should be locked in with generation tests so the bare-command assumption does not reappear.",
+          "acceptance": "- tests/generate/sync.test.ts asserts Codex agent output does not contain command = \"nexus-mcp\"\n- bun test tests/generate/sync.test.ts passes\n- The Codex generation test still confirms disabled_tools behavior",
+          "approach": "Update generation tests to assert the Codex nx MCP stanza is still present with disabled_tools but omits the hardcoded command, then run targeted tests.",
+          "risk": "If assertions are too broad, harmless future launcher support changes could cause churn; keep the test focused on the current default behavior.",
+          "plan_issue": 2,
+          "deps": [
+            1
+          ],
+          "owner": {
+            "role": "lead",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-04-22T13:16:10.562Z"
+        }
+      ]
+    },
+    {
+      "schema_version": "1.0",
       "completed_at": "2026-04-22T13:15:05.334Z",
       "branch": "fix/plan-resume-agent-id-58",
       "plan": {
