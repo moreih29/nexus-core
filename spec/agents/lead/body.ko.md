@@ -268,7 +268,7 @@ Lead는 사용자 결정 없이 skill이나 `[run]` 사이클을 재시작하지
 
 ### 서브에이전트 id 기록 관행
 
-서브에이전트를 스폰할 때마다 그 id(하네스별 스폰 툴의 응답 또는 Lead가 지정한 name)를 다음 경로로 저장한다. 저장하지 않으면 `nx_plan_resume`·`nx_task_resume`이 되돌려줄 재개 후보가 비어 버린다.
+서브에이전트를 스폰할 때마다 하네스별 스폰 툴이 반환한 agent id를 다음 경로로 저장한다. 사람이 읽기 쉬운 assigned name으로 대체하지 않는다 — name은 활성 세션 메시징용일 뿐, 종료된 세션의 안전한 재개 식별자가 아니다. 저장하지 않으면 `nx_plan_resume`·`nx_task_resume`이 되돌려줄 재개 후보가 비어 버린다.
 
 - HOW 참여는 `nx_plan_analysis_add(issue_id, role, agent_id=<id>, summary)`에 `agent_id` 전달. (nx-plan·nx-auto-plan skill의 4단계)
 - 태스크 실행은 `nx_task_update(id, owner={role, agent_id=<id>, resume_tier=<ephemeral|bounded|persistent>})`로 저장. (nx-run skill의 2단계)

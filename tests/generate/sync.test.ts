@@ -89,6 +89,8 @@ test("syncSpecsToTarget writes claude markdown assets", () => {
     const reviewer = readFileSync(reviewerAgentPath, "utf8");
     const nxRun = readFileSync(nxRunPath, "utf8");
     const nxPlan = readFileSync(nxPlanPath, "utf8");
+    const nxAutoPlanPath = join(dir, "skills/nx-auto-plan/SKILL.md");
+    const nxAutoPlan = readFileSync(nxAutoPlanPath, "utf8");
 
     expect(lead).toContain("description: Primary orchestrator");
     expect(lead).toContain("model: opus");
@@ -107,6 +109,14 @@ test("syncSpecsToTarget writes claude markdown assets", () => {
     expect(nxPlan).toContain(
       'Agent({ subagent_type: "researcher", prompt: "<research question>" })',
     );
+    expect(nxPlan).toContain(
+      "always pass the agent id obtained from the spawn tool response",
+    );
+    expect(nxPlan).not.toContain("or the name the Lead assigned");
+    expect(nxAutoPlan).toContain(
+      "Do not substitute a human-readable assigned name",
+    );
+    expect(lead).toContain("Do not substitute a human-readable assigned name");
   });
 });
 
