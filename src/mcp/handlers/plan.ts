@@ -47,9 +47,6 @@ interface PlanUpdateArgs {
 interface PlanDecideArgs {
   issue_id: number;
   decision: string;
-  how_agents?: string[];
-  how_summary?: Record<string, string>;
-  how_agent_ids?: Record<string, string>;
 }
 
 interface PlanResumeArgs {
@@ -272,13 +269,7 @@ const planToolBindings: ReadonlyArray<NxToolBinding> = [
   },
   {
     definition: planDecideTool,
-    handler: async ({
-      issue_id,
-      decision,
-      how_agents,
-      how_summary,
-      how_agent_ids,
-    }: PlanDecideArgs) => {
+    handler: async ({ issue_id, decision }: PlanDecideArgs) => {
       const pPath = planPath();
       let responsePayload: Record<string, unknown> = {};
 
@@ -299,24 +290,6 @@ const planToolBindings: ReadonlyArray<NxToolBinding> = [
 
         issue.status = "decided";
         issue.decision = decision;
-
-        if (how_agents && how_agents.length > 0) {
-          const now = new Date().toISOString();
-          if (!issue.analysis) {
-            issue.analysis = [];
-          }
-          for (const agentName of how_agents) {
-            const entry: PlanAnalysisEntry = {
-              role: agentName,
-              summary: how_summary?.[agentName] ?? "",
-              recorded_at: now,
-            };
-            if (how_agent_ids?.[agentName]) {
-              entry.agent_id = how_agent_ids[agentName];
-            }
-            issue.analysis.push(entry);
-          }
-        }
 
         const allComplete = raw.issues.every(
           (candidate) => candidate.status === "decided",

@@ -135,3 +135,82 @@ test("supports concurrent nx_plan_update add calls without ID collisions", async
     });
   });
 });
+
+test("nx_plan_decide records only the final decision and does not append analysis", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_plan_start",
+          arguments: {
+            topic: "Decision semantics",
+            issues: ["Keep analysis stable"],
+            research_summary:
+              "Need to verify decide only updates decision state.",
+          },
+        });
+
+        await client.callTool({
+          name: "nx_plan_analysis_add",
+          arguments: {
+            issue_id: 1,
+            role: "architect",
+            agent_id: "agent-1",
+            summary: "Detailed architectural analysis",
+          },
+        });
+
+        await client.callTool({
+          name: "nx_plan_decide",
+          arguments: {
+            issue_id: 1,
+            decision:
+              "Proceed with the simpler architecture because it satisfies v1 scope.",
+          },
+        });
+
+        const planPath = join(projectRoot, ".nexus", "state", "plan.json");
+        const plan = readJsonFile<{
+          issues: Array<{
+            status: string;
+            decision?: string;
+            analysis?: Array<{
+              role: string;
+              agent_id?: string;
+              summary: string;
+              recorded_at: string;
+            }>;
+          }>;
+        }>(planPath);
+
+        expect(plan.issues[0]?.status).toBe("decided");
+        expect(plan.issues[0]?.decision).toBe(
+          "Proceed with the simpler architecture because it satisfies v1 scope.",
+        );
+        expect(plan.issues[0]?.analysis).toHaveLength(1);
+        expect(plan.issues[0]?.analysis?.[0]).toEqual({
+          role: "architect",
+          agent_id: "agent-1",
+          summary: "Detailed architectural analysis",
+          recorded_at: expect.any(String),
+        });
+
+        const resumeResult = await client.callTool({
+          name: "nx_plan_resume",
+          arguments: { role: "architect" },
+        });
+        expect(parseTextResult(resumeResult)).toEqual({
+          role: "architect",
+          resumable: true,
+          agent_id: "agent-1",
+          resume_tier: null,
+          issue_id: 1,
+        });
+      } finally {
+        await close();
+      }
+    });
+  });
+});

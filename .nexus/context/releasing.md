@@ -19,7 +19,7 @@
 - 배포 전 로컬 검증이 통과하지 않으면 tag를 만들지 않는다.
 - 이 저장소는 현재 별도 `CHANGELOG.md`를 canonical source로 쓰지 않는다.
   - canonical changelog는 GitHub Release notes다.
-  - 필요하면 release body에 짧은 수동 요약을 앞에 붙인다.
+  - 다만 consumer-facing 변경이나 breaking change가 있으면 auto-generated notes만으로 끝내지 않고, GitHub Release body 상단에 수동 요약을 반드시 붙인다.
 - 자동화가 이미 하는 일은 사람이 반복하지 않는다.
   - publish workflow가 `bun run validate`와 `npm publish`를 다시 수행한다.
 
@@ -30,6 +30,7 @@ LLM이 릴리즈를 수행할 때 아래 항목이 불명확하면 추측하지 
 - 다음 버전 번호
 - 이번 릴리즈가 `patch` / `minor` / `major` 중 무엇인지
 - 릴리즈 요약에 강조할 변경점
+- 영향받는 harness consumer가 누구인지
 - 릴리즈를 지금 바로 실행할지, 체크리스트 문서화까지만 할지
 
 다만 아래 규칙으로 초안 판단은 가능하다.
@@ -47,6 +48,7 @@ LLM이 릴리즈를 수행할 때 아래 항목이 불명확하면 추측하지 
 - `major`
   - 컨슈머가 쓰는 경로, 포맷, 계약, 동작을 깨는 변경
   - 기존 harness 통합 가이드를 다시 따라야 하는 변경
+  - 예: MCP tool 입력 스키마 제거, 공개 출력 포맷 변경, 기존 consumer 호출 방식 수정 필요
 
 ## 브랜치 정책
 
@@ -82,6 +84,8 @@ LLM 운영 규칙:
 - [ ] 이번 릴리즈에 들어갈 변경 범위를 확정했다.
 - [ ] 다음 버전 번호를 확정했다.
 - [ ] semver 등급(`patch` / `minor` / `major`)을 확정했다.
+- [ ] 공개 계약(public contract) 변경 여부를 확인했다.
+- [ ] 영향받는 harness/consumer와 각 consumer가 해야 할 업데이트를 정리했다.
 - [ ] 이번 릴리즈에서 사용자에게 알려야 할 핵심 변경 3개 이하를 정리했다.
 
 메모:
@@ -98,12 +102,43 @@ LLM 운영 규칙:
   - `docs` → Documentation
   - `build`, `ci`, `chore`, `tooling` → Tooling
   - `test` → Tests
-- [ ] 필요하면 release body 앞에 붙일 짧은 수동 요약을 준비했다.
+- [ ] consumer-facing 변경이 있으면 release body 앞에 붙일 수동 요약을 준비했다.
+- [ ] 공개 계약 변경이나 breaking change가 있으면 release body에 아래 항목이 모두 들어가도록 준비했다.
+  - 무엇이 바뀌었는지
+  - 누가 영향받는지
+  - consumer/harness별 필요한 조치
+  - migration 단계
+  - 가능하면 before/after 예시
 
 메모:
 
 - `CHANGELOG.md`는 현재 필수 릴리즈 산출물이 아니다.
-- 사람이 읽는 요약이 꼭 필요하면 GitHub Release description에 짧은 bullet 3개 정도만 추가한다.
+- 현재 workflow는 `generate_release_notes: true`만 사용하므로, 수동 요약은 자동 주입되지 않는다.
+- 따라서 consumer-facing 변경이 있으면 release 생성 후 GitHub Release description을 직접 편집해 상단 요약과 migration 안내를 넣어야 한다.
+- 단순 내부 변경이 아니라면 "짧은 bullet 3개"만으로 끝내지 말고, 컨슈머가 그대로 따라 업데이트할 수 있는 수준으로 적는다.
+
+권장 release body 템플릿:
+
+```md
+## Summary
+- ...
+
+## Affected consumers
+- Claude harness consumer: ...
+- Codex harness consumer: ...
+- OpenCode harness consumer: ...
+
+## Required changes
+- ...
+
+## Migration
+1. ...
+2. ...
+
+## Before / After
+- Before: ...
+- After: ...
+```
 
 ### 3. 버전 파일 업데이트
 
@@ -170,6 +205,7 @@ bun dist/cli/sync.js --harness=opencode --target=dist/render-preview/opencode
 - [ ] README가 이번 릴리즈 설명과 충돌하지 않는다.
 - [ ] 새로 추가하거나 바꾼 consumer-facing 문서가 있으면 링크가 맞는다.
 - [ ] 공개 surface 변경이 있으면 docs에 설명이 반영됐다.
+- [ ] 공개 계약 변경이 있으면 GitHub Release body 초안에 consumer별 영향과 migration 단계가 반영됐다.
 - [ ] package tarball preview에서 `dist`, `spec`, `harness`, `vocabulary`만 의도대로 포함된다.
 - [ ] 민감한 파일, 로컬 메모, 실험 출력물이 publish 대상에 섞이지 않았다.
 
@@ -220,6 +256,8 @@ git push origin v0.16.3
 - [ ] GitHub Actions의 `Publish npm` workflow가 성공했다.
 - [ ] GitHub Release가 생성됐다.
 - [ ] GitHub Release notes가 기대한 카테고리로 분류됐다.
+- [ ] consumer-facing 변경이 있었다면 GitHub Release description을 수동 편집해 상단 요약, 영향 범위, migration 단계를 반영했다.
+- [ ] GitHub Release 본문만 읽어도 harness consumer가 필요한 업데이트를 판단할 수 있다.
 - [ ] npm registry에 새 버전이 올라갔다.
 - [ ] 병합된 작업 브랜치를 정리했다.
 
