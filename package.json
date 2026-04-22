@@ -1,12 +1,12 @@
 {
   "name": "@moreih29/nexus-core",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "Nexus core reboot workspace. Legacy implementation is archived under .legacy/.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/moreih29/nexus-core"
+    "url": "git+https://github.com/moreih29/nexus-core.git"
   },
   "homepage": "https://github.com/moreih29/nexus-core#readme",
   "bugs": {
@@ -36,8 +36,8 @@
     "access": "public"
   },
   "bin": {
-    "nexus-mcp": "./dist/mcp/server.js",
-    "nexus-sync": "./dist/cli/sync.js"
+    "nexus-mcp": "dist/mcp/server.js",
+    "nexus-sync": "dist/cli/sync.js"
   },
   "packageManager": "bun@1.3.12",
   "scripts": {
