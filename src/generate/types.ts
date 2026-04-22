@@ -40,8 +40,9 @@ export type CodexAgentRules = {
   model_tier: Record<string, string>;
   capability_sandbox_mode: Record<string, string | null>;
   capability_disabled_tools: Record<string, string[]>;
-  nx_mcp_server: {
-    command: string;
+  nx_mcp_server?: {
+    command?: string;
+    args?: string[];
   };
 };
 

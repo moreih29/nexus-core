@@ -56,6 +56,7 @@ test("syncSpecsToTarget writes codex agent TOML and skill markdown", () => {
     expect(lead).toContain('model = "gpt-5.4"');
     expect(architect).toContain('sandbox_mode = "read-only"');
     expect(architect).toContain("[mcp_servers.nx]");
+    expect(architect).not.toContain('command = "nexus-mcp"');
     expect(architect).toContain('"nx_task_add"');
     expect(architect).toContain('"nx_task_update"');
     expect(architect).toContain('"nx_task_close"');

@@ -87,11 +87,17 @@ export function renderCodexDocument(
 
   const disabledTools = collectCodexDisabledTools(document);
   if (disabledTools.length > 0) {
+    const nxMcpServer = CODEX_AGENT_RULES.nx_mcp_server;
     lines.push("");
     lines.push("[mcp_servers.nx]");
-    lines.push(
-      `command = ${JSON.stringify(CODEX_AGENT_RULES.nx_mcp_server.command)}`,
-    );
+    if (typeof nxMcpServer?.command === "string") {
+      lines.push(`command = ${JSON.stringify(nxMcpServer.command)}`);
+    }
+    if (Array.isArray(nxMcpServer?.args) && nxMcpServer.args.length > 0) {
+      lines.push(
+        `args = [${nxMcpServer.args.map((arg) => JSON.stringify(arg)).join(", ")}]`,
+      );
+    }
     lines.push(
       `disabled_tools = [${disabledTools.map((tool) => JSON.stringify(tool)).join(", ")}]`,
     );
