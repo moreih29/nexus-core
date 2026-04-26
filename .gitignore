@@ -14,3 +14,6 @@ skills.staging/
 skills.backup/
 
 .playwright-mcp/
+
+opencode.json
+.opencode/
