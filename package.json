@@ -1,6 +1,6 @@
 {
   "name": "@moreih29/nexus-core",
-  "version": "0.20.0",
+  "version": "0.20.1",
   "description": "Nexus core reboot workspace. Legacy implementation is archived under .legacy/.",
   "license": "MIT",
   "type": "module",
