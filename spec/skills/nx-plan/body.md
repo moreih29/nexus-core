@@ -103,7 +103,6 @@ Issues must be processed one at a time. For each issue:
 |---|---|
 | UI, UX, design, interface, user experience, layout | Designer |
 | Architecture, system design, performance, structural change, API, schema | Architect |
-| Business, market, strategy, positioning, competition, revenue | Strategist |
 | Research methodology, evidence evaluation, literature, experiment design | Postdoc |
 
 - If an issue matches a domain above, spawning the corresponding HOW is the default.

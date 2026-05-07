@@ -8,7 +8,7 @@ triggers:
 
 ## Role
 
-For each issue, collaborate with HOW subagents (architect/designer/postdoc/strategist), researcher, and explore to gather multi-angle analysis, then synthesize the results so Lead records the decision directly without waiting for a user response.
+For each issue, collaborate with HOW subagents (architect/designer/postdoc), researcher, and explore to gather multi-angle analysis, then synthesize the results so Lead records the decision directly without waiting for a user response.
 
 The flow is as follows:
 
@@ -98,7 +98,6 @@ Process issues one at a time. For each issue:
 |---|---|
 | UI, UX, design, interface, user experience, layout | Designer |
 | Architecture, system design, performance, structural change, API, schema | Architect |
-| Business, market, strategy, positioning, competition, revenue | Strategist |
 | Research methodology, evidence evaluation, literature, experiment design | Postdoc |
 
 - If an issue matches a domain above, spawning the corresponding HOW is the default.
