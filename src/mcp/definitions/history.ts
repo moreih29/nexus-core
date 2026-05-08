@@ -27,8 +27,8 @@ export const historySearchTool = {
       .describe(
         "Full-text query applied to the specified scope. Omit for metadata-only listing.",
       ),
-    last_n: z
-      .coerce.number()
+    last_n: z.coerce
+      .number()
       .int()
       .positive()
       .optional()

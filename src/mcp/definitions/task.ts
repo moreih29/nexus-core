@@ -63,11 +63,7 @@ export const taskUpdateTool = {
   description:
     "Partially update a task. Updatable fields: status, acceptance, approach, risk, owner (agent_id/resume_tier only), result (outcome/summary/artifacts). result.recorded_at is always set by the server. id, title, context, deps, created_at, owner.role are immutable — to change identity-carrying fields, delete and re-add the task instead.",
   inputSchema: {
-    id: z.coerce
-      .number()
-      .int()
-      .positive()
-      .describe("Task ID to update"),
+    id: z.coerce.number().int().positive().describe("Task ID to update"),
     status: z
       .enum(["pending", "in_progress", "completed"])
       .optional()
@@ -104,11 +100,7 @@ export const taskResumeTool = {
   name: "nx_task_resume",
   description: "Get task resume routing information based on owner.resume_tier",
   inputSchema: {
-    id: z.coerce
-      .number()
-      .int()
-      .positive()
-      .describe("Task ID to look up"),
+    id: z.coerce.number().int().positive().describe("Task ID to look up"),
   },
 } satisfies NxToolDefinition;
 

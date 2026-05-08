@@ -48,11 +48,7 @@ export const planDecideTool = {
   name: "nx_plan_decide",
   description: "Record the final decision for a plan issue",
   inputSchema: {
-    issue_id: z
-      .coerce.number()
-      .int()
-      .positive()
-      .describe("Issue ID to decide"),
+    issue_id: z.coerce.number().int().positive().describe("Issue ID to decide"),
     decision: z.string().describe("Decision text"),
   },
 } satisfies NxToolDefinition;
@@ -71,11 +67,7 @@ export const planAnalysisAddTool = {
   name: "nx_plan_analysis_add",
   description: "Add an analysis entry to a plan issue",
   inputSchema: {
-    issue_id: z
-      .coerce.number()
-      .int()
-      .positive()
-      .describe("Target issue ID"),
+    issue_id: z.coerce.number().int().positive().describe("Target issue ID"),
     role: z.string().describe("Role of the analyzing agent"),
     agent_id: z
       .string()
