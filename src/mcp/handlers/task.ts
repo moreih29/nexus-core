@@ -19,6 +19,7 @@ import type {
   ResumeTier,
   TaskItem,
   TaskOwner,
+  TaskResult,
   TasksFile,
 } from "../../types/state.js";
 import {
@@ -53,10 +54,27 @@ interface TaskOwnerUpdate {
   resume_tier?: ResumeTier | null;
 }
 
+interface TaskResultInput {
+  outcome: "success" | "failure" | "partial";
+  summary: string;
+  artifacts?: string[];
+}
+
 interface TaskUpdateArgs {
   id: number;
   status?: TaskStatus;
+  title?: string;
+  context?: string;
+  acceptance?: string;
+  approach?: string;
+  risk?: string;
+  deps?: number[];
   owner?: TaskOwnerUpdate;
+  result?: TaskResultInput;
+}
+
+interface TaskCloseArgs {
+  force?: boolean;
 }
 
 interface TaskResumeArgs {
@@ -208,7 +226,18 @@ const taskToolBindings: ReadonlyArray<NxToolBinding> = [
   },
   {
     definition: taskUpdateTool,
-    handler: async ({ id, status, owner }: TaskUpdateArgs) => {
+    handler: async ({
+      id,
+      status,
+      title,
+      context,
+      acceptance,
+      approach,
+      risk,
+      deps,
+      owner,
+      result,
+    }: TaskUpdateArgs) => {
       const tPath = tasksPath();
 
       let updatedTask!: TaskItem;
@@ -224,6 +253,30 @@ const taskToolBindings: ReadonlyArray<NxToolBinding> = [
 
           if (status !== undefined) {
             task.status = status;
+          }
+
+          if (title !== undefined) {
+            task.title = title;
+          }
+
+          if (context !== undefined) {
+            task.context = context;
+          }
+
+          if (acceptance !== undefined) {
+            task.acceptance = acceptance;
+          }
+
+          if (approach !== undefined) {
+            task.approach = approach;
+          }
+
+          if (risk !== undefined) {
+            task.risk = risk;
+          }
+
+          if (deps !== undefined) {
+            task.deps = deps;
           }
 
           if (owner !== undefined) {
@@ -246,6 +299,17 @@ const taskToolBindings: ReadonlyArray<NxToolBinding> = [
             }
           }
 
+          if (result !== undefined) {
+            task.result = {
+              outcome: result.outcome,
+              summary: result.summary,
+              ...(result.artifacts !== undefined
+                ? { artifacts: result.artifacts }
+                : {}),
+              recorded_at: new Date().toISOString(),
+            } satisfies TaskResult;
+          }
+
           updatedTask = task;
           return data;
         },
@@ -256,7 +320,7 @@ const taskToolBindings: ReadonlyArray<NxToolBinding> = [
   },
   {
     definition: taskCloseTool,
-    handler: async () => {
+    handler: async ({ force = false }: TaskCloseArgs) => {
       const tPath = tasksPath();
       const pPath = planPath();
       const hPath = historyPath();
@@ -267,9 +331,17 @@ const taskToolBindings: ReadonlyArray<NxToolBinding> = [
       const tasks = tasksData?.tasks ?? [];
       const plan_id = planData?.id ?? null;
       const task_count = tasks.length;
-      const incomplete_count = tasks.filter(
+      const incompleteTasks = tasks.filter(
         (task) => task.status !== "completed",
-      ).length;
+      );
+      const incomplete_count = incompleteTasks.length;
+
+      if (!force && incomplete_count > 0) {
+        const ids = incompleteTasks.map((t) => t.id).join(", ");
+        throw new Error(
+          `Cannot close: tasks [${ids}] are incomplete. Pass force:true to override.`,
+        );
+      }
 
       await updateJsonFileLocked<HistoryFile>(
         hPath,

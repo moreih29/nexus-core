@@ -179,6 +179,165 @@
           "created_at": "2026-04-22T12:55:17.480Z"
         }
       ]
+    },
+    {
+      "schema_version": "1.0",
+      "completed_at": "2026-05-08T04:07:47.812Z",
+      "branch": "feat/mcp-tools-gap",
+      "plan": {
+        "id": 2,
+        "topic": "MCP 도구 갭 종합 보완 — 신규 명세 변경에 따른 데이터 모델·API 정리",
+        "issues": [
+          {
+            "id": 1,
+            "title": "history retrieval 강화 — 필드 스코핑과 스니펫 반환 도입",
+            "status": "decided",
+            "analysis": [
+              {
+                "role": "architect",
+                "summary": "4개 옵션 비교 후 D 권장. A=현 substring 유지+스니펫 윈도우(1~2h, 의미 분리 X), B=scope 명시 필드 스코핑+셀 단위 hits 반환(4~6h, 의미 분리 O), C=토큰 인덱스+BM25(1~2일+, 현 cycles=3 규모에 과설계), D=B+mode('snippet'|'full')+metadata-only when query 부재(5~7h). D 근거: spec의 \"decisions/failures/retrospectives\" 분류 약속을 도구로 강제, 컨텍스트 절약 ~150줄→1KB 미만 추정, Issue 2(task.result 스키마)에 scope 어휘만 추가로 자연 확장. 마이그레이션: history.json 스키마 무변경, MCP input에 scope/mode optional 추가, 응답 shape 변경(cycles[]→hits[{cycle_id, path, excerpt}]), 호출자 갱신은 spec body 2곳뿐. last_n 의미 cycle→hit 전환 시 group_by_cycle:bool default true로 직관 보존 권장. Open risks: retrospective 식별 규약(role 명명 vs 별 필드)은 Issue 2와 함께 결정, last_n 의미 전환 호출자 영향. Findings: 2 warning(spec 약속 미충족, 컨텍스트 폭주), 1 suggestion(응답에 JSONPath-like path 포함), 1 note(인덱스는 cycles≥100 또는 latency 측정 후 재검토).",
+                "recorded_at": "2026-05-08T03:29:01.367Z",
+                "agent_id": "a5fddb5e5bdaaa9e6"
+              }
+            ],
+            "decision": "선택: 옵션 D (B + 결과 모드). nx_history_search 응답을 매칭된 사이클 통째에서 셀 단위 hits[{cycle_id, path, excerpt}]로 바꾸고, scope 파라미터('decision'|'analysis'|'task.acceptance'|'task.approach'|'task.risk'|'all')로 의미 분리, mode('snippet'|'full')로 zoom-in 분기, query 부재 시 metadata-only 응답을 추가한다. last_n 의미가 cycle→hit으로 전환되므로 group_by_cycle:bool default true로 호출자 직관 보존.\n\n근거: (1) 명세 본문이 plan/auto-plan 2단계에서 \"decisions, failures, retrospectives\" 분류 검색을 약속했는데 현행 substring + cycle-whole 반환은 그 약속을 도구 표면에서 보장하지 못한다. (2) 본 plan 진입 시 호출 1회로 ~150줄이 즉시 소비되는 게 직접 관찰됨 — 컨텍스트 폭주 해결이 spec 약속 충족과 같은 패치로 묶이는 게 비용 효율. (3) Issue 2가 task.result/task.failure 같은 셀을 추가할 가능성이 큰데, scope 어휘가 도입되어 있으면 scope 분기 2~3줄 추가만으로 자연 확장된다.\n\n기각 — A(미니멀 스니펫): 즉효성은 있지만 scope 분리가 없어 \"decisions/failures/retros\" 약속이 영구 갭으로 남는다. 명세를 이미 그렇게 써놨으니 도구가 따라가야 함. 기각 — B(D의 부분집합): 의미 분리는 되지만 mode/metadata-only가 없어 query 없는 \"최근 사이클 훑기\" 패턴에서 여전히 cycle 본문 일부가 노출되어 컨텍스트 절약 효과가 D보다 약함. 기각 — C(토큰 인덱스): cycles=3 규모에 1~2일+ 공수와 인덱스 invalidation 부담이 비대칭. 채택 트리거를 cycles≥100 또는 query latency 측정 후로 보류.\n\n가정: history.json 스키마는 무변경. MCP input에 scope/mode/group_by_cycle 모두 optional + default가 호환적이라 호출자 폭파 없음. 호출자 갱신은 spec body 2곳(nx-plan/nx-auto-plan Step 2)뿐.\n\nOpen: scope 어휘 final 잠금(특히 'task.failure' / 'task.result' 키 명명, retrospective 식별 규약 — role 명명 vs 별 필드)은 Issue 2의 task 모델 결정 후 정렬한다. Issue 1 자체는 옵션 D로 확정하되, Issue 2 결정 직후 scope 어휘 한 줄 정리한다."
+          },
+          {
+            "id": 2,
+            "title": "task 데이터 모델 확장 — 결과 저장·메타 변경·실패 태깅",
+            "status": "decided",
+            "analysis": [
+              {
+                "role": "architect",
+                "summary": "통합 안 4개 비교 후 Combo 1(A1+B1+C2) 권장. (a) TaskItem에 result?:{outcome:'success'|'failure'|'partial', summary, artifacts?, recorded_at} 추가 (b) nx_task_update 확장 — title/context/acceptance/approach/risk/deps/result 모두 partial update 허용. id/created_at/owner.role은 immutable. (c) status enum 유지(pending|in_progress|completed), 실패는 result.outcome으로 표현 — status는 단계, outcome은 결말, 직교 분리.\n\n기각: Combo 2(분리 도구 + status enum 확장) — 도구 3개 신설, status 확장이 archived cycles 호환 깨짐. Combo 3(별 결과 파일) — cycles=3 규모에서 분리 저장 불필요, archive merge 부담. Combo 4(B2 부분 잠금) — title/context/deps 잠금이 rework 동선 일부 차단, 정체성 침식이 실제 관찰되지 않은 단계에서 과방어.\n\nIssue 1 scope 어휘 정렬: schema 필드명 그대로 매핑 — task.result.outcome / task.result.summary / task.result.artifacts. flatten(task.outcome) 안 함.\n\nRetrospective 식별: PlanAnalysisEntry.role 명명 규약으로 — 'retrospective'(사이클 종료 합성), 'failure-note'(태스크 실패 주석) 예약어. 스키마 무변경, 마이그레이션 0.\n\n하위호환: 모든 변경이 optional 필드 추가 + nx_task_update input에 optional 필드 추가. 기존 tasks.json/history.json 데이터, 기존 nx_task_update 호출자 전부 무영향. HistoryCycle.schema_version bump 불필요.\n\n조건부 승인: (1) result.recorded_at 서버 스탬프 (2) id/created_at/owner.role immutable 명시 (3) nx-run Step 4 본문에 'completed 전환 시 같은 호출에 result 포함' 규약 추가 — 명세 수정 별 항목으로 (4) Issue 1 scope 키를 schema-mirrored로 잠금.\n\nFindings: 2 note(Step 4 spec amendment 필요, partial outcome의 task_close 가드 Issue 3에서 처리), 2 suggestion(recorded_at 서버 스탬프, taskUpdateTool description에 갱신 가능 필드 명시).\n\nOpen risks: 정체성 침식(casual title/context 편집) 가능성 낮으나 관찰되면 Combo 4로 폴백.",
+                "recorded_at": "2026-05-08T03:37:23.592Z",
+                "agent_id": "a66efa2a5ec70de3b"
+              }
+            ],
+            "decision": "선택: Combo 1 (A1+B1+C2). 세 축을 직교 분리.\n\n스키마 (a — 결과 저장): TaskItem에 result?: { outcome: 'success'|'failure'|'partial', summary: string, artifacts?: string[], recorded_at: string } 추가. recorded_at은 서버 스탬프.\n\nAPI (b — 메타 변경): nx_task_update를 확장해 title/context/acceptance/approach/risk/deps/result 모두 partial update 허용. id/created_at/owner.role은 immutable 잠금.\n\n의미 분리 (c — 실패): status enum은 그대로(pending|in_progress|completed). 실패는 result.outcome === 'failure'로 표현. status=단계, outcome=결말 직교.\n\n근거: (1) 모든 변경이 optional 필드 추가 + nx_task_update input optional 확장이라 기존 tasks.json/history.json 데이터, 기존 호출자 무영향. HistoryCycle.schema_version bump 불필요. (2) status enum 확장(Combo 2)은 archived cycles 호환 깨짐 — 마이그레이션 비용 비대칭. (3) 결과를 별 파일로 분리(Combo 3)하면 cycles=3 규모에 archive merge 부담만 발생. (4) 메타 부분 잠금(Combo 4)은 정체성 침식이 실제 관찰되지 않은 단계에서 과방어 — 관찰되면 후속 사이클로 폴백.\n\n기각: Combo 2(새 도구 분리 + status 확장) — 호환 비용. Combo 3(별 결과 파일) — 분리 저장 정당화 부족. Combo 4(부분 잠금) — 과방어.\n\n가정: result가 없는 archived cycles는 자연 처리(optional 부재). nx_task_update 확장 시 description에 갱신 가능 필드 명시(architect suggestion).\n\n연계 결정 (본 cycle 내 후속 처리):\n- Issue 1 scope 어휘 잠금 — 'task.result.outcome' / 'task.result.summary' / 'task.result.artifacts'. flatten 안 함, schema-mirrored.\n- Retrospective 식별 — PlanAnalysisEntry.role 명명 규약: 'retrospective'(사이클 종료 합성), 'failure-note'(태스크 실패 주석) 예약. 스키마 무변경.\n\n연계 명세 수정 (본 cycle 태스크에 포함):\n- nx-run Step 4 본문 — \"completed 전환 시 같은 nx_task_update 호출에 result 포함\" 규약 추가.\n- Issue 1과 Issue 2 결정 본문이 자기참조하므로 nx-plan/nx-auto-plan Step 2의 nx_history_search 호출 예시도 scope 도입 후 1줄 갱신.\n\nOpen: result.outcome === 'partial' 처리 정책(task_close 가드 여부)은 Issue 3 task_close 가드 안건에서 결정."
+          },
+          {
+            "id": 3,
+            "title": "정리와 footgun 완화 — plan_resume tier 의미, task_close 가드, artifact 조회",
+            "status": "decided",
+            "analysis": [
+              {
+                "role": "lead",
+                "summary": "HOW(architect) skip — 사유: 세 sub-axis 모두 결정이 자명하고 비가역성이 낮은 footgun 완화 영역. (1) plan_resume의 resume_tier는 plan-time HOW가 같은 plan 세션 내에서만 재개되어 task의 ephemeral/bounded/persistent 같은 분류 의미가 없음 — 응답 필드 제거가 자연스러움. (2) task_close 가드는 incomplete_count>0 거절 + force flag 일반 패턴. (3) artifact list/read는 Read/glob 워크어라운드 존재하므로 list만 신설하면 충분, read는 별 도구 불필요. 세 결정 모두 Issue 1·2의 architect 분석에서 이미 cross-reference로 짚힌 영역(Issue 2의 partial outcome 처리 정책 등) — fresh architect spawn 시 새 정보 거의 없을 것. Lead 자체 판단으로 옵션 제시 후 사용자 결정.",
+                "recorded_at": "2026-05-08T03:40:05.207Z"
+              }
+            ],
+            "decision": "선택: (1) X — nx_plan_resume 응답 shape에서 resume_tier 필드 제거. (2) X — nx_task_close에 incomplete_count > 0이면 default 거절 + force:true 플래그 우회 가드 추가. (3) Y — nx_artifact_list 신설, read는 별 도구 신설 안 하고 Read 툴 워크어라운드 유지.\n\n근거 — (1): plan-time HOW는 한 plan 세션 내 재개에만 쓰이므로 task처럼 ephemeral/bounded/persistent 분류 의미가 없음. 의미 없는 필드는 응답에서 제거가 정직. 기각 Y(tier 의미 부여): 분류 기준이 없는데 의미를 만드는 역행. 기각 Z(description에 unused 명시): cruft 영구화. 마이그레이션: nx_plan_resume 호출자(nx-plan/nx-auto-plan Step 4) 코드는 resume_tier를 사용하지 않으므로 무영향.\n\n근거 — (2): 명세(nx-run 핵심 규칙 \"미완료 태스크가 남아 있으면 중단하지 않는다\") 위반 footgun 차단. abandoned/abort 케이스는 force:true로 명시적 우회. Issue 2의 result.outcome === 'partial'은 status가 completed면 incomplete_count에 안 잡혀 자연 처리됨 — 별 게이트 불필요. 기각 Y(force 없는 항상 거절): 사이클 abort 같은 합당 케이스 차단. 기각 Z(경고만): 가드 안 하는 게 footgun 그 자체.\n\n근거 — (3): End-of-Cycle Review에서 artifact 인벤토리 일별이 필요할 수 있고 list는 1줄짜리 도구라 비용 작음. read는 Lead의 Read 툴로 충분 — 중복 도구 회피. 기각 X(list+read 둘 다): read 중복. 기각 Z(추가 안 함): list 워크어라운드(글롭+ls)도 되지만 도구 표면에서 한 번에 보여주는 쪽이 검토 동선에 자연.\n\n가정: nx_artifact_list 시그니처는 prefix?: string(필터), 응답은 [{filename, size, modified_at}] 정도. 본 결정 본문이 아니라 task 분해 시 구체화.\n\n본 cycle Issue 1·2와 정합: 본 결정들은 Issue 1(history retrieval)·Issue 2(task model)와 데이터 흐름 충돌 없음. nx_task_close 가드 추가는 Issue 2의 result.outcome 도입과 같은 cycle에서 처리되어야 일관성 유지."
+          }
+        ],
+        "research_summary": "코드 직접 점검 (src/mcp/{definitions,handlers}/{history,plan,task,artifact}.ts) 결과 6개 갭 식별. (1) nx_history_search는 cycle 전체 JSON에 대한 substring match 한 번으로 동작하며 매칭된 cycle 객체를 통째로 반환 — 필드 스코핑·스니펫·랭킹 없음. 본 plan의 history 점검 응답에서 cycle 3개로 약 150줄 컨텍스트가 즉시 소비된 것으로 갭 직접 입증. (2) tasks.json 스키마에 결과 필드 부재 — 서브에이전트 보고는 Lead transcript에만 존재해 nx-run 신규 4단계 'End-of-Cycle Review'의 cross-task 검토 신뢰성이 Lead 단기 기억에 의존. (3) nx_task_update는 status와 owner.{agent_id, resume_tier}만 변경 가능 — title/context/acceptance/approach/risk/deps/plan_issue 변경 불가, 삭제 도구도 없음. nx-run Step 4 'rework via nx_task_update' 동선과 충돌. (4) task status enum이 pending|in_progress|completed뿐이라 '실패' 구분 없음 — '실패 검색' 약속이 사실상 텍스트에 'fail' 들어간 사이클 찾기로 전락. (5) nx_plan_resume이 resume_tier:null을 항상 하드코딩 반환 — 의미론 미정. (6) nx_task_close가 incomplete_count 응답에만 표시하고 가드 없이 archive — 핵심 규칙 위반 시 발견 불가. nx_artifact는 write만 있고 read/list 없음(워크어라운드 가능). 사전 결정: 이슈 #58 사이클에서 resume identifier는 spawn-반환 agent_id 강제로 명세화 — Issue 3의 plan_resume tier 정리 결정 시 참조.",
+        "created_at": "2026-05-08T03:26:07.334Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "task 데이터 모델 확장 — TaskItem.result 추가 + nx_task_update partial update 확장",
+          "status": "completed",
+          "context": "Issue 2 결정 Combo 1. 다른 task의 base layer라 먼저 처리. 현재 TaskItem에는 결과 칸이 없고 nx_task_update는 status·owner만 변경 가능. 관련 파일: src/types/state.ts, src/mcp/definitions/task.ts, src/mcp/handlers/task.ts.",
+          "acceptance": "- TaskItem.result optional 필드 추가, zod 스키마 적용\n- nx_task_update가 title/context/acceptance/approach/risk/deps/result 각각 partial update 동작\n- result.recorded_at는 caller-supplied 무시하고 서버 ISO 스탬프\n- owner.role 변경 시도 차단(기존 동작 유지)\n- 기존 {id, status, owner.{agent_id, resume_tier}} 호출 호환 유지\n- 단위 테스트 추가 (각 partial update 케이스 + immutable 필드 차단)\n- bun run build 통과",
+          "approach": "src/types/state.ts에 TaskResultSchema = z.object({ outcome: z.enum(['success','failure','partial']), summary: z.string(), artifacts: z.array(z.string()).optional(), recorded_at: z.string() }) 추가, TaskItemSchema에 result: TaskResultSchema.optional() 추가. src/mcp/definitions/task.ts의 taskUpdateTool input에 title/context/acceptance/approach/risk/deps/result optional 필드 추가, description에 갱신 가능 필드 명시. src/mcp/handlers/task.ts의 taskUpdate에서 각 필드 partial 적용 + result.recorded_at 서버 스탬프 강제 + id/created_at은 input 스키마에서 제외(자연 차단), owner.role은 기존 잠금 유지.",
+          "risk": "정체성 침식(casual title/context/deps 편집)은 본 task 외부의 명세 규약으로 완화. 본 task에서는 코드 차단 없이 partial 허용.",
+          "plan_issue": 2,
+          "owner": {
+            "role": "engineer",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-05-08T03:44:31.877Z"
+        },
+        {
+          "id": 2,
+          "title": "nx_history_search 옵션 D 구현 — scope/mode/group_by_cycle + 셀 단위 hits",
+          "status": "completed",
+          "context": "Issue 1 결정. 현 src/mcp/handlers/history.ts:21-46는 cycle 전체 substring match + cycle-whole 반환. Task 1에서 도입된 task.result.* 어휘를 scope에 포함해야 하므로 Task 1 완료 후 진행. 관련 파일: src/mcp/definitions/history.ts, src/mcp/handlers/history.ts, src/types/state.ts(참조).",
+          "acceptance": "- scope='decision' 호출 시 plan.issues[].decision에서만 매칭\n- scope='task.result.outcome' 호출 시 task.result.outcome에서만 매칭(부재 시 빈 hits)\n- 응답이 hits[{cycle_id, path, excerpt}] 또는 mode='full'시 부모 객체 또는 query 부재시 metadata-only\n- group_by_cycle=true(default) 시 last_n은 cycle 단위, false 시 hit 단위\n- 기존 호출 (query만, scope 없음) 호환 — scope='all' default로 동작\n- 단위 테스트 추가: scope·mode·group_by_cycle·metadata-only·archived task without result 케이스\n- bun run build 통과",
+          "approach": "정의 파일에 scope/mode/group_by_cycle/last_n 입력 추가 (모두 optional, default 호환적). 핸들러에서 scope→field path dispatcher 구현(JSONPath-lite, scope 값별 고정 매핑 테이블): decision→plan.issues[*].decision, analysis→plan.issues[*].analysis[*].summary, task.result.outcome→tasks[*].result.outcome 등. snippet windower는 매칭 위치 ±120자 추출 순수 함수. mode='full'은 매칭 셀 부모(issue 또는 task) 통째 반환, mode='snippet'(default)은 path+excerpt만. query 부재 시 metadata-only 응답({cycle_id, branch, completed_at, plan.topic, issues_count, tasks_count}). group_by_cycle=true(default)일 때 hits를 cycle_id별로 묶고 last_n은 cycle 단위 적용, false면 hit 단위. archived cycles에 task.result 부재 시 자연 처리(undefined skip).",
+          "risk": "scope 어휘에 'task.result.*' 포함이지만 archived cycles에 result 없는 경우는 자연 처리. 호출자 수동 확인은 spec body 갱신(Task 5)에서 처리.",
+          "plan_issue": 1,
+          "deps": [
+            1
+          ],
+          "owner": {
+            "role": "engineer",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-05-08T03:45:05.242Z"
+        },
+        {
+          "id": 3,
+          "title": "nx_plan_resume 응답에서 resume_tier 필드 제거",
+          "status": "completed",
+          "context": "Issue 3-1 결정. plan-time HOW는 plan 세션 내 재개에만 쓰이므로 ephemeral/bounded/persistent 분류 의미 없음. 현 src/mcp/handlers/plan.ts:329-368의 planResume이 resume_tier:null 하드코딩 반환 중. Task 1과 무관하게 독립 진행 가능.",
+          "acceptance": "- nx_plan_resume 응답 shape에 resume_tier 부재 ({role, resumable, agent_id, issue_id} 만 반환)\n- 기존 호출자 영향 없음 — repo 내 호출자는 spec body 사용 예시뿐, 실 코드 호출 없음\n- 단위 테스트 추가 — resumable 분기 양쪽 검증\n- bun run build 통과",
+          "approach": "src/mcp/handlers/plan.ts의 planResume 응답 객체에서 resume_tier 키 제거. src/mcp/definitions/plan.ts의 description은 변경 불필요(input schema에 resume_tier 없음). 응답 type 사용처가 있으면 동기화.",
+          "risk": "외부 의존성 없음. 응답 shape 변경이지만 빠지는 필드라 추가 시보다 안전.",
+          "plan_issue": 3,
+          "owner": {
+            "role": "engineer",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-05-08T03:45:13.328Z"
+        },
+        {
+          "id": 4,
+          "title": "nx_task_close incomplete 가드 + nx_artifact_list 도구 신설",
+          "status": "completed",
+          "context": "Issue 3-2, 3-3 결정. close가 incomplete_count>0이면 default 거절 + force:true 우회. nx_artifact_list 신규 도구. Task 1의 result 도입과 같은 cycle에서 처리되어야 partial outcome 처리 정책 일관성.",
+          "acceptance": "- incomplete 태스크 있고 force 미제공 시 nx_task_close가 throw (에러 메시지에 incomplete task ids 포함 권장)\n- force=true 또는 incomplete_count=0일 때 기존 close 동작\n- nx_artifact_list가 prefix 필터로 동작, 응답 [{filename, size, modified_at}]\n- artifacts 디렉토리 부재 시 빈 배열 반환\n- 단위 테스트 추가 (가드 분기 양쪽 + artifact list prefix 필터링 + 디렉토리 부재)\n- bun run build 통과",
+          "approach": "(가드) src/mcp/definitions/task.ts taskCloseTool input에 force?:boolean optional 추가. src/mcp/handlers/task.ts taskClose에서 incomplete_count>0 && !force일 때 에러 throw, force=true면 기존 동작. (artifact list) src/mcp/definitions/artifact.ts에 artifactListTool 추가 (input: prefix?:string optional). src/mcp/handlers/artifact.ts에 핸들러 추가 — .nexus/state/artifacts/ readdir + stat → [{filename, size, modified_at}], prefix 일치 필터, 디렉토리 부재 시 빈 배열.",
+          "risk": "가드 도입으로 기존 close 호출자가 incomplete 태스크 가진 채 close 시도하면 깨짐. 본 repo 내 sole 호출자는 nx-run Step 5 — 거기는 모든 태스크 completed 후에만 close 한다는 명세라 영향 없음.",
+          "plan_issue": 3,
+          "deps": [
+            1
+          ],
+          "owner": {
+            "role": "engineer",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-05-08T03:45:25.825Z"
+        },
+        {
+          "id": 5,
+          "title": "스킬 명세 본문 동기화 — Issue 1·2·3 결정 반영",
+          "status": "completed",
+          "context": "Issue 1·2·3 결정의 cross-cutting 명세 변경. (a) nx-plan/nx-auto-plan Step 2의 nx_history_search 호출 패턴 — scope 도입. (b) nx-run Step 4 — 'completed 전환 시 같은 nx_task_update 호출에 result 포함' 규약. (c) PlanAnalysisEntry.role 명명 규약 — 'retrospective'(사이클 종료 합성), 'failure-note'(태스크 실패 주석) reference. 모든 코드 변경(Tasks 1~4)이 끝난 뒤 정확한 동작을 명세화.",
+          "acceptance": "- 6개 파일 모두 갱신\n- en/ko parity 유지(논리 동등, 영문 idiom 보존)\n- scope 사용 예시가 plan/auto-plan Step 2에 명시\n- nx-run에 'completed 전환 시 result 포함' 규약 명시\n- retrospective/failure-note role 규약 reference 어느 한 곳에 명시\n- 결정 본문(plan.json)과 어휘 일치 — task.result.outcome / task.result.summary / task.result.artifacts 키 그대로 사용",
+          "approach": "대상 6개 파일: spec/skills/nx-plan/body.{md,ko.md}, spec/skills/nx-auto-plan/body.{md,ko.md}, spec/skills/nx-run/body.{md,ko.md}. (a) plan/auto-plan Step 2 'Existing Knowledge First'에 scope 사용 한 줄 예시 추가 (decision/analysis/task.* 분기). (b) nx-run Step 4 End-of-Cycle Review 또는 Step 2 State Transitions 인근에 'completed 전환 시 result 포함' 규약 추가. (c) plan/auto-plan Step 4 또는 nx-run Step 4 어딘가에 retrospective/failure-note role 규약 reference 추가. en/ko parity 유지(라인 카운트 ≈, 논리 동등). 별 절 신설보다 기존 흐름에 자연스럽게 통합.",
+          "risk": "명세 갱신이 결정 본문과 어휘 차이 발생 가능. 결정 본문(plan.json)을 단일 source of truth로 간주. 본 task에서 별 절 신설 시 기존 본문 흐름을 깨면 reviewer에서 revision 요청 가능.",
+          "deps": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "owner": {
+            "role": "writer",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-05-08T03:45:46.661Z"
+        },
+        {
+          "id": 6,
+          "title": "Task 5 명세 본문 reviewer 검증",
+          "status": "completed",
+          "context": "Task 5(스킬 명세 본문 동기화)의 reviewer 페어링. 6개 파일 갱신 정확성, en/ko parity, 결정 본문(plan.json)과의 어휘 일치 검증.",
+          "acceptance": "- APPROVED 또는 REVISION_REQUIRED 보고\n- 결정 본문과 어휘 일치 검증 결과 명시 (불일치 시 구체 위치 지목)\n- en/ko parity 검증 결과 명시\n- scope/result/role 규약 세 영역 모두 본문에 반영됐는지 체크",
+          "approach": "spec/skills/{nx-plan,nx-auto-plan,nx-run}/body.{md,ko.md} 6개 파일 검토. 결정 본문(plan.json Issue 1·2·3 decision text)을 단일 source of truth로 잡고 본문이 일치하는지 cross-check. en/ko parity는 라인 카운트와 논리 매칭 둘 다 점검. 결정 본문에 명시된 어휘(task.result.outcome 등)가 그대로 쓰이는지 확인.",
+          "risk": "텍스트 일관성만 검증 — 코드 동작과 본문 일치는 별 검증 영역(런타임 검증). 본 task scope에서 제외.",
+          "deps": [
+            5
+          ],
+          "owner": {
+            "role": "reviewer",
+            "resume_tier": "ephemeral"
+          },
+          "created_at": "2026-05-08T03:45:53.614Z"
+        }
+      ]
     }
   ]
 }

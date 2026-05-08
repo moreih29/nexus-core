@@ -57,7 +57,7 @@ triggers:
 #### 기존 지식 우선
 
 - `.nexus/memory/`와 `.nexus/context/`를 먼저 읽는다.
-- `nx_history_search`로 유사 주제의 과거 결정·실패·회고가 있는지 확인한다.
+- `nx_history_search`로 유사 주제의 과거 결정·실패·회고가 있는지 확인한다. `scope` 파라미터(`'decision'`, `'analysis'`, `'task.result.outcome'` 등)로 조회 셀 유형을 좁혀 컨텍스트 소비를 줄인다.
 - 필요한 정보가 이미 있으면 그대로 활용하고, 서브에이전트 스폰은 생략하거나 범위를 줄인다.
 
 #### 접근법 선택

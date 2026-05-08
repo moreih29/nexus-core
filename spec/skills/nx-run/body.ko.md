@@ -44,6 +44,7 @@ triggers:
 #### 상태 전환
 
 - 태스크 시작 시 `nx_task_update`로 `in_progress`, 완료 시 `completed`로 전환한다.
+- 태스크를 `completed`로 전환할 때 같은 `nx_task_update` 호출에 `result: {outcome, summary, artifacts?}`를 함께 포함한다. `recorded_at`은 서버 스탬프. `status`는 워크플로우 단계, `result.outcome`은 결말을 나타내며 두 필드는 직교한다.
 - 서브에이전트를 새로 스폰한 경우 같은 `nx_task_update` 호출에 `owner={role, agent_id: <스폰에서 얻은 id>, resume_tier: <ephemeral|bounded|persistent>}`를 함께 넘겨 이후 `nx_task_resume`가 이 id를 돌려줄 수 있게 한다.
 - 같은 타이밍에 `{{task_register label="<label>" state=in_progress}}` / `{{task_register label="<label>" state=completed}}`로 진행 추적도 갱신한다. 초기 등록 때 정한 label을 그대로 재사용한다.
 
@@ -119,6 +120,8 @@ Lead는 각 태스크의 `acceptance` 필드를 Check 서브에이전트에 넘�
 **HOW 자문**
 
 기본적으로 도메인 매칭 HOW를 스폰해 cross-task 검토를 받는다 — 코드는 Architect, UX는 Designer, 리서치 방법론은 Postdoc. **자문하지 않을 경우 사이클 종료 보고에 사유를 명시한다** — 정당 사유 예시: 기존 결정·회고가 사이클 결과를 이미 커버 / 단일 태스크 사이클로 cross-task 검토 대상이 없음 / 변경 반경이 한 모듈에 집중되고 비가역성이 낮음.
+
+`nx_plan_analysis_add`로 사이클 종료 합성이나 태스크 실패 주석을 기록할 때 `role='retrospective'`(사이클 종료 합성)와 `role='failure-note'`(태스크 실패 주석)를 예약어로 사용한다. 두 값은 `nx_history_search`의 분류 기준이 되며, 그 외 임의 role 값도 허용된다.
 
 **판단 결과별 액션**
 

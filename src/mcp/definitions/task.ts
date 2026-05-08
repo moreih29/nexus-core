@@ -7,6 +7,12 @@ const TaskOwnerUpdateSchema = z.object({
   resume_tier: ResumeTierSchema.nullable().optional(),
 });
 
+const TaskResultInputSchema = z.object({
+  outcome: z.enum(["success", "failure", "partial"]),
+  summary: z.string(),
+  artifacts: z.array(z.string()).optional(),
+});
+
 export const taskAddTool = {
   group: "task",
   name: "nx_task_add",
@@ -49,15 +55,28 @@ export const taskListTool = {
 export const taskUpdateTool = {
   group: "task",
   name: "nx_task_update",
-  description: "Partially update task status or owner metadata",
+  description:
+    "Partially update a task. Updatable fields: status, title, context, acceptance, approach, risk, deps, owner (agent_id/resume_tier only), result (outcome/summary/artifacts). result.recorded_at is always set by the server. owner.role and id/created_at cannot be changed.",
   inputSchema: {
     id: z.number().describe("Task ID to update"),
     status: z
       .enum(["pending", "in_progress", "completed"])
       .optional()
       .describe("New status"),
+    title: z.string().optional().describe("New title"),
+    context: z.string().optional().describe("New context"),
+    acceptance: z.string().optional().describe("New acceptance criteria"),
+    approach: z.string().optional().describe("New approach"),
+    risk: z.string().optional().describe("New risk description"),
+    deps: z
+      .array(z.number())
+      .optional()
+      .describe("New dependency task ID list"),
     owner: TaskOwnerUpdateSchema.optional().describe(
       "Partial owner update. Only agent_id and resume_tier are allowed; role cannot be changed",
+    ),
+    result: TaskResultInputSchema.optional().describe(
+      "Task result. recorded_at is set by the server and must not be supplied",
     ),
   },
 } satisfies NxToolDefinition;
@@ -66,8 +85,15 @@ export const taskCloseTool = {
   group: "task",
   name: "nx_task_close",
   description:
-    "Close the current cycle, archive it to history.json, and remove plan.json and tasks.json",
-  inputSchema: {},
+    "Close the current cycle, archive it to history.json, and remove plan.json and tasks.json. Throws if any tasks are incomplete unless force is true.",
+  inputSchema: {
+    force: z
+      .boolean()
+      .optional()
+      .describe(
+        "Skip the incomplete-task guard and close anyway. Defaults to false.",
+      ),
+  },
 } satisfies NxToolDefinition;
 
 export const taskResumeTool = {

@@ -236,6 +236,361 @@ test("supports concurrent nx_task_add calls without losing tasks or IDs", async 
   });
 });
 
+test("nx_task_update patches title, context, acceptance, approach, risk, and deps", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Original title",
+            context: "Original context",
+            acceptance: "Original acceptance",
+            owner: { role: "engineer" },
+          },
+        });
+
+        // Also add a second task so deps can reference it
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Dep task",
+            context: "ctx",
+            acceptance: "done",
+            owner: { role: "lead" },
+          },
+        });
+
+        const updateResult = await client.callTool({
+          name: "nx_task_update",
+          arguments: {
+            id: 1,
+            title: "Updated title",
+            context: "Updated context",
+            acceptance: "Updated acceptance",
+            approach: "New approach",
+            risk: "Some risk",
+            deps: [2],
+          },
+        });
+
+        const payload = parseTextResult(updateResult) as {
+          task: {
+            title: string;
+            context: string;
+            acceptance: string;
+            approach: string;
+            risk: string;
+            deps: number[];
+          };
+        };
+
+        expect(payload.task.title).toBe("Updated title");
+        expect(payload.task.context).toBe("Updated context");
+        expect(payload.task.acceptance).toBe("Updated acceptance");
+        expect(payload.task.approach).toBe("New approach");
+        expect(payload.task.risk).toBe("Some risk");
+        expect(payload.task.deps).toEqual([2]);
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
+test("nx_task_update sets result with server-stamped recorded_at", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Result test task",
+            context: "ctx",
+            acceptance: "done",
+            owner: { role: "engineer" },
+          },
+        });
+
+        const before = new Date();
+
+        const updateResult = await client.callTool({
+          name: "nx_task_update",
+          arguments: {
+            id: 1,
+            result: {
+              outcome: "success",
+              summary: "All done",
+              artifacts: ["path/to/file.ts"],
+            },
+          },
+        });
+
+        const after = new Date();
+
+        const payload = parseTextResult(updateResult) as {
+          task: {
+            result: {
+              outcome: string;
+              summary: string;
+              artifacts: string[];
+              recorded_at: string;
+            };
+          };
+        };
+
+        expect(payload.task.result.outcome).toBe("success");
+        expect(payload.task.result.summary).toBe("All done");
+        expect(payload.task.result.artifacts).toEqual(["path/to/file.ts"]);
+
+        const stamp = new Date(payload.task.result.recorded_at);
+        expect(stamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
+        expect(stamp.getTime()).toBeLessThanOrEqual(after.getTime());
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
+test("nx_task_update result without artifacts stores no artifacts field", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "No artifact task",
+            context: "ctx",
+            acceptance: "done",
+            owner: { role: "engineer" },
+          },
+        });
+
+        const updateResult = await client.callTool({
+          name: "nx_task_update",
+          arguments: {
+            id: 1,
+            result: { outcome: "failure", summary: "Something went wrong" },
+          },
+        });
+
+        const payload = parseTextResult(updateResult) as {
+          task: { result: Record<string, unknown> };
+        };
+
+        expect(payload.task.result.outcome).toBe("failure");
+        expect("artifacts" in payload.task.result).toBe(false);
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
+test("nx_task_update does not change owner.role", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Role guard test",
+            context: "ctx",
+            acceptance: "done",
+            owner: { role: "engineer" },
+          },
+        });
+
+        // owner object in schema only accepts agent_id and resume_tier; role is absent
+        const updateResult = await client.callTool({
+          name: "nx_task_update",
+          arguments: {
+            id: 1,
+            owner: { agent_id: "new-agent" },
+          },
+        });
+
+        const payload = parseTextResult(updateResult) as {
+          task: { owner: { role: string; agent_id: string } };
+        };
+
+        expect(payload.task.owner.role).toBe("engineer");
+        expect(payload.task.owner.agent_id).toBe("new-agent");
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
+test("nx_task_update legacy call with only id+status+owner still works", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Compat task",
+            context: "ctx",
+            acceptance: "done",
+            owner: {
+              role: "lead",
+              agent_id: "agent-old",
+              resume_tier: "bounded",
+            },
+          },
+        });
+
+        const updateResult = await client.callTool({
+          name: "nx_task_update",
+          arguments: {
+            id: 1,
+            status: "in_progress",
+            owner: { agent_id: "agent-new", resume_tier: null },
+          },
+        });
+
+        const payload = parseTextResult(updateResult) as {
+          task: { status: string; owner: Record<string, unknown> };
+        };
+
+        expect(payload.task.status).toBe("in_progress");
+        expect(payload.task.owner.agent_id).toBe("agent-new");
+        expect("resume_tier" in payload.task.owner).toBe(false);
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
+test("nx_task_close throws when incomplete tasks exist and force is not set", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Incomplete task A",
+            context: "ctx",
+            acceptance: "done",
+            owner: { role: "lead" },
+          },
+        });
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Incomplete task B",
+            context: "ctx",
+            acceptance: "done",
+            owner: { role: "lead" },
+          },
+        });
+
+        const result = await client.callTool({
+          name: "nx_task_close",
+          arguments: {},
+        });
+
+        expect(result.isError).toBe(true);
+        const errorText = readErrorText(result);
+        expect(errorText).toContain("1");
+        expect(errorText).toContain("2");
+        expect(errorText).toContain("force:true");
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
+test("nx_task_close with force:true closes even when tasks are incomplete", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Incomplete task",
+            context: "ctx",
+            acceptance: "done",
+            owner: { role: "lead" },
+          },
+        });
+
+        const result = await client.callTool({
+          name: "nx_task_close",
+          arguments: { force: true },
+        });
+
+        expect(result.isError).toBeFalsy();
+        const payload = parseTextResult(result) as {
+          closed: boolean;
+          incomplete_count: number;
+        };
+        expect(payload.closed).toBe(true);
+        expect(payload.incomplete_count).toBe(1);
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
+test("nx_task_close succeeds without force when all tasks are completed", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Done task",
+            context: "ctx",
+            acceptance: "done",
+            owner: { role: "lead" },
+          },
+        });
+        await client.callTool({
+          name: "nx_task_update",
+          arguments: { id: 1, status: "completed" },
+        });
+
+        const result = await client.callTool({
+          name: "nx_task_close",
+          arguments: {},
+        });
+
+        expect(result.isError).toBeFalsy();
+        const payload = parseTextResult(result) as {
+          closed: boolean;
+          incomplete_count: number;
+        };
+        expect(payload.closed).toBe(true);
+        expect(payload.incomplete_count).toBe(0);
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
 test("removes plan.json and tasks.json when closing the current cycle", async () => {
   await withTempProjectRoot(async (projectRoot: string) => {
     await withNexusEnv(projectRoot, async () => {
@@ -258,6 +613,10 @@ test("removes plan.json and tasks.json when closing the current cycle", async ()
             acceptance: "Done",
             owner: { role: "lead" },
           },
+        });
+        await client.callTool({
+          name: "nx_task_update",
+          arguments: { id: 1, status: "completed" },
         });
         await client.callTool({
           name: "nx_task_close",

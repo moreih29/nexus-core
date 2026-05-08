@@ -41,6 +41,15 @@ export const TaskOwnerSchema = z.object({
 });
 export type TaskOwner = z.infer<typeof TaskOwnerSchema>;
 
+// TaskResult
+export const TaskResultSchema = z.object({
+  outcome: z.enum(["success", "failure", "partial"]),
+  summary: z.string(),
+  artifacts: z.array(z.string()).optional(),
+  recorded_at: z.string(),
+});
+export type TaskResult = z.infer<typeof TaskResultSchema>;
+
 // TaskItem
 export const TaskItemSchema = z.object({
   id: z.number(),
@@ -53,6 +62,7 @@ export const TaskItemSchema = z.object({
   plan_issue: z.number().optional(),
   deps: z.array(z.number()).optional(),
   owner: TaskOwnerSchema,
+  result: TaskResultSchema.optional(),
   created_at: z.string(),
 });
 export type TaskItem = z.infer<typeof TaskItemSchema>;

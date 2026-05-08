@@ -57,7 +57,7 @@ Understand code, core knowledge, and prior decisions before forming the planning
 #### Existing Knowledge First
 
 - Read `.nexus/memory/` and `.nexus/context/` first.
-- Use `nx_history_search` to check for prior decisions, failures, and retrospectives on similar topics.
+- Use `nx_history_search` to check for prior decisions, failures, and retrospectives on similar topics. Narrow the call with `scope` (e.g., `'decision'`, `'analysis'`, `'task.result.outcome'`) to retrieve only the relevant cell type and reduce context consumption.
 - If the needed information is already available, use it directly and skip or narrow subagent spawning.
 
 #### Approach Selection

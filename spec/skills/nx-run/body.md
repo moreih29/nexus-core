@@ -44,6 +44,7 @@ For each task, call `{{task_register label="<label>" state=pending}}` to registe
 #### State Transitions
 
 - On task start, update to `in_progress` via `nx_task_update`; on completion, update to `completed`.
+- When transitioning a task to `completed`, include `result: {outcome, summary, artifacts?}` in the same `nx_task_update` call. `recorded_at` is server-stamped. Note that `status` records the workflow stage and `result.outcome` records the end verdict — they are orthogonal.
 - When a subagent is freshly spawned, include `owner={role, agent_id: <id from spawn>, resume_tier: <ephemeral|bounded|persistent>}` in the same `nx_task_update` call so that a future `nx_task_resume` can return this id.
 - At the same moment, update progress tracking with `{{task_register label="<label>" state=in_progress}}` / `{{task_register label="<label>" state=completed}}`. Reuse the exact label set at initial registration.
 
@@ -119,6 +120,8 @@ Once all tasks reach `completed` state, Lead reviews the cycle and decides wheth
 **HOW consultation**
 
 Spawning the domain-matched HOW for cross-task review is the default — Architect for code, Designer for UX, Postdoc for research methodology. **If you skip the consultation, state the reason in the cycle-end report** — justified-skip examples: existing decisions or retrospectives already cover the cycle outcome / a single-task cycle with no cross-task review target / change radius is contained within one module with low irreversibility.
+
+When recording cycle-end synthesis or task failure notes via `nx_plan_analysis_add`, use `role='retrospective'` for end-of-cycle synthesis and `role='failure-note'` for per-task failure annotations. These two values are reserved as classification anchors for `nx_history_search`; arbitrary role values are also permitted.
 
 **Actions by decision**
 

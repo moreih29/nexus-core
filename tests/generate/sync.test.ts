@@ -123,7 +123,7 @@ test("syncSpecsToTarget writes claude markdown assets", () => {
     expect(nxAutoPlan).toContain(
       "Do not substitute a human-readable assigned name",
     );
-    expect(lead).toContain("Do not substitute a human-readable assigned name");
+    expect(lead).toContain("do not substitute the assigned name");
   });
 });
 

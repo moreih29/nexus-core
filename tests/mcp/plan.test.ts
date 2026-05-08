@@ -136,6 +136,31 @@ test("supports concurrent nx_plan_update add calls without ID collisions", async
   });
 });
 
+test("nx_plan_resume returns resumable:false without resume_tier when no plan exists", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        const resumeResult = await client.callTool({
+          name: "nx_plan_resume",
+          arguments: { role: "architect" },
+        });
+        const payload = parseTextResult(resumeResult);
+        expect(payload).toEqual({
+          role: "architect",
+          resumable: false,
+          agent_id: null,
+          issue_id: null,
+        });
+        expect(payload).not.toHaveProperty("resume_tier");
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
 test("nx_plan_decide records only the final decision and does not append analysis", async () => {
   await withTempProjectRoot(async (projectRoot: string) => {
     await withNexusEnv(projectRoot, async () => {
@@ -201,13 +226,14 @@ test("nx_plan_decide records only the final decision and does not append analysi
           name: "nx_plan_resume",
           arguments: { role: "architect" },
         });
-        expect(parseTextResult(resumeResult)).toEqual({
+        const resumePayload = parseTextResult(resumeResult);
+        expect(resumePayload).toEqual({
           role: "architect",
           resumable: true,
           agent_id: "agent-1",
-          resume_tier: null,
           issue_id: 1,
         });
+        expect(resumePayload).not.toHaveProperty("resume_tier");
       } finally {
         await close();
       }
