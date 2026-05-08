@@ -7,6 +7,12 @@ const TaskOwnerUpdateSchema = z.object({
   resume_tier: ResumeTierSchema.nullable().optional(),
 });
 
+const TaskResultInputSchema = z.object({
+  outcome: z.enum(["success", "failure", "partial"]),
+  summary: z.string(),
+  artifacts: z.array(z.string()).optional(),
+});
+
 export const taskAddTool = {
   group: "task",
   name: "nx_task_add",
@@ -17,9 +23,14 @@ export const taskAddTool = {
     acceptance: z.string().describe("Definition of done. Required"),
     approach: z.string().optional().describe("Implementation approach"),
     risk: z.string().optional().describe("Known risk"),
-    plan_issue: z.number().optional().describe("Related plan issue ID"),
+    plan_issue: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Related plan issue ID"),
     deps: z
-      .array(z.number())
+      .array(z.coerce.number().int().positive())
       .optional()
       .describe("List of dependency task IDs"),
     owner: TaskOwnerSchema.describe("Owner metadata. role is required"),
@@ -49,15 +60,26 @@ export const taskListTool = {
 export const taskUpdateTool = {
   group: "task",
   name: "nx_task_update",
-  description: "Partially update task status or owner metadata",
+  description:
+    "Partially update a task. Updatable fields: status, acceptance, approach, risk, owner (agent_id/resume_tier only), result (outcome/summary/artifacts). result.recorded_at is always set by the server. id, title, context, deps, created_at, owner.role are immutable — to change identity-carrying fields, delete and re-add the task instead.",
   inputSchema: {
-    id: z.number().describe("Task ID to update"),
+    id: z.coerce
+      .number()
+      .int()
+      .positive()
+      .describe("Task ID to update"),
     status: z
       .enum(["pending", "in_progress", "completed"])
       .optional()
       .describe("New status"),
+    acceptance: z.string().optional().describe("New acceptance criteria"),
+    approach: z.string().optional().describe("New approach"),
+    risk: z.string().optional().describe("New risk description"),
     owner: TaskOwnerUpdateSchema.optional().describe(
       "Partial owner update. Only agent_id and resume_tier are allowed; role cannot be changed",
+    ),
+    result: TaskResultInputSchema.optional().describe(
+      "Task result. recorded_at is set by the server and must not be supplied",
     ),
   },
 } satisfies NxToolDefinition;
@@ -66,8 +88,15 @@ export const taskCloseTool = {
   group: "task",
   name: "nx_task_close",
   description:
-    "Close the current cycle, archive it to history.json, and remove plan.json and tasks.json",
-  inputSchema: {},
+    "Close the current cycle, archive it to history.json, and remove plan.json and tasks.json. Throws if any tasks are incomplete unless force is true.",
+  inputSchema: {
+    force: z
+      .boolean()
+      .optional()
+      .describe(
+        "Skip the incomplete-task guard and close anyway. Defaults to false.",
+      ),
+  },
 } satisfies NxToolDefinition;
 
 export const taskResumeTool = {
@@ -75,7 +104,11 @@ export const taskResumeTool = {
   name: "nx_task_resume",
   description: "Get task resume routing information based on owner.resume_tier",
   inputSchema: {
-    id: z.number().describe("Task ID to look up"),
+    id: z.coerce
+      .number()
+      .int()
+      .positive()
+      .describe("Task ID to look up"),
   },
 } satisfies NxToolDefinition;
 

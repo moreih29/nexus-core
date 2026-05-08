@@ -44,6 +44,7 @@ triggers:
 #### 상태 전환
 
 - 태스크 시작 시 `nx_task_update`로 `in_progress`, 완료 시 `completed`로 전환한다.
+- 태스크를 `completed`로 전환할 때 같은 `nx_task_update` 호출에 `result: {outcome, summary, artifacts?}`를 함께 포함한다. `recorded_at`은 서버 스탬프. `status`는 워크플로우 단계, `result.outcome`은 결말을 나타내며 두 필드는 직교한다.
 - 서브에이전트를 새로 스폰한 경우 같은 `nx_task_update` 호출에 `owner={role, agent_id: <스폰에서 얻은 id>, resume_tier: <ephemeral|bounded|persistent>}`를 함께 넘겨 이후 `nx_task_resume`가 이 id를 돌려줄 수 있게 한다.
 - 같은 타이밍에 `{{task_register label="<label>" state=in_progress}}` / `{{task_register label="<label>" state=completed}}`로 진행 추적도 갱신한다. 초기 등록 때 정한 label을 그대로 재사용한다.
 
@@ -61,28 +62,84 @@ triggers:
 
 ### 에스컬레이션 체인
 
-Do와 Check의 핑퐁을 기본 경로로 삼는다. Check가 연속 2회 실패하면 HOW로, HOW 검토 후에도 실패하면 Lead가 사용자에게 에스컬레이션한다.
+Check 결과를 받은 뒤 Lead가 라우팅한다. Verdict와 Flagged issues 분류 두 입력을 본다.
 
-최대 경로:
+#### Verdict 입력
+
+| 검증자 | PASS | 라우팅 진입 |
+|---|---|---|
+| Tester | PASS | FAIL |
+| Reviewer | APPROVED | REVISION_REQUIRED · BLOCKED |
+
+#### 라우팅 규칙
+
+Lead는 Check 보고서의 Flagged issues 분류로 다음 액션을 결정한다.
+
+| Flagged issues 분류 | 다음 액션 |
+|---|---|
+| 설계 결함 · 아키텍처 변경 필요 | 도메인 매칭 HOW 스폰 → 자문 → Do 재위임 |
+| 범위 충돌 · 사용자 결정 필요 · 판단 모호 | 사용자 보고 · 방향 요청 |
+| 환경 문제 · 검증 불가(UNVERIFIABLE 포함) | 환경 수정·재시도. 해소 불가하면 사용자 보고 |
+| 그 외 (단순 실패) | same Do 재위임 (카운트 +1) |
+
+분류 명확한 실패는 카운트 0회에서도 즉시 분기한다. 단순 실패만 누적 카운트 대상.
+
+#### 단순 실패 누적 카운트
 
 ```
-Do → Check(실패) → Do → Check(실패) → HOW(검토) → Do → Check(실패) → Lead → 사용자
+Do → Check(실패) → Do → Check(실패) → HOW → Do → Check(실패) → Lead → 사용자
 ```
 
-- **Check 1회 실패** → 같은 Do에게 재위임(재개 가능)해 실패 피드백을 전달하고 수정 후 다시 Check를 돌린다.
-- **Check 2회 연속 실패** → 태스크 도메인에 맞는 HOW 에이전트를 Lead가 선정·스폰해 접근법을 검토·조정받고 Do로 재위임한다.
-- **HOW 검토 후에도 Check 실패** → Lead가 진단 내용과 함께 사용자에게 보고하고 방향을 요청한다.
+- **1회** → same Do 재위임 (실패 피드백 첨부)
+- **2회 연속** → 도메인 매칭 HOW 스폰 → 접근법 자문 → Do 재위임
+- **HOW 자문 후에도 실패** → 진단 내용과 함께 사용자 보고, 방향 요청
+
+#### Do 도중 통보 처리
+
+Do/Check 에이전트는 자체 본문 정의에 따라 task 도중 또는 완료 보고에서 직접 통보를 보낼 수 있다. Lead는 그 통보를 받으면 위 라우팅 규칙을 즉시 적용한다 — 체인 카운트와 무관하다.
 
 ### 3단계: 검증
 
-각 태스크의 `acceptance` 필드를 기준으로 Check 서브에이전트가 자율적으로 검증한다. 세부 판정 방식은 서브에이전트에게 맡긴다.
+Lead는 각 태스크의 `acceptance` 필드를 Check 서브에이전트에 넘겨 검증을 위임한다. 세부 판정 방식은 서브에이전트의 자율 영역.
 
 - **Tester** — 코드 검증 (engineer 산출물).
 - **Reviewer** — 문서 검증 (writer 산출물).
 
 검증 실패는 위의 에스컬레이션 체인을 따른다.
 
-### 4단계: 완료
+### 4단계: 사이클 종료 검토
+
+모든 태스크가 `completed` 상태가 된 뒤 Lead가 사이클을 검토하고 종료 여부를 판단한다.
+
+**검토 범위**
+
+- 원래 사용자 요청과 결과의 정렬 — 빠진 영역이 있는가
+- 태스크 간 산출물 통합 — 결과들이 서로 모순 없이 작동하는가
+- 요청 안에서 명시되지 않았지만 의도상 필요한 후속이 있는가
+
+**HOW 자문**
+
+기본적으로 도메인 매칭 HOW를 스폰해 cross-task 검토를 받는다 — 코드는 Architect, UX는 Designer, 리서치 방법론은 Postdoc. **자문하지 않을 경우 사이클 종료 보고에 사유를 명시한다** — 정당 사유 예시: 기존 결정·회고가 사이클 결과를 이미 커버 / 단일 태스크 사이클로 cross-task 검토 대상이 없음 / 변경 반경이 한 모듈에 집중되고 비가역성이 낮음.
+
+`nx_plan_analysis_add`로 사이클 종료 합성이나 태스크 실패 주석을 기록할 때 `role='retrospective'`(사이클 종료 합성)와 `role='failure-note'`(태스크 실패 주석)를 예약어로 사용한다. 두 값은 `nx_history_search`의 분류 기준이 되며, 그 외 임의 role 값도 허용된다.
+
+**판단 결과별 액션**
+
+| 판단 | 액션 |
+|---|---|
+| 추가 작업 없음 | 5단계 완료로 진입 |
+| 누락 발견 | `nx_task_add`로 새 태스크 등록 → 2단계 실행 복귀 |
+| 기존 태스크 재작업 필요 | `nx_task_update`로 재오픈 → 2단계 실행 복귀 |
+
+**반복 한도**
+
+검토는 사이클당 **최대 2회**(초기 + 재검토 1회). 추가 작업 후 모든 태스크가 다시 `completed`가 되면 2회째 검토를 수행한다. 2회째에도 누락이 남아 있으면 자동 등록 없이 사용자에게 보고하고 사이클 연장 여부를 결정 받는다 — 추가 사이클은 사용자 결정 영역.
+
+**범위 규율**
+
+원래 사용자 요청 커버리지 안에서만 누락을 잡는다. 요청 밖 품질 개선 아이디어는 새 plan 사이클로 미룬다 — 현 사이클의 scope creep을 막는다.
+
+### 5단계: 완료
 
 순서대로 실행한다.
 
@@ -104,7 +161,8 @@ Do → Check(실패) → Do → Check(실패) → HOW(검토) → Do → Check(�
 | 1. 준비 | Lead | Branch Guard, `nx_task_list`로 tasks.json 확인 / 없으면 nx-auto-plan 호출 |
 | 2. 실행 | Do 서브에이전트 | owner별 스폰, `nx_task_resume`로 재개 판단, `nx_task_update`로 상태 전환 |
 | 3. 검증 | Check 서브에이전트 | `acceptance` 기준으로 Tester(코드)/Reviewer(문서) 검증 |
-| 4. 완료 | Lead | `nx_task_close`, git commit, 보고 |
+| 4. 사이클 종료 검토 | Lead (필요 시 HOW) | 사이클 차원 검토 후 추가 작업 등록 또는 종료 판단 |
+| 5. 완료 | Lead | `nx_task_close`, git commit, 보고 |
 
 ---
 

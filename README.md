@@ -81,7 +81,7 @@ Nexus 런타임이 기대하는 세 가지 역할을 각 하네스에서 와이�
 
 | 카테고리 | 역할 | 에이전트 |
 |---|---|---|
-| HOW | 기술 설계·분석·전략 자문 | architect, designer, postdoc, strategist |
+| HOW | 기술 설계·분석 자문 | architect, designer, postdoc |
 | DO | 실행 | engineer, writer, researcher |
 | CHECK | 검증 | reviewer, tester |
 

@@ -13,4 +13,21 @@ export const artifactWriteTool = {
   },
 } satisfies NxToolDefinition;
 
-export const artifactToolDefinitions = [artifactWriteTool] as const;
+export const artifactListTool = {
+  group: "artifact",
+  name: "nx_artifact_list",
+  description: "List artifacts in the state artifacts directory",
+  inputSchema: {
+    prefix: z
+      .string()
+      .optional()
+      .describe(
+        "Filter results to filenames that start with this prefix. Omit to list all artifacts.",
+      ),
+  },
+} satisfies NxToolDefinition;
+
+export const artifactToolDefinitions = [
+  artifactWriteTool,
+  artifactListTool,
+] as const;

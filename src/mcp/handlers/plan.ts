@@ -335,7 +335,6 @@ const planToolBindings: ReadonlyArray<NxToolBinding> = [
           role,
           resumable: false,
           agent_id: null,
-          resume_tier: null,
           issue_id: null,
         });
       }
@@ -361,7 +360,6 @@ const planToolBindings: ReadonlyArray<NxToolBinding> = [
         role,
         resumable: latestEntry !== null,
         agent_id: latestEntry?.agent_id ?? null,
-        resume_tier: null,
         issue_id: latestIssueId,
       });
     },

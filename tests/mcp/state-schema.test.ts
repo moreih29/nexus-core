@@ -64,7 +64,7 @@ test("emitted state files conform to the runtime schemas", async () => {
 
         await client.callTool({
           name: "nx_task_close",
-          arguments: {},
+          arguments: { force: true },
         });
 
         const history = readJsonFile<unknown>(
