@@ -63,12 +63,9 @@ interface TaskResultInput {
 interface TaskUpdateArgs {
   id: number;
   status?: TaskStatus;
-  title?: string;
-  context?: string;
   acceptance?: string;
   approach?: string;
   risk?: string;
-  deps?: number[];
   owner?: TaskOwnerUpdate;
   result?: TaskResultInput;
 }
@@ -229,12 +226,9 @@ const taskToolBindings: ReadonlyArray<NxToolBinding> = [
     handler: async ({
       id,
       status,
-      title,
-      context,
       acceptance,
       approach,
       risk,
-      deps,
       owner,
       result,
     }: TaskUpdateArgs) => {
@@ -255,14 +249,6 @@ const taskToolBindings: ReadonlyArray<NxToolBinding> = [
             task.status = status;
           }
 
-          if (title !== undefined) {
-            task.title = title;
-          }
-
-          if (context !== undefined) {
-            task.context = context;
-          }
-
           if (acceptance !== undefined) {
             task.acceptance = acceptance;
           }
@@ -273,10 +259,6 @@ const taskToolBindings: ReadonlyArray<NxToolBinding> = [
 
           if (risk !== undefined) {
             task.risk = risk;
-          }
-
-          if (deps !== undefined) {
-            task.deps = deps;
           }
 
           if (owner !== undefined) {

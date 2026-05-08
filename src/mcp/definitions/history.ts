@@ -28,7 +28,9 @@ export const historySearchTool = {
         "Full-text query applied to the specified scope. Omit for metadata-only listing.",
       ),
     last_n: z
-      .number()
+      .coerce.number()
+      .int()
+      .positive()
       .optional()
       .describe(
         "When group_by_cycle=true (default): max number of matching cycles to return. When group_by_cycle=false: max number of hits. Defaults to 10.",

@@ -236,7 +236,7 @@ test("supports concurrent nx_task_add calls without losing tasks or IDs", async 
   });
 });
 
-test("nx_task_update patches title, context, acceptance, approach, risk, and deps", async () => {
+test("nx_task_update patches acceptance, approach, and risk (rework lane)", async () => {
   await withTempProjectRoot(async (projectRoot: string) => {
     await withNexusEnv(projectRoot, async () => {
       const { client, close } = await createInMemoryClient();
@@ -252,7 +252,55 @@ test("nx_task_update patches title, context, acceptance, approach, risk, and dep
           },
         });
 
-        // Also add a second task so deps can reference it
+        const updateResult = await client.callTool({
+          name: "nx_task_update",
+          arguments: {
+            id: 1,
+            acceptance: "Updated acceptance",
+            approach: "New approach",
+            risk: "Some risk",
+          },
+        });
+
+        const payload = parseTextResult(updateResult) as {
+          task: {
+            title: string;
+            context: string;
+            acceptance: string;
+            approach: string;
+            risk: string;
+          };
+        };
+
+        expect(payload.task.acceptance).toBe("Updated acceptance");
+        expect(payload.task.approach).toBe("New approach");
+        expect(payload.task.risk).toBe("Some risk");
+        // identity-carrying fields untouched
+        expect(payload.task.title).toBe("Original title");
+        expect(payload.task.context).toBe("Original context");
+      } finally {
+        await close();
+      }
+    });
+  });
+});
+
+test("nx_task_update silently strips immutable fields (title, context, deps)", async () => {
+  await withTempProjectRoot(async (projectRoot: string) => {
+    await withNexusEnv(projectRoot, async () => {
+      const { client, close } = await createInMemoryClient();
+
+      try {
+        await client.callTool({
+          name: "nx_task_add",
+          arguments: {
+            title: "Original title",
+            context: "Original context",
+            acceptance: "Original acceptance",
+            owner: { role: "engineer" },
+          },
+        });
+
         await client.callTool({
           name: "nx_task_add",
           arguments: {
@@ -267,13 +315,15 @@ test("nx_task_update patches title, context, acceptance, approach, risk, and dep
           name: "nx_task_update",
           arguments: {
             id: 1,
-            title: "Updated title",
-            context: "Updated context",
-            acceptance: "Updated acceptance",
-            approach: "New approach",
-            risk: "Some risk",
+            // These fields are not in taskUpdateTool input schema and are
+            // silently stripped by Zod. The handler never sees them.
+            title: "Should not change",
+            context: "Should not change",
             deps: [2],
-          },
+            // A real allowed field to confirm the call still applies the
+            // valid portion of the input.
+            acceptance: "Updated acceptance",
+          } as Record<string, unknown>,
         });
 
         const payload = parseTextResult(updateResult) as {
@@ -281,18 +331,14 @@ test("nx_task_update patches title, context, acceptance, approach, risk, and dep
             title: string;
             context: string;
             acceptance: string;
-            approach: string;
-            risk: string;
-            deps: number[];
+            deps?: number[];
           };
         };
 
-        expect(payload.task.title).toBe("Updated title");
-        expect(payload.task.context).toBe("Updated context");
+        expect(payload.task.title).toBe("Original title");
+        expect(payload.task.context).toBe("Original context");
+        expect(payload.task.deps).toBeUndefined();
         expect(payload.task.acceptance).toBe("Updated acceptance");
-        expect(payload.task.approach).toBe("New approach");
-        expect(payload.task.risk).toBe("Some risk");
-        expect(payload.task.deps).toEqual([2]);
       } finally {
         await close();
       }
