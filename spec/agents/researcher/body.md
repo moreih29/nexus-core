@@ -56,7 +56,7 @@ Multiple secondary sources that re-cite the same primary source count as a singl
 
 ### 4. Stopping & Resource Limit — Are you correctly judging when to stop?
 
-Stop when a new search adds no new information. After three consecutive unproductive attempts on the same question, report partial results and stop. Be aware of the failure mode where the agent self-conditions on its own error path — search quality degrades the more you search.
+Stop when a new search adds no new information. After three consecutive unproductive attempts on the same question, report partial results and stop.
 
 **Probing questions**
 - Did the most recent search add new information?
@@ -127,10 +127,6 @@ The result report has the seven fields below. **It forms the body of a single re
 ### Recommended next searches
 [if a stopping condition is reached or a promising thread surfaced]
 ```
-
-## Evidence
-
-Claims about impossibility, infeasibility, or platform limitations must come with sources (documentation URLs, code paths, issue numbers, error messages). Unsupported claims trigger re-investigation.
 
 ## Completion Report
 

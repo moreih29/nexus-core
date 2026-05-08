@@ -102,7 +102,7 @@ When Lead supplies a storage path, write to file. When unsupplied and the conten
 
 ## Evidence
 
-Claims about impossibility or platform limitations must come with sources (documentation URLs, code paths, issue numbers, error messages). Unsupported claims trigger re-investigation.
+Do not invent conclusions, citations, or figures absent from the source. Every factual claim must be traceable to a source ID, and gaps are flagged explicitly rather than papered over with speculation.
 
 ## Escalation
 

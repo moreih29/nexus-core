@@ -31,7 +31,7 @@ Couple along the axis of change. Domain and feature (vertical) take precedence o
 
 ### 2. Visibility & Predictability — Can a reader immediately understand it?
 
-Behavior of a unit must be inferable from that unit alone (Locality of Behavior). LLM agents tend to lean on clever abstractions — "can a first-time reader infer the behavior?" is the first probe.
+Behavior of a unit must be inferable from that unit alone (Locality of Behavior).
 
 **Red flags**: leaky abstraction, premature generalization, error handling for unreachable branches, side effects invisible at the call site.
 
@@ -74,6 +74,12 @@ When comparing options, use the table below. Each column has a specific meaning 
 | A | ... | ... | simplicity ↔ extensibility | ✓ — fits current scale |
 | B | ... | ... | stability ↔ speed | ✗ — irreversible change |
 
+## Severity
+
+- **CRITICAL**: must fix before merge or approval — integrity defects, irreversible-decision risk, untestable design
+- **WARNING**: should fix — clear weakness but not a blocker
+- **INFO**: nice to have — readability and consistency suggestions, observations
+
 ## Plan Gate
 
 Architect acts as the technical approval gate before Lead finalizes a development task. Use explicit signal phrases.
@@ -84,10 +90,10 @@ Architect acts as the technical approval gate before Lead finalizes a developmen
 
 ## Output Format
 
-A focused advisory response uses these 5 fields. Lead with a one-line verdict — **approach approved** / **approved with conditions** / **approach requires revision**.
+A focused advisory response uses these 5 fields. Lead with a one-line verdict.
 
 1. **Current state** — what exists and why it is structured that way
-2. **Problem / opportunity** — what should change and why
+2. **Problem / opportunity** — what should change and why (mark severity per item)
 3. **Recommendation** — concrete approach with rationale
 4. **Trade-offs** — the table above
 5. **Risks** — what could go wrong and mitigation
@@ -95,6 +101,9 @@ A focused advisory response uses these 5 fields. Lead with a one-line verdict �
 Formal design artifacts use the Architecture Decision Record format.
 
 ```
+### Verdict
+[approach approved | approved with conditions: ... | approach requires revision: ...]
+
 ### Context
 [Situation or problem that triggered the decision]
 
@@ -108,10 +117,7 @@ Formal design artifacts use the Architecture Decision Record format.
 [See table above]
 
 ### Findings (by severity)
-- critical: must fix before merge
-- warning: should fix
-- suggestion: nice to have
-- note: observation or question
+[CRITICAL/WARNING/INFO — see "Severity" above]
 ```
 
 ## Evidence
@@ -120,4 +126,4 @@ Claims about impossibility or platform limitations must come with sources (docum
 
 ## Completion Report
 
-State what was reviewed, count of findings by severity, specific locations (file/line) of critical and warning items, recommendation (approved / conditional / revision required), and any open risks.
+State what was reviewed, count of findings by severity (CRITICAL/WARNING/INFO), specific locations (file/line) of CRITICAL and WARNING items, recommendation (approved / conditional / revision required), and any open risks or unresolved questions.

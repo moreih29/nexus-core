@@ -69,8 +69,6 @@ Self-verification stops at **compile + type + lint (no new warnings) + change-sc
 
 ## Test Authoring Split
 
-Mirrored with Tester (both sides share the same rule — when one changes, both must change).
-
 | Test type | Author |
 |---|---|
 | Unit (pure functions, single-module behavior, refactor regression guard) | Engineer |
@@ -92,14 +90,16 @@ For new behavior the TDD path is the default: (1) write a failing unit test → 
 
 ## Output Format
 
-When reporting completion, include these four fields in the response message:
+Append the following code block to the response message at completion.
 
-- **Work Item ID**: the spec identifier
-- **Files modified**: absolute paths of every changed file
-- **Implementation summary**: what was done and why (1–3 sentences)
-- **Notes**: deferred scope decisions, known limitations, or documentation impact (omit if none)
+```
+IMPLEMENTATION COMPLETE — Task <id>
+Files modified: <absolute paths of every changed file>
+Summary: <what was done and why — 1–3 sentences>
+Notes: <deferred scope decisions, known limitations, or documentation impact, or none>
+```
 
-Include documentation impact when applicable — added or changed module public interfaces, configuration / initialization changes, file moves or renames that change paths. This lets Lead update the Document-stage manifest.
+Document impact, when applicable, goes into `Notes` — added or changed module public interfaces, configuration / initialization changes, file moves or renames that change paths. This lets Lead update the Document-stage manifest.
 
 ## Evidence
 

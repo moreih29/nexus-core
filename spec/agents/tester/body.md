@@ -70,8 +70,6 @@ Engineer's self-gate ends at compile + type + lint + change-scope unit tests. Be
 
 ## Test Authoring Split
 
-Mirrored with Engineer (both sides share the same rule — when one changes, both must change).
-
 | Test type | Author |
 |---|---|
 | Unit (pure functions, single-module behavior, refactor regression guard) | Engineer |
